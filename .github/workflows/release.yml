@@ -18,9 +18,9 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            comando: npm run dist:win
+            plataforma: --win
           - os: ubuntu-latest
-            comando: npm run dist:linux
+            plataforma: --linux
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -37,12 +37,17 @@ jobs:
 
       - run: npm ci
 
+      # compila o better-sqlite3 contra a versão do Electron, não a do Node
+      - name: Ajustar módulo nativo
+        run: npx electron-builder install-app-deps
+
       - name: Gerar e publicar
-        run: ${{ matrix.comando }} --publish always
+        run: npx electron-builder ${{ matrix.plataforma }} --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: instaladores-${{ runner.os }}
           path: |
