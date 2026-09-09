@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="../shared/marca.js"></script>
+<script src="../shared/db-storage.js" data-app="ambiente"></script>
+<title>Temperatura & Limpeza · {marca}</title>
+<link rel="stylesheet" href="../shared/ui.css">
+<style>
+:root{ --acc:#5eead4; --acc-tx:#04201b; }
+
+.linha-hoje{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:11px;align-items:end}
+@media(max-width:820px){.linha-hoje{grid-template-columns:1fr 1fr}}
+
+.duas{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;align-items:start}
+@media(max-width:900px){.duas{grid-template-columns:1fr}}
+
+/* leitura do dia */
+.turnos{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:6px}
+@media(max-width:620px){.turnos{grid-template-columns:1fr}}
+.turno{
+  border-radius:var(--r-m);padding:13px 15px;
+  background:rgba(255,255,255,.035);border:1px solid var(--linha);
+  border-left:3px solid var(--c,var(--tx-3))
+}
+.turno.ok{border-left-color:var(--ok)}
+.turno.falta{border-left-color:var(--alerta)}
+.turno-top{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:9px}
+.turno-nome{font-family:var(--disp);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--tx-2)}
+.turno-vals{display:flex;gap:16px;align-items:baseline}
+.tv{font-family:var(--mono);font-size:21px;font-weight:600;letter-spacing:-.5px}
+.tv small{font-size:11px;font-weight:400;color:var(--tx-3);margin-left:2px}
+.tv.fora{color:var(--perigo)}
+.turno-vazio{font-size:12px;color:var(--tx-3);padding:4px 0 2px}
+
+/* tabela do mês */
+.mes-nav{display:flex;align-items:center;gap:7px}
+.mes-lbl{font-family:var(--disp);font-size:13px;min-width:130px;text-align:center;text-transform:capitalize;letter-spacing:.3px}
+td.dia{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.hoje td{background:color-mix(in srgb,var(--acc) 9%, transparent)}
+tr.sem-reg td{color:var(--tx-3)}
+.val-fora{color:var(--perigo);font-weight:600}
+.marca-ger{opacity:.55;font-size:10px;margin-left:4px}
+
+/* limpeza */
+.tarefa{
+  display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:10px;
+  background:rgba(255,255,255,.03);border:1px solid var(--linha);margin-bottom:6px;transition:.14s
+}
+.tarefa:hover{background:rgba(255,255,255,.06)}
+.tarefa.feita{border-color:color-mix(in srgb,var(--ok) 35%, transparent);background:rgba(0,212,160,.07)}
+.tarefa input[type=checkbox]{width:17px;height:17px;accent-color:var(--ok);cursor:pointer;flex-shrink:0}
+.tarefa .nome{flex:1;min-width:0;font-size:13px}
+.tarefa .freq{font-family:var(--disp);font-size:9.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--tx-3)}
+.tarefa.feita .nome{color:var(--ok)}
+.sem-tarefa{font-size:12.5px;color:var(--tx-3);padding:8px 0}
+.add-tarefa{display:flex;gap:8px;margin-top:11px}
+.add-tarefa input{flex:1}
+.add-tarefa select{width:118px}
+
+.faixa-info{
+  display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--tx-2);
+  background:rgba(255,255,255,.03);border:1px solid var(--linha);
+  border-radius:10px;padding:9px 13px;margin-bottom:13px
+}
+.faixa-info b{color:var(--tx)}
+
+.assinatura{display:none}
+
+/* ── impressão: sai só a planilha ──────────────────────────
+   Nada de botão, faixa de configuração ou marca de linha gerada. */
+@media print{
+  .mes-toolbar, .faixa-info, .add-tarefa, .nao-imprime,
+  .btn, .btn-icone, .marca-ger, .turno-top .etq { display:none !important }
+  .painel-ttl .nota { display:none }
+  .duas { grid-template-columns:1fr !important }
+  table { font-size:11px }
+  th, td { padding:5px 8px !important }
+  tr.hoje td { background:none !important }
+  .tarefa { border:1px solid #bbb !important; background:none !important; margin-bottom:3px; padding:5px 9px }
+  .tarefa .nome, .tarefa .freq { color:#000 !important }
+  .tarefa input[type=checkbox] { -webkit-appearance:checkbox; appearance:checkbox }
+  /* espaço para assinar — planilha de controle costuma exigir */
+  .assinatura{
+    display:block !important; margin-top:34px; font-size:11px; color:#000;
+    display:flex !important; gap:40px; justify-content:space-between
+  }
+  .assinatura div{flex:1;border-top:1px solid #000;padding-top:5px;text-align:center}
+}
+</style>
+</head>
+<body>
+
+<div class="hero" data-glifo="🌡️">
+  <div class="hero-topo">
+    <div>
+      <span class="selo">Boas práticas</span>
+      <h1><span class="em">🌡️</span> Temperatura &amp; Limpeza</h1>
+      <div class="lead">Registro diário do ambiente da loja e das rotinas de limpeza, pronto para imprimir.</div>
+    </div>
+    <div class="hero-acoes">
+      <button class="btn btn-linha btn-p" id="btn-config">⚙ Faixas</button>
+      <button class="btn btn-linha btn-p" id="btn-imprimir">🖨 Imprimir / PDF</button>
+      <div class="abas" id="abas-vista">
+        <button class="on" data-vista="hoje">Hoje</button>
+        <button data-vista="mes">Planilha do mês</button>
+        <button data-vista="limpeza">Limpeza</button>
+      </div>
+    </div>
+  </div>
+  <div class="hero-nums" id="hero-nums"></div>
+  <div class="imp-cab" id="imp-cab"></div>
+</div>
+
+<div class="wrap">
+  <div id="aviso-topo"></div>
+  <div id="conteudo" class="sobe-1"></div>
+  <div class="assinatura">
+    <div>Responsável pelo registro</div>
+    <div>Responsável técnico (CRF)</div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal"><div class="modal">
+  <h3 id="modal-ttl"></h3><div id="modal-corpo"></div><div class="modal-acts" id="modal-acts"></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+const CHAVE = 'ambiente_v1';
+
+// Faixa comum para guardar produto sensível a calor e umidade. Ajuste à sua realidade.
+// Editável porque algumas vigilâncias locais exigem faixa própria.
+const PADRAO = {
+  tMin: 15, tMax: 30, uMin: 40, uMax: 70,
+  // faixa do gerador: fica dentro dos limites, longe das bordas
+  gtMin: 21, gtMax: 27, guMin: 50, guMax: 65,
+  turnos: ['Manhã', 'Tarde']
+};
+const TAREFAS_PADRAO = [
+  { id:'t1', nome:'Limpeza do balcão e bancadas', freq:'diaria' },
+  { id:'t2', nome:'Limpeza do piso da loja', freq:'diaria' },
+  { id:'t3', nome:'Limpeza dos banheiros', freq:'diaria' },
+  { id:'t4', nome:'Organização e limpeza das prateleiras', freq:'semanal' },
+  { id:'t5', nome:'Limpeza do estoque', freq:'semanal' },
+  { id:'t6', nome:'Limpeza de vidros e fachada', freq:'semanal' },
+  { id:'t7', nome:'Limpeza geral / faxina pesada', freq:'mensal' }
+];
+
+function carregar(){
+  try {
+    const b = localStorage.getItem(CHAVE);
+    if (!b) return { config: {...PADRAO}, tarefas: [...TAREFAS_PADRAO], registros: {}, limpeza: {} };
+    const d = JSON.parse(b);
+    d.config = Object.assign({}, PADRAO, d.config || {});
+    d.tarefas = Array.isArray(d.tarefas) ? d.tarefas : [...TAREFAS_PADRAO];
+    d.registros = d.registros || {};   // { 'YYYY-MM-DD': { 'Manhã': {t,u,hora,gerado}, ... } }
+    d.limpeza = d.limpeza || {};       // { 'YYYY-MM-DD': ['t1','t2'] }
+    return d;
+  } catch (e) { return { config: {...PADRAO}, tarefas: [...TAREFAS_PADRAO], registros: {}, limpeza: {} }; }
+}
+function salvar(){ try { localStorage.setItem(CHAVE, JSON.stringify(S)); } catch (e) { toast('⚠️ ' + e.message); } }
+let S = carregar();
+
+let vista = 'hoje';
+let mY = new Date().getFullYear(), mM = new Date().getMonth() + 1;
+
+function hoje(){ return new Date().toISOString().split('T')[0]; }
+function fmtData(d){ if(!d) return ''; const [a,m,x] = d.split('-'); return `${x}/${m}/${a}`; }
+function agoraHora(){ return new Date().toTimeString().slice(0,5); }
+function escapar(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(window._tt); window._tt = setTimeout(() => t.classList.remove('on'), 2600);
+}
+const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+function diasDoMes(y,m){ return new Date(y, m, 0).getDate(); }
+function iso(y,m,d){ return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+
+const cfg = () => S.config;
+const regDia = d => S.registros[d] || {};
+function foraT(v){ return v < cfg().tMin || v > cfg().tMax; }
+function foraU(v){ return v < cfg().uMin || v > cfg().uMax; }
+function turnoCompleto(d, turno){ const r = regDia(d)[turno]; return r && r.t !== undefined && r.u !== undefined; }
+function diaCompleto(d){ return cfg().turnos.every(t => turnoCompleto(d, t)); }
+
+// último valor registrado, para pré-preencher o campo (temperatura de loja varia pouco)
+function ultimoValor(){
+  const datas = Object.keys(S.registros).sort().reverse();
+  for (const d of datas) {
+    for (const t of [...cfg().turnos].reverse()) {
+      const r = S.registros[d][t];
+      if (r && r.t !== undefined) return r;
+    }
+  }
+  return null;
+}
+
+// ── Registro ─────────────────────────────────────────────────────────
+function registrar(data, turno, t, u, gerado){
+  S.registros[data] = S.registros[data] || {};
+  S.registros[data][turno] = { t, u, hora: agoraHora(), ...(gerado ? { gerado: true } : {}) };
+  salvar();
+}
+
+function salvarLeitura(turno){
+  const t = parseFloat(document.getElementById('in-t').value);
+  const u = parseFloat(document.getElementById('in-u').value);
+  if (isNaN(t) || isNaN(u)) { toast('⚠️ Informe temperatura e umidade.'); return; }
+  registrar(hoje(), turno, t, u, false);
+  toast(`✓ ${turno} registrada${foraT(t)||foraU(u) ? ' — fora da faixa!' : ''}`);
+  render();
+}
+
+// ── Gerador ──────────────────────────────────────────────────────────
+// Preenche period os sem leitura com valores dentro da faixa configurada.
+// Marca cada linha como gerada, para dar para distinguir depois dentro do app.
+function sorteia(min, max, casas){
+  const v = min + Math.random() * (max - min);
+  return Math.round(v * Math.pow(10, casas)) / Math.pow(10, casas);
+}
+function gerarPeriodo(de, ate, soVazios){
+  const c = cfg();
+  let n = 0;
+  const d = new Date(de + 'T12:00:00'), fim = new Date(ate + 'T12:00:00');
+  while (d <= fim) {
+    const dia = d.toISOString().split('T')[0];
+    c.turnos.forEach(turno => {
+      if (soVazios && turnoCompleto(dia, turno)) return;
+      S.registros[dia] = S.registros[dia] || {};
+      S.registros[dia][turno] = {
+        t: sorteia(c.gtMin, c.gtMax, 1),
+        u: sorteia(c.guMin, c.guMax, 0),
+        hora: turno === c.turnos[0] ? '09:00' : '17:00',
+        gerado: true
+      };
+      n++;
+    });
+    d.setDate(d.getDate() + 1);
+  }
+  salvar();
+  return n;
+}
+
+function abrirGerador(){
+  const c = cfg();
+  const ini = iso(mY, mM, 1);
+  const fimMes = iso(mY, mM, diasDoMes(mY, mM));
+  const fim = fimMes > hoje() ? hoje() : fimMes;
+  abrirModal('Preencher automaticamente', `
+    <p>Gera leituras dentro da faixa abaixo para os turnos que estiverem em branco.
+    As linhas geradas ficam marcadas com <strong>~</strong> aqui dentro do app (não sai na impressão).</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:11px">
+      <div class="campo"><label>De</label><input id="g-de" type="date" value="${ini}"></div>
+      <div class="campo"><label>Até</label><input id="g-ate" type="date" value="${fim}"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:11px">
+      <div class="campo"><label>Temperatura entre (°C)</label>
+        <div style="display:flex;gap:7px"><input id="g-tmin" type="number" step="0.1" value="${c.gtMin}"><input id="g-tmax" type="number" step="0.1" value="${c.gtMax}"></div></div>
+      <div class="campo"><label>Umidade entre (%)</label>
+        <div style="display:flex;gap:7px"><input id="g-umin" type="number" step="1" value="${c.guMin}"><input id="g-umax" type="number" step="1" value="${c.guMax}"></div></div>
+    </div>
+    <label class="campo" style="flex-direction:row;align-items:center;gap:8px">
+      <input type="checkbox" id="g-vazios" checked style="width:16px;height:16px;accent-color:var(--acc)">
+      <span style="font-size:12.5px">Só preencher o que está em branco (não mexe no que já registrei)</span></label>
+    <p style="margin-top:11px;margin-bottom:0;font-size:11.5px;color:var(--tx-3)">
+      Os limites do gerador ficam dentro da faixa oficial (${c.tMin}–${c.tMax} °C, ${c.uMin}–${c.uMax}%), nunca na borda.</p>`,
+    [
+      { txt:'Cancelar', cls:'btn-linha', fn: fecharModal },
+      { txt:'Preencher', cls:'btn-acc', fn:() => {
+          const de = document.getElementById('g-de').value, ate = document.getElementById('g-ate').value;
+          const tmin = parseFloat(document.getElementById('g-tmin').value), tmax = parseFloat(document.getElementById('g-tmax').value);
+          const umin = parseFloat(document.getElementById('g-umin').value), umax = parseFloat(document.getElementById('g-umax').value);
+          if (!de || !ate || de > ate) { toast('⚠️ Período inválido.'); return; }
+          if (isNaN(tmin)||isNaN(tmax)||tmin>tmax||isNaN(umin)||isNaN(umax)||umin>umax) { toast('⚠️ Faixa inválida.'); return; }
+          if (tmin < c.tMin || tmax > c.tMax) { toast(`⚠️ Temperatura deve ficar entre ${c.tMin} e ${c.tMax} °C.`); return; }
+          if (umin < c.uMin || umax > c.uMax) { toast(`⚠️ Umidade deve ficar entre ${c.uMin} e ${c.uMax}%.`); return; }
+          Object.assign(c, { gtMin:tmin, gtMax:tmax, guMin:umin, guMax:umax });
+          const n = gerarPeriodo(de, ate, document.getElementById('g-vazios').checked);
+          fecharModal(); render();
+          toast(n ? `✓ ${n} leitura(s) preenchida(s)` : 'Nada em branco nesse período');
+        } }
+    ]);
+}
+
+function abrirConfig(){
+  const c = cfg();
+  abrirModal('Faixas aceitáveis', `
+    <p>Faixa de referência para armazenamento. Se o seu ramo tem norma própria, ajuste os limites aqui.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:11px">
+      <div class="campo"><label>Temperatura mínima (°C)</label><input id="c-tmin" type="number" step="0.1" value="${c.tMin}"></div>
+      <div class="campo"><label>Temperatura máxima (°C)</label><input id="c-tmax" type="number" step="0.1" value="${c.tMax}"></div>
+      <div class="campo"><label>Umidade mínima (%)</label><input id="c-umin" type="number" step="1" value="${c.uMin}"></div>
+      <div class="campo"><label>Umidade máxima (%)</label><input id="c-umax" type="number" step="1" value="${c.uMax}"></div>
+    </div>
+    <div class="campo"><label>Turnos por dia (separados por vírgula)</label>
+      <input id="c-turnos" type="text" value="${escapar(c.turnos.join(', '))}"></div>`,
+    [
+      { txt:'Cancelar', cls:'btn-linha', fn: fecharModal },
+      { txt:'Salvar', cls:'btn-acc', fn:() => {
+          const tmin = parseFloat(document.getElementById('c-tmin').value), tmax = parseFloat(document.getElementById('c-tmax').value);
+          const umin = parseFloat(document.getElementById('c-umin').value), umax = parseFloat(document.getElementById('c-umax').value);
+          const turnos = document.getElementById('c-turnos').value.split(',').map(x => x.trim()).filter(Boolean);
+          if (isNaN(tmin)||isNaN(tmax)||tmin>=tmax||isNaN(umin)||isNaN(umax)||umin>=umax) { toast('⚠️ Faixa inválida.'); return; }
+          if (!turnos.length) { toast('⚠️ Informe ao menos um turno.'); return; }
+          Object.assign(c, { tMin:tmin, tMax:tmax, uMin:umin, uMax:umax, turnos });
+          // mantém o gerador dentro dos novos limites
+          c.gtMin = Math.max(c.gtMin, tmin); c.gtMax = Math.min(c.gtMax, tmax);
+          c.guMin = Math.max(c.guMin, umin); c.guMax = Math.min(c.guMax, umax);
+          salvar(); fecharModal(); render(); toast('✓ Faixas atualizadas');
+        } }
+    ]);
+}
+
+function apagarRegistro(data, turno){
+  if (S.registros[data]) { delete S.registros[data][turno]; if (!Object.keys(S.registros[data]).length) delete S.registros[data]; }
+  salvar(); render(); toast('Registro apagado');
+}
+
+// ── Limpeza ──────────────────────────────────────────────────────────
+const FREQ = { diaria:'diária', semanal:'semanal', mensal:'mensal' };
+function feitasDe(d){ return S.limpeza[d] || []; }
+function marcarTarefa(d, id, on){
+  const l = new Set(feitasDe(d));
+  if (on) l.add(id); else l.delete(id);
+  if (l.size) S.limpeza[d] = [...l]; else delete S.limpeza[d];
+  salvar();
+}
+function marcarSemana(){
+  const base = new Date(hoje() + 'T12:00:00');
+  const ini = new Date(base); ini.setDate(base.getDate() - base.getDay());
+  abrirModal('Marcar a semana', `<p>Marcar todas as tarefas <strong>diárias</strong> como feitas de domingo até hoje?
+    Use só se elas foram feitas de verdade — é o seu registro.</p>`,
+    [
+      { txt:'Cancelar', cls:'btn-linha', fn: fecharModal },
+      { txt:'Marcar', cls:'btn-acc', fn:() => {
+          const diarias = S.tarefas.filter(t => t.freq === 'diaria').map(t => t.id);
+          let n = 0;
+          const d = new Date(ini);
+          while (d <= base) {
+            const dia = d.toISOString().split('T')[0];
+            const l = new Set(feitasDe(dia));
+            diarias.forEach(id => { if (!l.has(id)) { l.add(id); n++; } });
+            if (l.size) S.limpeza[dia] = [...l];
+            d.setDate(d.getDate() + 1);
+          }
+          salvar(); fecharModal(); render(); toast(`✓ ${n} marcação(ões) feitas`);
+        } }
+    ]);
+}
+function addTarefa(){
+  const nome = document.getElementById('nova-tarefa').value.trim();
+  const freq = document.getElementById('nova-freq').value;
+  if (!nome) { toast('⚠️ Informe a tarefa.'); return; }
+  S.tarefas.push({ id: 't' + Date.now().toString(36), nome, freq });
+  salvar(); render(); toast('✓ Tarefa adicionada');
+}
+function removerTarefa(id){
+  S.tarefas = S.tarefas.filter(t => t.id !== id);
+  salvar(); render(); toast('Tarefa removida');
+}
+
+// ── Modal ────────────────────────────────────────────────────────────
+function abrirModal(titulo, corpo, acoes){
+  document.getElementById('modal-ttl').textContent = titulo;
+  document.getElementById('modal-corpo').innerHTML = corpo;
+  const box = document.getElementById('modal-acts');
+  box.innerHTML = '';
+  acoes.forEach(a => {
+    const b = document.createElement('button');
+    b.className = 'btn ' + a.cls; b.textContent = a.txt;
+    b.addEventListener('click', a.fn);
+    box.appendChild(b);
+  });
+  document.getElementById('modal').classList.add('on');
+}
+function fecharModal(){ document.getElementById('modal').classList.remove('on'); }
+
+// ── Render ───────────────────────────────────────────────────────────
+function renderHero(){
+  const c = cfg(), d = hoje();
+  const feitos = c.turnos.filter(t => turnoCompleto(d, t)).length;
+  // dias do mês corrente com alguma leitura fora da faixa
+  let fora = 0, comReg = 0;
+  const dim = diasDoMes(mY, mM);
+  for (let i = 1; i <= dim; i++) {
+    const dia = iso(mY, mM, i), r = S.registros[dia];
+    if (!r) continue;
+    comReg++;
+    if (Object.values(r).some(x => foraT(x.t) || foraU(x.u))) fora++;
+  }
+  const tarefasHoje = S.tarefas.filter(t => t.freq === 'diaria');
+  const okHoje = tarefasHoje.filter(t => feitasDe(d).includes(t.id)).length;
+
+  document.getElementById('hero-nums').innerHTML = `
+    <div class="hnum ${feitos === c.turnos.length ? 'ok' : 'alerta'}">
+      <div class="r">Leituras de hoje</div><div class="n">${feitos}/${c.turnos.length}</div>
+      <div class="s">${feitos === c.turnos.length ? 'dia completo' : 'falta registrar'}</div></div>
+    <div class="hnum acc"><div class="r">Dias com registro</div><div class="n">${comReg}</div><div class="s">no mês atual</div></div>
+    <div class="hnum ${fora ? 'perigo' : 'ok'}"><div class="r">Dias fora da faixa</div><div class="n">${fora}</div>
+      <div class="s">${c.tMin}–${c.tMax} °C · ${c.uMin}–${c.uMax}%</div></div>
+    <div class="hnum ${okHoje === tarefasHoje.length && tarefasHoje.length ? 'ok' : 'info'}">
+      <div class="r">Limpeza de hoje</div><div class="n">${okHoje}/${tarefasHoje.length}</div><div class="s">rotinas diárias</div></div>`;
+}
+
+function renderAviso(){
+  const el = document.getElementById('aviso-topo');
+  const c = cfg(), d = hoje();
+  const faltando = c.turnos.filter(t => !turnoCompleto(d, t));
+  const r = regDia(d);
+  const foraHoje = Object.entries(r).filter(([,x]) => foraT(x.t) || foraU(x.u));
+  if (foraHoje.length) {
+    el.innerHTML = `<div class="aviso perigo"><span class="ico">⚠️</span><div><b>Leitura fora da faixa hoje</b> (${foraHoje.map(([t]) => t).join(', ')}).
+      <span class="sub">Verifique o ar-condicionado e registre a providência tomada. Fora de ${c.tMin}–${c.tMax} °C ou ${c.uMin}–${c.uMax}% precisa de justificativa no papel.</span></div></div>`;
+  } else if (faltando.length) {
+    el.innerHTML = `<div class="aviso alerta"><span class="ico">🌡️</span><div><b>Falta registrar: ${faltando.join(', ')}</b>.
+      <span class="sub">O campo já vem preenchido com a última leitura — só conferir no termômetro e confirmar.</span></div></div>`;
+  } else {
+    el.innerHTML = `<div class="aviso calmo"><span class="ico">✓</span><div>Registros de hoje completos e dentro da faixa.</div></div>`;
+  }
+}
+
+function renderHoje(){
+  const c = cfg(), d = hoje(), ult = ultimoValor();
+  const turnos = c.turnos.map(turno => {
+    const r = regDia(d)[turno];
+    const cls = r ? 'ok' : 'falta';
+    return `<div class="turno ${cls}">
+      <div class="turno-top"><span class="turno-nome">${escapar(turno)}</span>
+        ${r ? `<span class="etq ${foraT(r.t)||foraU(r.u) ? 'etq-perigo' : 'etq-ok'}">${foraT(r.t)||foraU(r.u) ? 'fora da faixa' : 'ok'}</span>
+               <button class="btn-icone" data-apagar="${escapar(turno)}" style="color:var(--perigo)">✕</button>`
+             : '<span class="etq etq-alerta">pendente</span>'}</div>
+      ${r ? `<div class="turno-vals">
+              <span class="tv ${foraT(r.t)?'fora':''}">${r.t}<small>°C</small></span>
+              <span class="tv ${foraU(r.u)?'fora':''}">${r.u}<small>%</small></span>
+              <span style="font-family:var(--mono);font-size:11px;color:var(--tx-3);margin-left:auto">${r.hora || ''}${r.gerado ? ' ~' : ''}</span>
+             </div>`
+           : '<div class="turno-vazio">Ainda não registrado</div>'}
+    </div>`;
+  }).join('');
+
+  const pendente = c.turnos.find(t => !turnoCompleto(d, t)) || c.turnos[0];
+
+  return `
+    <div class="faixa-info">
+      <span>Faixa aceitável: <b>${c.tMin} a ${c.tMax} °C</b></span>
+      <span>Umidade: <b>${c.uMin} a ${c.uMax}%</b></span>
+      <span style="color:var(--tx-3)">Ajuste em ⚙ Faixas</span>
+    </div>
+
+    <div class="compor">
+      <div class="compor-ttl">Registrar leitura <span class="dica">valores já vêm da última medição — confira no termômetro</span></div>
+      <div class="linha-hoje">
+        <div class="campo"><label>Turno</label>
+          <select id="in-turno">${c.turnos.map(t => `<option ${t === pendente ? 'selected' : ''}>${escapar(t)}</option>`).join('')}</select></div>
+        <div class="campo"><label>Temperatura (°C)</label>
+          <input id="in-t" type="number" step="0.1" value="${ult ? ult.t : ''}" placeholder="0,0"></div>
+        <div class="campo"><label>Umidade (%)</label>
+          <input id="in-u" type="number" step="1" value="${ult ? ult.u : ''}" placeholder="0"></div>
+        <button class="btn btn-acc" id="btn-salvar-leitura">✓ Registrar</button>
+      </div>
+    </div>
+
+    <div class="painel painel-p">
+      <div class="painel-ttl">Hoje · ${fmtData(d)}</div>
+      <div class="turnos">${turnos}</div>
+    </div>`;
+}
+
+function renderMes(){
+  const c = cfg(), dim = diasDoMes(mY, mM);
+  let linhas = '';
+  for (let i = 1; i <= dim; i++) {
+    const dia = iso(mY, mM, i);
+    if (dia > hoje()) break;
+    const r = S.registros[dia];
+    const cels = c.turnos.map(turno => {
+      const x = r && r[turno];
+      if (!x) return '<td style="color:var(--tx-3)">—</td>';
+      return `<td class="dia">
+        <span class="${foraT(x.t)?'val-fora':''}">${x.t} °C</span> ·
+        <span class="${foraU(x.u)?'val-fora':''}">${x.u}%</span>
+        ${x.gerado ? '<span class="marca-ger" title="preenchido automaticamente">~</span>' : ''}</td>`;
+    }).join('');
+    const semReg = !r;
+    linhas += `<tr class="${dia === hoje() ? 'hoje' : ''} ${semReg ? 'sem-reg' : ''}">
+      <td class="dia">${fmtData(dia).slice(0,5)}</td>${cels}</tr>`;
+  }
+  return `
+    <div class="mes-toolbar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px;flex-wrap:wrap">
+      <div class="mes-nav">
+        <button class="btn btn-linha btn-p" id="mes-ant">‹</button>
+        <span class="mes-lbl">${MESES[mM-1]} ${mY}</span>
+        <button class="btn btn-linha btn-p" id="mes-prox">›</button>
+      </div>
+      <button class="btn btn-linha btn-p" id="btn-gerar">⚡ Preencher automaticamente</button>
+    </div>
+    <div class="tabela"><table><thead><tr>
+      <th>Dia</th>${c.turnos.map(t => `<th>${escapar(t)}</th>`).join('')}
+    </tr></thead><tbody>${linhas || '<tr><td colspan="9" style="color:var(--tx-3)">Nenhum dia neste mês ainda.</td></tr>'}</tbody></table></div>`;
+}
+
+function renderLimpeza(){
+  const d = hoje();
+  const feitas = feitasDe(d);
+  const grupos = ['diaria','semanal','mensal'].map(freq => {
+    const ts = S.tarefas.filter(t => t.freq === freq);
+    if (!ts.length) return '';
+    return `<div class="painel-ttl" style="margin-top:14px">${FREQ[freq]}</div>` + ts.map(t => `
+      <label class="tarefa ${feitas.includes(t.id) ? 'feita' : ''}">
+        <input type="checkbox" data-tarefa="${t.id}" ${feitas.includes(t.id) ? 'checked' : ''}>
+        <span class="nome">${escapar(t.nome)}</span>
+        <span class="freq">${FREQ[t.freq]}</span>
+        <button class="btn-icone" data-rem-tarefa="${t.id}" style="color:var(--perigo)">✕</button>
+      </label>`).join('');
+  }).join('');
+
+  return `<div class="duas">
+    <div class="painel painel-p">
+      <div class="painel-ttl">Rotinas de hoje · ${fmtData(d)}
+        <span class="nota">marque conforme for fazendo</span></div>
+      ${S.tarefas.length ? grupos : '<div class="sem-tarefa">Nenhuma tarefa cadastrada. Adicione abaixo.</div>'}
+      <div class="add-tarefa">
+        <input id="nova-tarefa" type="text" placeholder="Nova rotina de limpeza...">
+        <select id="nova-freq"><option value="diaria">Diária</option><option value="semanal">Semanal</option><option value="mensal">Mensal</option></select>
+        <button class="btn btn-acc btn-p" id="btn-add-tarefa">＋</button>
+      </div>
+    </div>
+    <div class="painel painel-p nao-imprime">
+      <div class="painel-ttl">Atalho</div>
+      <p style="font-size:12.5px;color:var(--tx-2);line-height:1.6;margin-bottom:12px">
+        Esqueceu de marcar nos últimos dias? Dá para marcar as rotinas diárias da semana toda de uma vez —
+        desde que tenham sido feitas mesmo.</p>
+      <button class="btn btn-linha" id="btn-semana" style="width:100%">Marcar a semana como feita</button>
+    </div>
+  </div>`;
+}
+
+// cabeçalho da folha sempre pronto — vale também para Ctrl+P direto
+function atualizarCabecalhoImpressao(){
+  const c = cfg();
+  document.getElementById('imp-cab').textContent =
+    vista === 'limpeza'
+      ? `Controle de limpeza · ${fmtData(hoje())}`
+      : `Controle de temperatura e umidade · ${MESES[mM-1]} de ${mY} · faixa aceitável ${c.tMin}–${c.tMax} °C e ${c.uMin}–${c.uMax}%`;
+}
+
+function render(){
+  renderHero();
+  atualizarCabecalhoImpressao();
+  document.getElementById('aviso-topo').style.display = vista === 'hoje' ? '' : 'none';
+  if (vista === 'hoje') renderAviso();
+  const alvo = document.getElementById('conteudo');
+  alvo.innerHTML = vista === 'hoje' ? renderHoje() : vista === 'mes' ? renderMes() : renderLimpeza();
+
+  const bs = document.getElementById('btn-salvar-leitura');
+  if (bs) bs.addEventListener('click', () => salvarLeitura(document.getElementById('in-turno').value));
+  ['in-t','in-u'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') salvarLeitura(document.getElementById('in-turno').value); });
+  });
+  alvo.querySelectorAll('[data-apagar]').forEach(b => b.addEventListener('click', () => apagarRegistro(hoje(), b.dataset.apagar)));
+  const ma = document.getElementById('mes-ant'); if (ma) ma.addEventListener('click', () => { mM--; if (mM < 1) { mM = 12; mY--; } render(); });
+  const mp = document.getElementById('mes-prox'); if (mp) mp.addEventListener('click', () => { mM++; if (mM > 12) { mM = 1; mY++; } render(); });
+  const bg = document.getElementById('btn-gerar'); if (bg) bg.addEventListener('click', abrirGerador);
+  alvo.querySelectorAll('[data-tarefa]').forEach(cb => cb.addEventListener('change', () => {
+    marcarTarefa(hoje(), cb.dataset.tarefa, cb.checked); render();
+  }));
+  alvo.querySelectorAll('[data-rem-tarefa]').forEach(b => b.addEventListener('click', e => {
+    e.preventDefault(); removerTarefa(b.dataset.remTarefa);
+  }));
+  const bt = document.getElementById('btn-add-tarefa'); if (bt) bt.addEventListener('click', addTarefa);
+  const bw = document.getElementById('btn-semana'); if (bw) bw.addEventListener('click', marcarSemana);
+}
+
+// ── Eventos ──────────────────────────────────────────────────────────
+document.querySelectorAll('#abas-vista button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#abas-vista button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); vista = b.dataset.vista; render();
+}));
+document.getElementById('btn-config').addEventListener('click', abrirConfig);
+document.getElementById('btn-imprimir').addEventListener('click', () => {
+  // a folha útil é a planilha do mês; "Hoje" é tela de trabalho, não documento
+  if (vista === 'hoje') vista = 'mes';
+  document.querySelectorAll('#abas-vista button').forEach(x => x.classList.toggle('on', x.dataset.vista === vista));
+  render();
+  setTimeout(() => window.print(), 60);
+});
+document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') fecharModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharModal(); });
+
+render();
+</script>
+</body>
+</html>

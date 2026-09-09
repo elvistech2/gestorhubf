@@ -1,0 +1,2510 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="../shared/marca.js"></script>
+<script src="../shared/db-storage.js" data-app="farmapedidos"></script>
+<title>Pedidos · {marca}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;450;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f3ea;--paper:#fefcf7;--surface:#fff;--surface-2:#f5efe2;
+  --ink:#1a1a18;--ink-2:#3a3530;--muted:#807771;--subtle:#a8a094;
+  --rule:#e6dfd0;--rule-strong:#d4cab5;
+  --forest:#1f4e3d;--forest-h:#143527;--forest-l:#e3ece5;
+  --moss:#5a7a5a;--amber:#b88a4a;--amber-l:#f5ead3;--amber-d:#8a6534;
+  --clay:#a84e3a;--clay-l:#f1ddd6;--teal:#2f6b6e;--teal-l:#dde8e8;
+  --r:6px;--r-md:8px;--r-lg:12px;
+  --shadow-soft:0 1px 1px rgba(60,50,30,.04),0 4px 10px rgba(60,50,30,.04);
+  --tag-red:#c0392b;--tag-red-l:#f7e0dc;
+  --tag-yellow:#c99a2e;--tag-yellow-l:#f7eed1;
+  --tag-green:#3c8a4e;--tag-green-l:#dcefe0;
+  --tag-blue:#3a6ea5;--tag-blue-l:#dde7f2;
+  --tag-gray:#8a847c;--tag-gray-l:#ece8e0;
+}
+html,body{height:100%}
+body{
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;font-feature-settings:'ss01','cv11';
+  background-image:radial-gradient(circle at 20% 0%,rgba(31,78,61,.04),transparent 50%),radial-gradient(circle at 80% 100%,rgba(184,138,74,.04),transparent 50%);
+}
+.serif{font-family:'Fraunces',Georgia,serif;letter-spacing:-.015em}
+.mono,.num{font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+
+.ic{width:16px;height:16px;display:inline-block;vertical-align:-3px;flex-shrink:0}
+
+/* ── Header ── */
+.masthead{
+  background:var(--paper);border-bottom:1px solid var(--rule);
+  padding:12px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  position:sticky;top:0;z-index:50;
+}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+.brand-mark{
+  width:36px;height:36px;border-radius:50%;background:var(--forest);color:var(--paper);
+  display:grid;place-items:center;font-family:'Fraunces',serif;font-weight:600;font-size:1.05rem;
+  box-shadow:inset 0 0 0 2px var(--paper),inset 0 0 0 3px var(--forest);flex-shrink:0;
+}
+.brand-name{font-family:'Fraunces',serif;font-weight:600;font-size:1.1rem;letter-spacing:-.02em;line-height:1}
+.brand-tag{font-size:.68rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:2px;font-weight:500}
+.save-status{
+  display:inline-flex;align-items:center;gap:5px;font-size:.7rem;color:var(--muted);
+  padding:3px 8px;border-radius:10px;background:var(--surface-2);transition:all .25s;
+}
+.save-dot{width:6px;height:6px;border-radius:50%;background:var(--moss)}
+.save-status.saving .save-dot{background:var(--amber);animation:pulse 1s infinite}
+.save-status.error{background:var(--clay-l);color:var(--clay)}
+.save-status.error .save-dot{background:var(--clay)}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+.hbtns{display:flex;gap:4px;flex-wrap:wrap}
+.hbtn{
+  background:transparent;border:1px solid var(--rule);color:var(--ink-2);
+  padding:7px 11px;border-radius:var(--r);cursor:pointer;font-size:.78rem;font-weight:500;
+  display:inline-flex;align-items:center;gap:5px;transition:all .15s;font-family:inherit;
+}
+.hbtn:hover{background:var(--surface-2);border-color:var(--rule-strong)}
+.hbtn.alert{border-color:var(--amber);background:var(--amber-l);color:var(--amber-d);animation:gentle-pulse 2s infinite}
+@keyframes gentle-pulse{0%,100%{box-shadow:0 0 0 0 rgba(184,138,74,.3)}50%{box-shadow:0 0 0 4px rgba(184,138,74,0)}}
+
+/* ── Tabs ── */
+.tabnav{
+  background:var(--paper);border-bottom:1px solid var(--rule);
+  display:flex;overflow-x:auto;padding:0 18px;position:sticky;top:61px;z-index:40;
+}
+.tab{
+  padding:12px 4px;margin-right:22px;cursor:pointer;font-size:.86rem;color:var(--muted);
+  border-bottom:2px solid transparent;white-space:nowrap;user-select:none;
+  font-weight:500;transition:color .15s;display:inline-flex;align-items:center;gap:6px;
+  font-family:'Fraunces',serif;
+}
+.tab:hover{color:var(--ink-2)}
+.tab.active{color:var(--forest);border-bottom-color:var(--forest);font-weight:600}
+.tab-count{
+  font-family:'Inter',sans-serif;font-size:.68rem;background:var(--rule);
+  padding:1px 6px;border-radius:10px;color:var(--ink-2);font-weight:500;
+}
+.tab.active .tab-count{background:var(--forest-l);color:var(--forest)}
+
+.content{padding:24px 18px 80px;max-width:960px;margin:0 auto}
+.section{margin-bottom:24px}
+.section-head{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  margin-bottom:14px;gap:12px;flex-wrap:wrap;
+  padding-bottom:10px;border-bottom:1px solid var(--rule);
+}
+.section-title{font-family:'Fraunces',serif;font-size:1.45rem;font-weight:500;letter-spacing:-.025em;line-height:1.15}
+.section-meta{font-size:.82rem;color:var(--muted);margin-top:3px}
+.section-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* ── Day summary ── */
+.summary{
+  background:linear-gradient(135deg,var(--paper) 0%,var(--surface-2) 100%);
+  border:1px solid var(--rule);border-radius:var(--r-lg);padding:18px 22px;
+  margin-bottom:18px;position:relative;overflow:hidden;
+}
+.summary::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--forest)}
+.day-nav{display:flex;align-items:center;gap:6px}
+.day-nav-btn{
+  width:32px;height:32px;border:1px solid var(--rule);background:var(--paper);
+  border-radius:var(--r);cursor:pointer;display:grid;place-items:center;color:var(--ink-2);
+  transition:all .12s;
+}
+.day-nav-btn:hover{border-color:var(--forest);color:var(--forest);background:var(--surface)}
+.day-nav-today{padding:0 12px;font-size:.78rem;font-weight:500;background:var(--paper);border:1px solid var(--rule);border-radius:var(--r);height:32px;cursor:pointer;font-family:inherit;color:var(--ink-2)}
+.day-nav-today:hover{border-color:var(--forest);color:var(--forest)}
+.summary-date{font-family:'Fraunces',serif;font-size:1.05rem;color:var(--forest);font-weight:500;text-transform:capitalize;letter-spacing:-.01em}
+.summary-stats{display:flex;gap:24px;margin-top:10px;flex-wrap:wrap}
+.sstat-label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:500}
+.sstat-value{font-family:'Fraunces',serif;font-size:1.4rem;font-weight:500;letter-spacing:-.02em;line-height:1.15}
+.sstat-value.money{color:var(--forest)}
+.sstat-sub{font-size:.72rem;color:var(--subtle);margin-top:1px}
+
+/* ── Buttons ── */
+.btn{
+  padding:8px 14px;border-radius:var(--r);border:1px solid transparent;cursor:pointer;
+  font-size:.83rem;font-weight:500;font-family:inherit;transition:all .12s;
+  display:inline-flex;align-items:center;gap:6px;line-height:1;
+}
+.btn-p{background:var(--forest);color:var(--paper);border-color:var(--forest)}
+.btn-p:hover{background:var(--forest-h)}
+.btn-o{background:var(--paper);border-color:var(--rule-strong);color:var(--ink-2)}
+.btn-o:hover{background:var(--surface-2)}
+.btn-amber{background:var(--amber);color:var(--paper);border-color:var(--amber-d)}
+.btn-amber:hover{background:var(--amber-d)}
+.btn-teal{background:var(--teal-l);color:var(--teal);border-color:var(--teal)}
+.btn-sm{padding:6px 11px;font-size:.78rem}
+.btn-xs{padding:4px 9px;font-size:.74rem}
+
+/* ── Filters ── */
+.filterbar{display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap;align-items:center;padding-bottom:6px}
+.fchip{
+  padding:4px 0;border:none;background:none;cursor:pointer;color:var(--muted);
+  font-family:inherit;font-size:.82rem;font-weight:500;position:relative;
+  display:inline-flex;align-items:center;gap:5px;transition:color .12s;
+}
+.fchip:hover{color:var(--ink-2)}
+.fchip.active{color:var(--ink);font-weight:600}
+.fchip.active::after{content:'';position:absolute;bottom:-3px;left:0;right:0;height:2px;background:var(--forest);border-radius:2px}
+.fchip-dot{width:6px;height:6px;border-radius:50%;background:var(--rule-strong)}
+.fchip[data-f="pending"] .fchip-dot{background:var(--amber)}
+.fchip[data-f="ordered"] .fchip-dot{background:var(--teal)}
+.fchip[data-f="received"] .fchip-dot{background:var(--moss)}
+
+/* ── Form ── */
+.form-g{display:grid;gap:12px}
+.form-r{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.lbl{font-size:.74rem;color:var(--muted);display:block;margin-bottom:5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+input,select,textarea{
+  width:100%;padding:9px 11px;border:1px solid var(--rule-strong);border-radius:var(--r);
+  font-size:.875rem;font-family:inherit;background:var(--paper);color:var(--ink);transition:all .12s;
+}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--forest);background:var(--surface);box-shadow:0 0 0 3px rgba(31,78,61,.08)}
+input::placeholder{color:var(--subtle)}
+.input-sm{padding:7px 10px;border:1px solid var(--rule-strong);border-radius:var(--r);font-size:.82rem;background:var(--paper);font-family:inherit;color:var(--ink)}
+.input-sm:focus{outline:none;border-color:var(--forest);box-shadow:0 0 0 2px rgba(31,78,61,.08)}
+
+/* ── Order card ── */
+.ocard{
+  background:var(--paper);border:1px solid var(--rule);border-radius:var(--r-md);
+  padding:16px 18px;margin-bottom:10px;transition:all .12s;
+}
+.ocard:hover{border-color:var(--rule-strong);box-shadow:var(--shadow-soft)}
+.ocard-row{display:flex;align-items:flex-start;gap:14px}
+.ocard-status{
+  width:8px;height:8px;border-radius:50%;background:var(--rule-strong);
+  flex-shrink:0;margin-top:8px;
+}
+.ocard.pending .ocard-status{background:var(--amber);box-shadow:0 0 0 4px var(--amber-l)}
+.ocard.ordered .ocard-status{background:var(--teal);box-shadow:0 0 0 4px var(--teal-l)}
+.ocard.received .ocard-status{background:var(--moss);box-shadow:0 0 0 4px var(--forest-l)}
+.ocard-body{flex:1;min-width:0}
+.ocard-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.ocard-name{font-weight:600;font-size:.96rem;color:var(--ink)}
+.ocard-meta{display:flex;gap:10px;color:var(--muted);font-size:.78rem;align-items:center;flex-wrap:wrap;margin-top:2px}
+.ocard-meta a{color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:4px;transition:color .12s}
+.ocard-meta a:hover{color:var(--forest)}
+.ocard-status-label{font-size:.72rem;font-weight:500;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;color:var(--muted);padding:2px 0}
+.ocard.pending .ocard-status-label{color:var(--amber-d)}
+.ocard.ordered .ocard-status-label{color:var(--teal)}
+.ocard.received .ocard-status-label{color:var(--moss)}
+.ocard-status-label:hover{text-decoration:underline}
+.ocard-actions{display:flex;gap:4px;flex-shrink:0}
+
+/* ── Med items with checkbox ── */
+.ocard-meds{margin-top:10px;border-top:1px dashed var(--rule);padding-top:8px}
+.omed{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:.86rem}
+.omed:not(:last-child){border-bottom:1px dashed var(--rule)}
+.omed-status{
+  display:inline-flex;align-items:center;gap:6px;flex-shrink:0;cursor:pointer;
+  padding:3px 9px 3px 8px;border-radius:20px;border:1px solid var(--rule-strong);
+  background:var(--paper);font-size:.68rem;font-weight:600;letter-spacing:.02em;
+  color:var(--muted);user-select:none;transition:all .12s;white-space:nowrap;
+  min-width:92px;justify-content:flex-start;
+}
+.omed-status:hover{border-color:var(--forest)}
+.omed-status .sdot{width:8px;height:8px;border-radius:50%;background:var(--rule-strong);flex-shrink:0;transition:all .12s}
+.omed-status.st-ordered{color:var(--teal);border-color:var(--teal);background:var(--teal-l)}
+.omed-status.st-ordered .sdot{background:var(--teal)}
+.omed-status.st-received{color:var(--tag-green);border-color:var(--tag-green);background:var(--tag-green-l)}
+.omed-status.st-received .sdot{background:var(--tag-green)}
+.omed-status.st-delivered{color:var(--forest);border-color:var(--forest);background:var(--forest-l)}
+.omed-status.st-delivered .sdot{background:var(--forest)}
+.omed-info{flex:1;min-width:0}
+.omed-info b{font-weight:600;color:var(--ink)}
+.omed.done .omed-info{color:var(--subtle)}
+.omed.done .omed-info b{text-decoration:line-through;color:var(--muted);font-weight:500}
+.omed-price{font-family:'JetBrains Mono',monospace;color:var(--forest);font-size:.8rem;font-weight:500;font-variant-numeric:tabular-nums;flex-shrink:0}
+.omed.done .omed-price{color:var(--subtle);text-decoration:line-through}
+.ocard-foot{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px;padding-top:10px;border-top:1px solid var(--rule);gap:10px;flex-wrap:wrap}
+.ocard-foot-lbl{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500}
+.ocard-foot-progress{font-size:.74rem;color:var(--moss);font-weight:500}
+.ocard-foot-val{font-family:'Fraunces',serif;font-size:1.05rem;font-weight:600;color:var(--forest);letter-spacing:-.01em;margin-left:auto}
+
+.iact{
+  width:30px;height:30px;border:1px solid transparent;background:transparent;color:var(--muted);
+  border-radius:var(--r);cursor:pointer;display:grid;place-items:center;transition:all .12s;padding:0;
+}
+.iact:hover{background:var(--surface-2);color:var(--ink-2);border-color:var(--rule)}
+.iact.danger:hover{background:var(--clay-l);color:var(--clay);border-color:transparent}
+
+/* ── Wishlist / List cards ── */
+.lcard{
+  background:var(--paper);border:1px solid var(--rule);border-radius:var(--r-md);
+  margin-bottom:10px;overflow:hidden;transition:all .12s;
+}
+.lcard:hover{border-color:var(--rule-strong)}
+.lcard-head{padding:14px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:10px;flex-wrap:wrap}
+.lcard-name{font-weight:600;font-size:.94rem;color:var(--ink);display:flex;align-items:center;gap:8px}
+.lcard-meta{font-size:.78rem;color:var(--muted);margin-top:3px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lcard-meta a{color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+.lcard-meta a:hover{color:var(--forest)}
+.lcard-body{padding:0 18px 14px;border-top:1px solid var(--rule);background:var(--surface-2)}
+.lcard-body-inner{padding-top:12px}
+.med-row{display:grid;grid-template-columns:1fr auto auto;gap:10px;padding:8px 0;font-size:.86rem;align-items:center;border-bottom:1px dashed var(--rule)}
+.med-row:last-child{border-bottom:none}
+.med-row .pill{padding:2px 8px;background:var(--surface);border:1px solid var(--rule);border-radius:10px;font-size:.74rem;color:var(--ink-2)}
+.med-row .price{font-family:'JetBrains Mono',monospace;color:var(--forest);font-weight:500;font-variant-numeric:tabular-nums}
+
+.wcard{
+  background:var(--paper);border:1px solid var(--rule);border-radius:var(--r-md);
+  padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;transition:all .12s;
+}
+.wcard:hover{border-color:var(--amber);background:var(--surface)}
+.wcheck{
+  width:18px;height:18px;border:1.5px solid var(--rule-strong);border-radius:4px;cursor:pointer;
+  display:grid;place-items:center;background:var(--paper);transition:all .12s;flex-shrink:0;
+}
+.wcheck.checked{background:var(--forest);border-color:var(--forest)}
+.wcheck.checked::after{content:'';width:10px;height:6px;border:2px solid var(--paper);border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.wcard-info{flex:1;min-width:0}
+.wcard-title{font-weight:600;font-size:.9rem;color:var(--ink)}
+.wcard-sub{display:flex;gap:10px;color:var(--muted);font-size:.78rem;margin-top:2px;align-items:center;flex-wrap:wrap}
+.wcard-actions{display:flex;gap:4px;flex-shrink:0}
+.wcard-price{font-family:'JetBrains Mono',monospace;color:var(--forest);font-weight:500;font-variant-numeric:tabular-nums}
+
+.wtoolbar{
+  position:sticky;top:108px;z-index:30;background:var(--forest);color:var(--paper);
+  padding:10px 16px;border-radius:var(--r-md);margin-bottom:12px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  box-shadow:0 4px 12px rgba(31,78,61,.2);
+}
+
+.omed-check{
+  width:16px;height:16px;border:1.5px solid var(--rule-strong);border-radius:4px;cursor:pointer;
+  display:grid;place-items:center;background:var(--paper);transition:all .12s;flex-shrink:0;
+}
+.omed-check:hover{border-color:var(--forest)}
+.omed-check.checked{background:var(--forest);border-color:var(--forest)}
+.omed-check.checked::after{content:'';width:9px;height:5px;border:2px solid var(--paper);border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.omed.selected{background:var(--forest-l);border-radius:6px;padding-left:6px;padding-right:6px;margin:0 -6px}
+
+/* ── Progress / Monthly ── */
+.progress-bar{background:var(--rule);border-radius:6px;height:6px;overflow:hidden}
+.progress-fill{height:100%;background:var(--moss);border-radius:6px;transition:width .4s ease}
+.month-summary{background:var(--paper);border:1px solid var(--rule);border-radius:var(--r-lg);padding:18px 22px;margin-bottom:18px}
+.month-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px}
+.mstat{padding:12px 14px;border-radius:var(--r-md);border:1px solid var(--rule)}
+.mstat.recv{background:var(--forest-l);border-color:var(--moss)}
+.mstat.todo{background:var(--amber-l);border-color:var(--amber)}
+.mstat-lbl{font-size:.7rem;color:var(--ink-2);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.mstat-val{font-family:'Fraunces',serif;font-size:1.3rem;font-weight:600;letter-spacing:-.02em;margin-top:3px}
+.mstat.recv .mstat-val{color:var(--forest)}
+.mstat.todo .mstat-val{color:var(--amber-d)}
+.mcrd{background:var(--paper);border:1px solid var(--rule);border-radius:var(--r-md);margin-bottom:12px;overflow:hidden}
+.mchd{padding:13px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;background:var(--surface-2);border-bottom:1px solid var(--rule)}
+.mchd-info{flex:1;min-width:200px}
+.mchd-stats{display:flex;align-items:center;gap:10px;margin-top:5px;color:var(--muted);font-size:.78rem;flex-wrap:wrap}
+.mchd-mini-bar{height:4px;background:var(--rule);border-radius:2px;overflow:hidden;width:90px}
+.mchd-mini-fill{height:100%;background:var(--moss)}
+.mc-money{font-family:'JetBrains Mono',monospace;color:var(--forest);font-weight:500;font-variant-numeric:tabular-nums}
+.mcmed{display:flex;align-items:center;padding:10px 18px;gap:10px;border-top:1px solid var(--rule)}
+.mcmed:hover{background:var(--surface-2)}
+.mcmed-name{flex:1;min-width:0}
+.mcmed-name b{font-weight:600}
+.status-link{font-size:.74rem;font-weight:500;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;padding:3px 0}
+.status-link.pending{color:var(--amber-d)}
+.status-link.ordered{color:var(--teal)}
+.status-link.received{color:var(--moss)}
+.status-link:hover{text-decoration:underline}
+
+/* ── Modal ── */
+.overlay{
+  position:fixed;inset:0;background:rgba(26,26,24,.55);backdrop-filter:blur(3px);
+  z-index:100;display:flex;align-items:center;justify-content:center;padding:14px;animation:fadeIn .15s ease;
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes modalShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.modal.shake{animation:modalShake .34s ease}
+.modal{
+  background:var(--paper);border-radius:var(--r-lg);padding:22px;width:100%;max-width:540px;
+  max-height:88vh;overflow-y:auto;animation:slideUp .2s ease;
+  border:1px solid var(--rule-strong);box-shadow:0 20px 60px rgba(20,30,20,.25);
+}
+.modal-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:10px}
+.modal-title{font-family:'Fraunces',serif;font-size:1.25rem;font-weight:500;letter-spacing:-.02em;line-height:1.1}
+.modal-sub{font-size:.78rem;color:var(--muted);margin-top:3px}
+.modal-close{background:none;border:1px solid var(--rule);cursor:pointer;color:var(--muted);padding:0;width:30px;height:30px;border-radius:var(--r);display:grid;place-items:center;flex-shrink:0}
+.modal-close:hover{background:var(--surface-2);color:var(--ink)}
+
+.irow{display:grid;grid-template-columns:1.5fr 60px 95px 1fr 30px;gap:6px;margin-bottom:6px;align-items:center}
+.irow input{padding:7px 9px;font-size:.82rem}
+.irow .del-btn{border:1px solid var(--rule);background:var(--paper);color:var(--muted);border-radius:var(--r);padding:0;height:32px;cursor:pointer;display:grid;place-items:center}
+.irow .del-btn:hover{background:var(--clay-l);border-color:var(--clay);color:var(--clay)}
+.modal-foot{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--rule);gap:10px;flex-wrap:wrap}
+.modal-total{display:flex;align-items:baseline;gap:8px}
+.modal-total-lbl{font-size:.78rem;color:var(--muted);font-weight:500}
+.modal-total-val{font-family:'Fraunces',serif;font-size:1.15rem;font-weight:600;color:var(--forest);letter-spacing:-.01em}
+
+.picker{
+  border:1px solid var(--rule);border-radius:var(--r-md);background:var(--surface-2);
+  padding:10px;margin-bottom:10px;max-height:240px;overflow-y:auto;
+}
+.picker-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r);cursor:pointer;font-size:.85rem}
+.picker-item:hover{background:var(--paper)}
+.picker-empty{padding:20px;text-align:center;color:var(--muted);font-size:.85rem}
+.picker-head{font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;padding:4px 10px 8px;display:flex;justify-content:space-between;align-items:center}
+
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--ink);color:var(--paper);padding:11px 22px;border-radius:var(--r-md);
+  font-size:.85rem;font-weight:500;z-index:999;opacity:0;transition:all .25s ease;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.empty{
+  text-align:center;padding:60px 24px;color:var(--muted);
+  background:var(--paper);border:1px dashed var(--rule-strong);border-radius:var(--r-lg);
+}
+.empty-mark{width:48px;height:48px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;margin:0 auto 12px;color:var(--moss)}
+.empty-title{font-family:'Fraunces',serif;font-size:1.1rem;color:var(--ink);font-weight:500;margin-bottom:4px}
+.empty-text{font-size:.85rem;line-height:1.5}
+.hidden{display:none!important}
+.divider{border:none;border-top:1px solid var(--rule);margin:16px 0}
+
+/* ── Color tags ── */
+.wcard{border-left:4px solid var(--rule)}
+.wcard.tag-red{border-left-color:var(--tag-red)}
+.wcard.tag-yellow{border-left-color:var(--tag-yellow)}
+.wcard.tag-green{border-left-color:var(--tag-green)}
+.wcard.tag-blue{border-left-color:var(--tag-blue)}
+.wcard.tag-gray{border-left-color:var(--rule)}
+.tag-badge{
+  display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;
+  font-size:.7rem;font-weight:600;letter-spacing:.01em;
+}
+.tag-badge.red{background:var(--tag-red-l);color:var(--tag-red)}
+.tag-badge.yellow{background:var(--tag-yellow-l);color:var(--tag-yellow)}
+.tag-badge.green{background:var(--tag-green-l);color:var(--tag-green)}
+.tag-badge.blue{background:var(--tag-blue-l);color:var(--tag-blue)}
+.tag-badge.gray{background:var(--tag-gray-l);color:var(--tag-gray)}
+.tag-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.tag-dot.red{background:var(--tag-red)}
+.tag-dot.yellow{background:var(--tag-yellow)}
+.tag-dot.green{background:var(--tag-green)}
+.tag-dot.blue{background:var(--tag-blue)}
+.tag-dot.gray{background:var(--rule-strong)}
+/* tag picker in modal */
+.tag-picker{display:flex;gap:8px;flex-wrap:wrap}
+.tag-opt{
+  display:flex;align-items:center;gap:6px;padding:7px 12px;border:1.5px solid var(--rule);
+  border-radius:var(--r);cursor:pointer;font-size:.8rem;font-weight:500;transition:all .12s;
+  background:var(--paper);color:var(--ink-2);
+}
+.tag-opt:hover{border-color:var(--rule-strong)}
+.tag-opt.selected{border-color:currentColor;font-weight:600}
+.tag-opt.selected.red{color:var(--tag-red);background:var(--tag-red-l)}
+.tag-opt.selected.yellow{color:var(--tag-yellow);background:var(--tag-yellow-l)}
+.tag-opt.selected.green{color:var(--tag-green);background:var(--tag-green-l)}
+.tag-opt.selected.blue{color:var(--tag-blue);background:var(--tag-blue-l)}
+.tag-opt.selected.gray{color:var(--tag-gray);background:var(--tag-gray-l)}
+
+/* ── Calendar ── */
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-title{font-family:'Fraunces',serif;font-size:1.05rem;font-weight:500;text-transform:capitalize}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-dow{text-align:center;font-size:.68rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:4px 0}
+.cal-day{
+  aspect-ratio:1;border:1px solid transparent;border-radius:var(--r);cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  font-size:.82rem;color:var(--ink-2);transition:all .12s;position:relative;background:var(--surface-2);
+}
+.cal-day:hover{border-color:var(--forest);background:var(--surface)}
+.cal-day.empty{background:transparent;cursor:default}
+.cal-day.empty:hover{border-color:transparent}
+.cal-day.today{box-shadow:inset 0 0 0 1.5px var(--forest);font-weight:700}
+.cal-day.selected{background:var(--forest);color:var(--paper)}
+.cal-day.has-orders{background:var(--forest-l);font-weight:600;color:var(--forest)}
+.cal-day.selected.has-orders{background:var(--forest);color:var(--paper)}
+.cal-day-dot{width:5px;height:5px;border-radius:50%;background:var(--moss)}
+.cal-day.selected .cal-day-dot{background:var(--paper)}
+.cal-day-count{font-size:.6rem;line-height:1}
+.cal-legend{display:flex;gap:14px;margin-top:10px;font-size:.74rem;color:var(--muted);flex-wrap:wrap}
+.cal-legend-item{display:flex;align-items:center;gap:5px}
+.cal-legend-box{width:12px;height:12px;border-radius:3px}
+
+/* ── Calc ── */
+.calc-wrap{background:var(--paper);border:1px solid var(--rule);border-radius:var(--r-lg);padding:18px 20px}
+.calc-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;align-items:end}
+.calc-result{
+  margin-top:16px;padding:16px 18px;border-radius:var(--r-md);
+  background:linear-gradient(135deg,var(--forest-l),var(--surface-2));border:1px solid var(--moss);
+}
+.calc-result-label{font-size:.72rem;color:var(--ink-2);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.calc-result-date{font-family:'Fraunces',serif;font-size:1.6rem;font-weight:600;color:var(--forest);letter-spacing:-.02em;margin-top:4px}
+.calc-result-dow{font-size:.85rem;color:var(--moss);font-weight:500;margin-top:2px;text-transform:capitalize}
+.calc-warn{
+  margin-top:10px;padding:8px 12px;background:var(--amber-l);border-radius:var(--r);
+  font-size:.8rem;color:var(--amber-d);display:flex;align-items:center;gap:6px;
+}
+.calc-presets{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.calc-preset{
+  padding:4px 10px;border:1px solid var(--rule-strong);border-radius:20px;background:var(--paper);
+  cursor:pointer;font-size:.76rem;color:var(--ink-2);font-family:inherit;transition:all .12s;
+}
+.calc-preset:hover{border-color:var(--forest);color:var(--forest)}
+.calc-quick{margin-top:14px;border-top:1px dashed var(--rule);padding-top:12px}
+.calc-quick-row{display:flex;justify-content:space-between;padding:5px 0;font-size:.85rem}
+.calc-quick-row .mono{color:var(--forest);font-weight:500}
+
+@media(max-width:680px){
+  .form-r{grid-template-columns:1fr}
+  .irow{grid-template-columns:1fr 55px 85px 28px}
+  .irow .mo{grid-column:1/-1}
+  .masthead{padding:10px 12px;flex-wrap:wrap}
+  .brand-tag{display:none}
+  .content{padding:16px 12px 60px}
+  .summary{padding:14px 16px}
+  .summary-stats{gap:18px}
+  .sstat-value{font-size:1.15rem}
+  .section-title{font-size:1.2rem}
+  .tabnav{top:auto}
+}
+
+/* ══ v6 — mega update ══ */
+.overdue{background:var(--amber-l);border:1px solid var(--amber);border-radius:var(--r-md);padding:12px 14px;margin-bottom:14px}
+.overdue-head{display:flex;align-items:center;gap:8px;font-size:.84rem;color:var(--amber-d);cursor:pointer;flex-wrap:wrap}
+.overdue-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px dashed var(--amber);margin-top:6px;font-size:.84rem;flex-wrap:wrap}
+#gsearch{font-size:1rem;padding:11px 13px}
+.kbd{font-family:'JetBrains Mono',monospace;font-size:.68rem;border:1px solid var(--rule-strong);border-bottom-width:2px;border-radius:4px;padding:1px 5px;color:var(--muted);background:var(--surface-2)}
+.insight-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+@media(max-width:640px){.insight-grid{grid-template-columns:1fr}}
+.insight-card{background:var(--paper);border:1px solid var(--rule);border-radius:var(--r-md);padding:14px 16px;margin-top:12px}
+.insight-grid .insight-card{margin-top:0}
+.insight-title{font-family:'Fraunces',serif;font-size:.95rem;font-weight:600;margin-bottom:10px}
+.bar-row{display:flex;align-items:center;gap:10px;padding:4px 0;font-size:.8rem}
+.bar-lbl{width:58px;color:var(--muted);text-transform:capitalize;flex-shrink:0}
+.bar-track{flex:1;height:10px;background:var(--surface-2);border-radius:6px;overflow:hidden}
+.bar-fill{display:block;height:100%;background:var(--forest);border-radius:6px;transition:width .4s}
+.bar-val{min-width:118px;text-align:right;font-size:.75rem;flex-shrink:0}
+.rank-row{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:.85rem;border-bottom:1px dashed var(--rule)}
+.rank-row:last-child{border-bottom:none}
+.rank-n{width:20px;height:20px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;font-size:.7rem;font-weight:600;color:var(--muted);flex-shrink:0}
+.toast button{margin-left:10px;background:transparent;border:1px solid rgba(255,255,255,.45);color:inherit;border-radius:4px;padding:3px 10px;cursor:pointer;font-family:inherit;font-size:.78rem;font-weight:600}
+.notif-ok{color:var(--teal);font-size:.74rem;display:inline-flex;align-items:center;gap:4px;font-weight:500}
+.wa-notify{text-decoration:none}
+html[data-theme="dark"]{
+  --bg:#131512;--paper:#1b1e1a;--surface:#22261f;--surface-2:#252922;
+  --ink:#e9e5da;--ink-2:#cfc9bc;--muted:#9a938a;--subtle:#716c62;
+  --rule:#33372e;--rule-strong:#474c40;
+  --forest:#74b294;--forest-h:#8fc9ac;--forest-l:#22352a;
+  --moss:#8db184;--amber:#d3a75f;--amber-l:#392e1a;--amber-d:#e2ba76;
+  --clay:#d5765f;--clay-l:#3a241d;--teal:#72b6b9;--teal-l:#1e3233;
+  --shadow-soft:0 1px 1px rgba(0,0,0,.35),0 4px 10px rgba(0,0,0,.3);
+  --tag-red:#e07b6c;--tag-red-l:#3c221e;
+  --tag-yellow:#dcb964;--tag-yellow-l:#38301b;
+  --tag-green:#7dc48f;--tag-green-l:#20301f;
+  --tag-blue:#7ba7d4;--tag-blue-l:#1f2a38;
+  --tag-gray:#8f8a80;--tag-gray-l:#2b2b27;
+}
+html[data-theme="dark"] body{background-image:none}
+html[data-theme="dark"] input,html[data-theme="dark"] select,html[data-theme="dark"] textarea{color-scheme:dark}
+html[data-theme="dark"] .btn-p,html[data-theme="dark"] .btn-amber{color:#131512}
+html[data-theme="dark"] .brand-mark{color:#131512}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="brand">
+    <div class="brand-mark">℞</div>
+    <div>
+      <div class="brand-name">Pedidos</div>
+      <div class="brand-tag">Controle de pedidos · v6</div>
+    </div>
+  </div>
+  <div class="save-status" id="save-status"><span class="save-dot"></span><span id="save-text">Salvo</span></div>
+  <div class="hbtns">
+    <button class="hbtn" onclick="openSearch()" id="btn-search" title="Buscar em tudo (Ctrl+K ou /)"></button>
+    <button class="hbtn" onclick="toggleTheme()" id="btn-theme" title="Alternar tema claro/escuro"></button>
+    <button class="hbtn" onclick="printDay()" id="btn-print"></button>
+    <button class="hbtn" onclick="exportBackup()" id="btn-backup"></button>
+    <button class="hbtn" onclick="document.getElementById('imp').click()" id="btn-import"></button>
+    <input type="file" id="imp" accept=".json" class="hidden" onchange="importBackup(event)">
+  </div>
+</div>
+
+<div class="tabnav">
+  <div class="tab active" onclick="switchTab('daily')" id="t-daily"></div>
+  <div class="tab" onclick="switchTab('wishlist')" id="t-wish"></div>
+  <div class="tab" onclick="switchTab('clients')" id="t-clients"></div>
+  <div class="tab" onclick="switchTab('monthly')" id="t-monthly"></div>
+  <div class="tab" onclick="switchTab('tools')" id="t-tools"></div>
+</div>
+
+<div class="content">
+
+  <!-- DAILY -->
+  <div id="tab-daily">
+    <div class="summary" id="day-summary"></div>
+    <div id="overdue-box"></div>
+    <div class="filterbar" id="filterbar"></div>
+    <div id="daily-toolbar"></div>
+    <div id="daily-list"></div>
+  </div>
+
+  <!-- WISHLIST -->
+  <div id="tab-wishlist" class="hidden">
+    <div class="section">
+      <div class="section-head">
+        <div>
+          <div class="section-title">Lista de espera</div>
+          <div class="section-meta">Items para pedir <em>quando der</em> — sem urgência</div>
+        </div>
+        <div class="section-actions">
+<button class="btn btn-sm" onclick="copiarCotacaoWish()" title="Copiar a lista de espera no formato de cotação">📋 Copiar p/ cotação</button>
+                    <button class="btn btn-p btn-sm" onclick="openWishModal()" id="b-newwish"></button>
+        </div>
+      </div>
+      <div class="filterbar" id="wish-filterbar"></div>
+      <div id="wish-toolbar"></div>
+      <div id="wish-list"></div>
+    </div>
+  </div>
+
+  <!-- CLIENTS -->
+  <div id="tab-clients" class="hidden">
+    <div class="section">
+      <div class="section-head">
+        <div>
+          <div class="section-title">Clientes mensais</div>
+          <div class="section-meta">Cadastro de clientes recorrentes e seus produtos fixos</div>
+        </div>
+        <div class="section-actions">
+          <input type="text" id="clientSearch" placeholder="Buscar..." class="input-sm" style="width:170px" oninput="renderClients()">
+          <button class="btn btn-p btn-sm" onclick="openClientModal()" id="b-newcli"></button>
+        </div>
+      </div>
+      <div id="clients-list"></div>
+    </div>
+  </div>
+
+  <!-- MONTHLY -->
+  <div id="tab-monthly" class="hidden">
+    <div class="section">
+      <div class="section-head">
+        <div>
+          <div class="section-title">Resumo mensal</div>
+          <div class="section-meta" id="month-meta">—</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="month" id="monthFilter" class="input-sm" onchange="renderMonthly()">
+          <button class="btn btn-o btn-sm" onclick="exportMonthCSV()" id="b-csv"></button>
+        </div>
+      </div>
+      <div id="month-summary-box"></div>
+      <div id="monthly-list"></div>
+      <div id="insights-box"></div>
+    </div>
+  </div>
+
+  <!-- TOOLS -->
+  <div id="tab-tools" class="hidden">
+    <div class="section">
+      <div class="section-head">
+        <div>
+          <div class="section-title">Agenda de pedidos</div>
+          <div class="section-meta">Navegue pelos dias com pedidos registrados</div>
+        </div>
+      </div>
+      <div id="calendar-box"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <div>
+          <div class="section-title">Calculadora de boletos</div>
+          <div class="section-meta">Calcule a data de vencimento a partir de um prazo em dias</div>
+        </div>
+      </div>
+      <div class="calc-wrap">
+        <div class="calc-row">
+          <div>
+            <label class="lbl">Data inicial</label>
+            <input type="date" id="calc-start" onchange="runCalc()">
+          </div>
+          <div>
+            <label class="lbl">Prazo (dias)</label>
+            <input type="number" id="calc-days" min="0" placeholder="Ex: 21" oninput="runCalc()">
+          </div>
+          <div>
+            <label class="lbl">Contagem</label>
+            <select id="calc-mode" onchange="runCalc()">
+              <option value="corridos">Dias corridos</option>
+              <option value="uteis">Dias úteis</option>
+            </select>
+          </div>
+        </div>
+        <div class="calc-presets" id="calc-presets"></div>
+        <div id="calc-output"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <div>
+          <div class="section-title">Manutenção</div>
+          <div class="section-meta">Limpe pedidos antigos para aliviar o programa</div>
+        </div>
+      </div>
+      <div class="calc-wrap">
+        <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px">
+          Remove o histórico de <strong>pedidos do dia</strong> de datas passadas.
+          Seus clientes, lista de espera e resumo mensal <strong>não são afetados</strong>.
+        </p>
+        <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap">
+          <div style="flex:1;min-width:180px">
+            <label class="lbl">Apagar pedidos anteriores a</label>
+            <select id="cleanup-range" class="input-sm" style="width:100%">
+              <option value="0">Hoje (tudo que já passou)</option>
+              <option value="7">7 dias atrás</option>
+              <option value="30" selected>30 dias atrás</option>
+              <option value="90">90 dias atrás</option>
+              <option value="180">180 dias atrás</option>
+            </select>
+          </div>
+          <button class="btn btn-o btn-sm" onclick="cleanupOrders()" id="b-cleanup" style="border-color:var(--clay);color:var(--clay)"></button>
+        </div>
+        <div id="cleanup-info" style="margin-top:10px;font-size:.82rem;color:var(--muted)"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- DAILY MODAL -->
+<div id="modal-daily" class="overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="daily-modal-title">Novo pedido</div>
+        <div class="modal-sub" id="daily-modal-sub"></div>
+      </div>
+      <button class="modal-close" onclick="requestCloseModal('modal-daily')" id="mc1"></button>
+    </div>
+    <div class="form-g">
+      <div class="form-r">
+        <div><label class="lbl">Cliente *</label><input id="d-client" placeholder="Nome do cliente" list="client-options"></div>
+        <div><label class="lbl">Telefone</label><input id="d-phone" placeholder="(48) 9 9999-9999"></div>
+      </div>
+      <datalist id="client-options"></datalist>
+      <div class="form-r">
+        <div><label class="lbl">Data *</label><input type="date" id="d-date"></div>
+        <div><label class="lbl">Situação</label>
+          <select id="d-status">
+            <option value="pending">A pedir</option>
+            <option value="ordered">Solicitado</option>
+            <option value="received">Recebido</option>
+          </select>
+        </div>
+      </div>
+      <div><label class="lbl">Observação</label><input id="d-obs" placeholder="Ex: urgente, entrega em casa, convênio..."></div>
+    </div>
+    <hr class="divider">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap">
+      <span style="font-weight:600;font-size:.86rem">Produtos</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-teal btn-xs" onclick="toggleClientPicker()" id="b-fromcli"></button>
+        <button class="btn btn-amber btn-xs" onclick="toggleWishPicker()" id="b-fromwish"></button>
+        <button class="btn btn-o btn-xs" onclick="addMedRow('d-meds')" id="b-addmed"></button>
+      </div>
+    </div>
+    <div id="client-picker" class="picker hidden"></div>
+    <div id="wish-picker" class="picker hidden"></div>
+    <div id="d-meds"></div>
+    <div class="modal-foot">
+      <div class="modal-total">
+        <span class="modal-total-lbl">Total combinado</span>
+        <span class="modal-total-val" id="d-total">R$ 0,00</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-o btn-sm" onclick="requestCloseModal('modal-daily')">Cancelar</button>
+        <button class="btn btn-p btn-sm" onclick="saveDailyOrder()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CLIENT MODAL -->
+<div id="modal-client" class="overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="client-modal-title">Novo cliente</div>
+        <div class="modal-sub">Cliente recorrente com produtos fixos</div>
+      </div>
+      <button class="modal-close" onclick="requestCloseModal('modal-client')" id="mc2"></button>
+    </div>
+    <div class="form-g">
+      <div class="form-r">
+        <div><label class="lbl">Nome *</label><input id="c-name" placeholder="Nome completo"></div>
+        <div><label class="lbl">Telefone</label><input id="c-phone" placeholder="(48) 9 9999-9999"></div>
+      </div>
+      <div><label class="lbl">Observações</label><input id="c-notes" placeholder="Ex: convênio, entrega, alergias..."></div>
+    </div>
+    <hr class="divider">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="font-weight:600;font-size:.86rem">Produtos mensais</span>
+      <button class="btn btn-o btn-xs" onclick="addMedRow('c-meds')" id="b-addmed2"></button>
+    </div>
+    <div id="c-meds"></div>
+    <div class="modal-foot">
+      <div class="modal-total">
+        <span class="modal-total-lbl">Total mensal</span>
+        <span class="modal-total-val" id="c-total">R$ 0,00</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-o btn-sm" onclick="requestCloseModal('modal-client')">Cancelar</button>
+        <button class="btn btn-p btn-sm" onclick="saveClient()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WISH MODAL -->
+<div id="modal-wish" class="overlay hidden">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="wish-modal-title">Anotar item</div>
+        <div class="modal-sub">Para pedir quando der — sem pressa</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-wish')" id="mc3"></button>
+    </div>
+    <div class="form-g">
+      <div><label class="lbl">Produto *</label><input id="w-name" placeholder="Ex: Dipirona 500mg" list="med-options"></div>
+      <div class="form-r">
+        <div><label class="lbl">Quantidade</label><input id="w-qty" placeholder="Ex: 1 cx, 30 cpr"></div>
+        <div><label class="lbl">Valor combinado</label><input type="number" step="0.01" min="0" id="w-price" placeholder="0,00"></div>
+      </div>
+      <div>
+        <label class="lbl">Prioridade</label>
+        <div class="tag-picker" id="w-tag-picker"></div>
+      </div>
+      <div class="form-r">
+        <div><label class="lbl">Cliente (opcional)</label><input id="w-client" placeholder="Para quem é?" list="client-options-w"></div>
+        <div><label class="lbl">Fornecedor (opcional)</label><input id="w-supplier" placeholder="Distribuidora..."></div>
+      </div>
+      <datalist id="client-options-w"></datalist>
+      <div><label class="lbl">Observação</label><input id="w-notes" placeholder="Ex: pediu uma vez, esperar promoção..."></div>
+    </div>
+    <div class="modal-foot">
+      <span class="modal-sub" id="wish-edit-note"></span>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-o btn-sm" onclick="closeModal('modal-wish')">Cancelar</button>
+        <button class="btn btn-p btn-sm" onclick="saveWish()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="search-overlay" class="overlay hidden" style="align-items:flex-start;padding-top:9vh">
+  <div class="modal" style="max-width:560px">
+    <input id="gsearch" placeholder="Buscar em pedidos, clientes e lista de espera..." oninput="runSearch()" autocomplete="off">
+    <div id="gsearch-results" style="margin-top:12px;max-height:55vh;overflow:auto"></div>
+    <div style="margin-top:12px;font-size:.72rem;color:var(--subtle);display:flex;gap:12px;flex-wrap:wrap">
+      <span><span class="kbd">Esc</span> fechar</span><span><span class="kbd">Ctrl+K</span> ou <span class="kbd">/</span> abrir busca</span><span><span class="kbd">N</span> novo pedido</span><span><span class="kbd">T</span> hoje</span><span><span class="kbd">←</span> <span class="kbd">→</span> navegar dias</span>
+    </div>
+  </div>
+</div>
+<datalist id="med-options"></datalist>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Icons ────────────────────────────────────────────────────────────────────
+const ICONS={
+  phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
+  calendar:'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>',
+  trash:'<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+  bookmark:'<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
+  arrowRight:'<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>',
+  arrowLeft:'<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
+  close:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  notebook:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+  barChart:'<line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>',
+  printer:'<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+  whatsapp:'<path d="M17.5 14.4c-.3-.2-1.7-.8-2-.9-.3-.1-.5-.2-.7.2-.2.3-.7.8-.9 1-.2.2-.3.2-.6.1-.3-.2-1.2-.4-2.3-1.4-.9-.7-1.4-1.6-1.6-1.9-.2-.3 0-.5.1-.6.1-.1.3-.3.5-.5.1-.2.2-.3.3-.5 0-.2 0-.4 0-.5-.1-.2-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.8 1.2 3c.2.2 2.1 3.2 5.1 4.5.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.3-.7.3-1.2.2-1.4-.1-.1-.3-.2-.6-.4z"/><path d="M20.5 3.5C18.3 1.2 15.3 0 12 0 5.4 0 0 5.4 0 12c0 2.1.6 4.2 1.6 6L0 24l6.2-1.6c1.7 1 3.7 1.4 5.8 1.4 6.6 0 12-5.4 12-12 0-3.2-1.2-6.2-3.5-8.3z" fill-rule="evenodd"/>',
+  search:'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+  moon:'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+  sun:'<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
+  copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  alert:'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  check:'<polyline points="20 6 9 17 4 12"/>',
+};
+const ic=n=>`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]||''}</svg>`;
+
+// ── State ────────────────────────────────────────────────────────────────────
+let db={clients:[],dailyOrders:[],wishlist:[],monthlyStatus:{}};
+let editDailyId=null,editClientId=null,editWishId=null;
+let dailyFilter='all',currentDate=new Date().toISOString().slice(0,10);
+let wishSelected=new Set();
+let daySelected=new Set();
+let changesSinceBackup=0;
+let wishTagFilter='all';
+let wishModalTag='gray';
+let calMonth=new Date().toISOString().slice(0,7);
+let dailySort='status';
+let undoBuf=null,undoTimer=null;
+
+// ── Tag definitions ──────────────────────────────────────────────────────────
+const TAGS={
+  red:{label:'Urgente',order:0},
+  yellow:{label:'Atenção',order:1},
+  blue:{label:'Aguardando',order:2},
+  green:{label:'Tranquilo',order:3},
+  gray:{label:'Sem etiqueta',order:4},
+};
+const TAG_ORDER=['red','yellow','blue','green','gray'];
+
+// ── Storage (dual: window.storage + localStorage) ────────────────────────────
+const SKEY='farma_v5';
+const OLD_KEYS=['farma_v4','farma_v3','farma_v2'];
+
+async function storageGet(k){
+  // try localStorage first (instant, works offline)
+  try{
+    const v=localStorage.getItem(k);
+    if(v)return v;
+  }catch(e){}
+  // try Claude window.storage
+  try{
+    if(window.storage){
+      const r=await window.storage.get(k);
+      if(r?.value)return r.value;
+    }
+  }catch(e){}
+  return null;
+}
+async function storageSet(k,v){
+  let ok=false;
+  try{localStorage.setItem(k,v);ok=true;}catch(e){}
+  try{if(window.storage){await window.storage.set(k,v);ok=true;}}catch(e){}
+  return ok;
+}
+
+async function loadDB(){
+  // current version
+  let raw=await storageGet(SKEY);
+  if(raw){try{Object.assign(db,JSON.parse(raw));ensureShape();return;}catch(e){}}
+  // migrate from older versions
+  for(const k of OLD_KEYS){
+    raw=await storageGet(k);
+    if(raw){
+      try{
+        const old=JSON.parse(raw);
+        db={
+          clients:old.clients||[],
+          dailyOrders:(old.dailyOrders||[]).map(o=>({...o,meds:(o.meds||[]).map(m=>({...m,received:m.received||false}))})),
+          wishlist:old.wishlist||[],
+          monthlyStatus:old.monthlyStatus||{}
+        };
+        ensureShape();
+        await saveDB();
+        return;
+      }catch(e){}
+    }
+  }
+  ensureShape();
+}
+function ensureShape(){
+  db.clients=db.clients||[];
+  db.dailyOrders=db.dailyOrders||[];
+  db.wishlist=db.wishlist||[];
+  db.monthlyStatus=db.monthlyStatus||{};
+  db.dismissedSchedule=db.dismissedSchedule||[];
+  // ensure all meds have a per-item status (migra do antigo booleano "received")
+  db.dailyOrders.forEach(o=>{o.meds=(o.meds||[]).map(m=>{
+    let istatus=m.istatus;
+    if(!istatus)istatus=m.received?'received':(o.status==='ordered'?'ordered':'pending');
+    return {...m,istatus,received:istatus==='received'||istatus==='delivered'};
+  });});
+  // ensure all wishlist items have a tag
+  db.wishlist.forEach(w=>{if(!w.tag)w.tag='gray';});
+}
+
+async function saveDB(){
+  setSaveStatus('saving');
+  const ok=await storageSet(SKEY,JSON.stringify(db));
+  setSaveStatus(ok?'saved':'error');
+  changesSinceBackup++;
+  if(changesSinceBackup>=7)markNeedsBackup();
+}
+function setSaveStatus(state){
+  const el=document.getElementById('save-status');
+  const txt=document.getElementById('save-text');
+  el.classList.remove('saving','error');
+  if(state==='saving'){el.classList.add('saving');txt.textContent='Salvando...';}
+  else if(state==='error'){el.classList.add('error');txt.textContent='Erro ao salvar';}
+  else txt.textContent='Salvo';
+}
+function markNeedsBackup(){
+  document.getElementById('btn-backup').classList.add('alert');
+  document.getElementById('btn-backup').title='Faça um backup — você tem '+changesSinceBackup+' alterações desde o último';
+}
+
+// ── Utils ────────────────────────────────────────────────────────────────────
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+const today=()=>new Date().toISOString().slice(0,10);
+const thisMonth=()=>new Date().toISOString().slice(0,7);
+const SL={pending:'A pedir',ordered:'Solicitado',received:'Recebido'};
+const SC={pending:'pending',ordered:'ordered',received:'received'};
+const CYCLE={pending:'ordered',ordered:'received',received:'pending'};
+// Per-item status: independente do status do pedido
+const IL={pending:'A pedir',ordered:'Solicitado',received:'Recebido',delivered:'Entregue'};
+const ICYCLE={pending:'ordered',ordered:'received',received:'delivered',delivered:'pending'};
+// item "chegou na farmácia" (recebido ou já entregue)
+const isReceived=m=>m.istatus==='received'||m.istatus==='delivered';
+const BRL=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
+const fmt=n=>BRL.format(Number(n)||0);
+const sumMeds=meds=>(meds||[]).reduce((s,m)=>s+(Number(m.price)||0),0);
+
+function toast(msg,d=2400){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),d);}
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function closeModal(id){document.getElementById(id).classList.add('hidden');}
+// ── Proteção contra fechar sem querer e perder o que foi digitado ──
+const PROTECTED_MODALS=['modal-daily','modal-client'];
+function isModalDirty(id){
+  const v=x=>document.getElementById(x)?.value.trim();
+  const hasMed=sel=>Array.from(document.querySelectorAll(sel)).some(i=>i.value.trim());
+  if(id==='modal-daily')return !!(v('d-client')||v('d-phone')||v('d-obs')||hasMed('#d-meds .mn'));
+  if(id==='modal-client')return !!(v('c-name')||v('c-phone')||v('c-notes')||hasMed('#c-meds .mn'));
+  return false;
+}
+// Fecha pedindo confirmação se houver conteúdo não salvo
+function requestCloseModal(id){
+  if(PROTECTED_MODALS.includes(id)&&isModalDirty(id)){
+    const what=id==='modal-daily'?'este pedido':'este cadastro';
+    if(!confirm(`Descartar ${what}? As informações que você digitou serão perdidas.`))return;
+  }
+  closeModal(id);
+}
+function shakeModal(id){
+  const m=document.querySelector('#'+id+' .modal');if(!m)return;
+  m.classList.remove('shake');void m.offsetWidth;m.classList.add('shake');
+}
+
+function fmtFullDate(iso){
+  const d=new Date(iso+'T00:00:00');
+  const days=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  const months=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  return `${days[d.getDay()]}, ${d.getDate()} de ${months[d.getMonth()]} de ${d.getFullYear()}`;
+}
+function fmtMonth(ym){const [y,m]=ym.split('-');const n=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];return `${n[+m-1]} de ${y}`;}
+function fmtRelative(ts){const d=Math.floor((Date.now()-ts)/86400000);if(d===0)return 'hoje';if(d===1)return 'ontem';if(d<7)return `${d} dias atrás`;if(d<30)return `${Math.floor(d/7)} sem. atrás`;return `${Math.floor(d/30)} mês(es) atrás`;}
+function addDays(iso,n){const d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+function waLink(phone){const d=String(phone||'').replace(/\D/g,'');if(d.length<8)return null;return 'https://wa.me/'+(d.startsWith('55')?d:'55'+d);}
+
+// ── Scheduled orders (auto-generated from monthly client meds) ───────────────
+// A client med can have a `schedDay` (1-31). For any given date, if the day
+// matches (clamped to month length), an auto order is materialised — unless
+// one already exists or the med was already received that month.
+function clampDayToMonth(year,month,day){
+  const lastDay=new Date(year,month,0).getDate();
+  return Math.min(day,lastDay);
+}
+function ensureScheduledOrders(dateISO){
+  const [y,m,d]=dateISO.split('-').map(Number);
+  const monthKey=`${y}-${String(m).padStart(2,'0')}`;
+  const ms=db.monthlyStatus[monthKey]||{};
+  let created=false;
+  db.clients.forEach(c=>{
+    (c.meds||[]).forEach(med=>{
+      const sd=parseInt(med.schedDay);
+      if(!sd||sd<1||sd>31)return;
+      if(clampDayToMonth(y,m,sd)!==d)return;
+      // skip if already received this month
+      if((ms[c.id]||{})[med.id]==='received')return;
+      // skip if an auto order for this client+med+date already exists
+      const exists=db.dailyOrders.some(o=>
+        o.date===dateISO&&o.autoFrom&&
+        o.autoFrom.clientId===c.id&&
+        (o.meds||[]).some(mm=>mm.schedRef===med.id)
+      );
+      if(exists)return;
+      // skip if this exact occurrence was manually dismissed
+      const dismissKey=`${dateISO}|${c.id}|${med.id}`;
+      if((db.dismissedSchedule||[]).includes(dismissKey))return;
+      // try to merge into an existing auto order for same client+date
+      let order=db.dailyOrders.find(o=>o.date===dateISO&&o.autoFrom&&o.autoFrom.clientId===c.id);
+      const medObj={id:uid(),name:med.name,qty:med.qty,price:med.price,notes:med.notes,received:false,schedRef:med.id};
+      if(order){
+        order.meds.push(medObj);
+      }else{
+        db.dailyOrders.push({
+          id:uid(),createdAt:Date.now(),
+          client:c.name,phone:c.phone||'',date:dateISO,status:'pending',
+          obs:'Pedido programado (cliente mensal)',
+          autoFrom:{clientId:c.id},
+          meds:[medObj]
+        });
+      }
+      created=true;
+    });
+  });
+  if(created)saveDB();
+  return created;
+}
+
+/* Pedido programado que mudou de data: o dia do mês do cliente vai junto, para
+   os próximos meses caírem na data nova. Devolve o que mudou (para o Desfazer)
+   ou null quando não há nada a fazer. A data antiga entra em dismissedSchedule
+   para o dia velho não renascer neste mês. */
+function reprogramarProgramado(order,dataAntiga){
+  const c=db.clients.find(x=>x.id===order.autoFrom.clientId);
+  if(!c)return null;
+  const novoDia=Number(order.date.split('-')[2]);
+  const refs=(order.meds||[]).map(m=>m.schedRef).filter(Boolean);
+  if(!novoDia||!refs.length)return null;
+
+  const alterados=[];
+  (c.meds||[]).forEach(m=>{
+    if(!refs.includes(m.id))return;
+    const antes=parseInt(m.schedDay);
+    if(!antes||antes===novoDia)return;      // item sem dia fixo não vira programado agora
+    m.schedDay=String(novoDia);
+    alterados.push({medId:m.id,antes:String(antes)});
+  });
+  if(!alterados.length)return null;
+
+  db.dismissedSchedule=db.dismissedSchedule||[];
+  const dismissed=[];
+  refs.forEach(r=>{
+    const k=`${dataAntiga}|${c.id}|${r}`;
+    if(!db.dismissedSchedule.includes(k)){db.dismissedSchedule.push(k);dismissed.push(k);}
+  });
+  return {clientId:c.id,nome:c.name,novoDia,antes:alterados[0].antes,alterados,dismissed};
+}
+
+function getScheduledDatesInMonth(monthKey){
+  // returns map of dateISO -> count, for calendar highlighting
+  const [y,m]=monthKey.split('-').map(Number);
+  const map={};
+  db.clients.forEach(c=>{
+    (c.meds||[]).forEach(med=>{
+      const sd=parseInt(med.schedDay);
+      if(!sd||sd<1||sd>31)return;
+      const day=clampDayToMonth(y,m,sd);
+      const iso=`${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const ms=db.monthlyStatus[monthKey]||{};
+      if((ms[c.id]||{})[med.id]==='received')return;
+      map[iso]=(map[iso]||0)+1;
+    });
+  });
+  return map;
+}
+
+// ── Static UI ────────────────────────────────────────────────────────────────
+function setStaticUI(){
+  document.getElementById('btn-print').innerHTML=ic('printer')+' Imprimir';
+  document.getElementById('btn-backup').innerHTML=ic('download')+' Backup';
+  document.getElementById('btn-import').innerHTML=ic('upload')+' Importar';
+  document.getElementById('btn-search').innerHTML=ic('search')+' Buscar';
+  document.getElementById('b-csv').innerHTML=ic('download')+' Exportar CSV';
+  document.getElementById('mc1').innerHTML=ic('close');
+  document.getElementById('mc2').innerHTML=ic('close');
+  document.getElementById('mc3').innerHTML=ic('close');
+  document.getElementById('b-newwish').innerHTML=ic('plus')+' Anotar item';
+  document.getElementById('b-newcli').innerHTML=ic('plus')+' Novo cliente';
+  document.getElementById('b-fromcli').innerHTML=ic('users')+' Cliente mensal';
+  document.getElementById('b-fromwish').innerHTML=ic('bookmark')+' Lista de espera';
+  document.getElementById('b-addmed').innerHTML=ic('plus')+' Item';
+  document.getElementById('b-addmed2').innerHTML=ic('plus')+' Item';
+}
+
+function renderTabs(){
+  const pendingCount=db.dailyOrders.filter(o=>o.date===currentDate&&o.status==='pending').length;
+  document.getElementById('t-daily').innerHTML=ic('calendar')+'Pedidos do dia'+(pendingCount?`<span class="tab-count">${pendingCount}</span>`:'');
+  document.getElementById('t-wish').innerHTML=ic('bookmark')+'Lista de espera'+(db.wishlist.length?`<span class="tab-count">${db.wishlist.length}</span>`:'');
+  document.getElementById('t-clients').innerHTML=ic('users')+'Clientes'+(db.clients.length?`<span class="tab-count">${db.clients.length}</span>`:'');
+  document.getElementById('t-monthly').innerHTML=ic('barChart')+'Resumo mensal';
+  document.getElementById('t-tools').innerHTML=ic('calendar')+'Agenda';
+}
+
+function switchTab(name){
+  const ns=['daily','wishlist','clients','monthly','tools'];
+  ['t-daily','t-wish','t-clients','t-monthly','t-tools'].forEach((id,i)=>document.getElementById(id).classList.toggle('active',ns[i]===name));
+  ns.forEach(n=>document.getElementById('tab-'+n).classList.toggle('hidden',n!==name));
+  if(name==='daily'){renderDaily();renderDaySummary();renderFilterbar();}
+  if(name==='wishlist'){renderWishFilterbar();renderWishlist();}
+  if(name==='clients')renderClients();
+  if(name==='monthly')renderMonthly();
+  if(name==='tools'){renderCalendar();initCalc();renderCleanupInfo();}
+}
+
+// ── Med rows ─────────────────────────────────────────────────────────────────
+function addMedRow(cid,name='',qty='',price='',notes=''){
+  const el=document.createElement('div');
+  el.className='irow';
+  el.innerHTML=`
+    <input class="mn" placeholder="Produto" value="${esc(name)}" list="med-options">
+    <input class="mq" placeholder="Qtd" value="${esc(qty)}" style="text-align:center">
+    <input class="mp" type="number" step="0.01" min="0" placeholder="R$" value="${esc(price)}">
+    <input class="mo" placeholder="Obs." value="${esc(notes)}">
+    <button class="del-btn" onclick="this.parentElement.remove();recalcModalTotal()">${ic('close')}</button>`;
+  document.getElementById(cid).appendChild(el);
+  el.querySelectorAll('.mp').forEach(i=>i.addEventListener('input',recalcModalTotal));
+  recalcModalTotal();
+}
+function getMedRows(cid){
+  return Array.from(document.querySelectorAll('#'+cid+' .irow')).map(r=>({
+    id:uid(),
+    name:r.querySelector('.mn').value.trim(),
+    qty:r.querySelector('.mq').value.trim(),
+    price:Number(r.querySelector('.mp').value)||0,
+    notes:r.querySelector('.mo').value.trim(),
+    istatus:'pending',
+    received:false
+  })).filter(m=>m.name);
+}
+function recalcModalTotal(){
+  ['d','c'].forEach(p=>{
+    const cont=document.getElementById(p+'-meds');
+    if(!cont)return;
+    const total=Array.from(cont.querySelectorAll('.mp')).reduce((s,i)=>s+(Number(i.value)||0),0);
+    const out=document.getElementById(p+'-total');
+    if(out)out.textContent=fmt(total);
+  });
+}
+
+// ── Day Summary ──────────────────────────────────────────────────────────────
+function renderDaySummary(){
+  const dayOrders=db.dailyOrders.filter(o=>o.date===currentDate);
+  const pending=dayOrders.filter(o=>o.status==='pending').length;
+  const ordered=dayOrders.filter(o=>o.status==='ordered').length;
+  const received=dayOrders.filter(o=>o.status==='received').length;
+  const dayValue=dayOrders.reduce((s,o)=>s+sumMeds(o.meds),0);
+  const month=currentDate.slice(0,7);
+  const monthOrders=db.dailyOrders.filter(o=>o.date.startsWith(month));
+  const monthValue=monthOrders.reduce((s,o)=>s+sumMeds(o.meds),0);
+  const isToday=currentDate===today();
+
+  document.getElementById('day-summary').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:6px">
+      <div>
+        <div class="summary-date">${fmtFullDate(currentDate)}</div>
+        ${isToday?'<div style="font-size:.74rem;color:var(--moss);font-weight:500;margin-top:2px">Hoje</div>':''}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div class="day-nav">
+          <button class="day-nav-btn" onclick="navDay(-1)" title="Dia anterior">${ic('arrowLeft')}</button>
+          ${!isToday?`<button class="day-nav-today" onclick="navDay(0)">Hoje</button>`:''}
+          <button class="day-nav-btn" onclick="navDay(1)" title="Próximo dia">${ic('arrowRight')}</button>
+        </div>
+        <button class="btn btn-p btn-sm" onclick="openDailyModal()">${ic('plus')} Novo pedido</button>
+      </div>
+    </div>
+    <div class="summary-stats">
+      <div><div class="sstat-label">Pedidos</div><div class="sstat-value">${dayOrders.length}</div><div class="sstat-sub">${pending} a pedir · ${ordered} solicit. · ${received} receb.</div></div>
+      <div><div class="sstat-label">Valor do dia</div><div class="sstat-value money">${fmt(dayValue)}</div><div class="sstat-sub">combinado com clientes</div></div>
+      <div><div class="sstat-label">Mês — ${fmtMonth(month).split(' de ')[0].toLowerCase()}</div><div class="sstat-value">${fmt(monthValue)}</div><div class="sstat-sub">${monthOrders.length} pedidos no mês</div></div>
+    </div>
+  `;
+  renderTabs();
+}
+
+function navDay(delta){
+  if(delta===0)currentDate=today();
+  else currentDate=addDays(currentDate,delta);
+  renderDaySummary();renderFilterbar();renderDaily();
+}
+
+// ── Filterbar ────────────────────────────────────────────────────────────────
+function renderFilterbar(){
+  const orders=db.dailyOrders.filter(o=>o.date===currentDate);
+  const counts={all:orders.length,pending:0,ordered:0,received:0};
+  orders.forEach(o=>counts[o.status]=(counts[o.status]||0)+1);
+  document.getElementById('filterbar').innerHTML=`
+    <button class="fchip ${dailyFilter==='all'?'active':''}" onclick="setDailyFilter('all')">Todos <span class="num">(${counts.all})</span></button>
+    <button class="fchip ${dailyFilter==='pending'?'active':''}" data-f="pending" onclick="setDailyFilter('pending')"><span class="fchip-dot"></span>A pedir <span class="num">(${counts.pending})</span></button>
+    <button class="fchip ${dailyFilter==='ordered'?'active':''}" data-f="ordered" onclick="setDailyFilter('ordered')"><span class="fchip-dot"></span>Solicitados <span class="num">(${counts.ordered})</span></button>
+    <button class="fchip ${dailyFilter==='received'?'active':''}" data-f="received" onclick="setDailyFilter('received')"><span class="fchip-dot"></span>Recebidos <span class="num">(${counts.received})</span></button>
+    <button class="btn btn-sm" style="margin-left:auto" onclick="copiarCotacaoDia()" title="Copiar os itens destes pedidos no formato de cotação">📋 Copiar p/ cotação</button>
+    <select class="input-sm" style="margin-left:auto" onchange="setDailySort(this.value)" title="Ordenação dos pedidos">
+      <option value="status" ${dailySort==='status'?'selected':''}>Ordem: situação</option>
+      <option value="value" ${dailySort==='value'?'selected':''}>Ordem: maior valor</option>
+      <option value="name" ${dailySort==='name'?'selected':''}>Ordem: cliente A–Z</option>
+      <option value="created" ${dailySort==='created'?'selected':''}>Ordem: criação</option>
+    </select>
+  `;
+}
+function setDailyFilter(f){dailyFilter=f;renderFilterbar();renderDaily();}
+
+// ── Daily Order modal ────────────────────────────────────────────────────────
+function openDailyModal(id=null){
+  editDailyId=id;
+  buildMedOptions();
+  document.getElementById('client-options').innerHTML=db.clients.map(c=>`<option value="${esc(c.name)}">`).join('');
+  document.getElementById('modal-daily').classList.remove('hidden');
+  document.getElementById('daily-modal-title').textContent=id?'Editar pedido':'Novo pedido';
+  document.getElementById('daily-modal-sub').textContent=id?'Modifique os dados do pedido':'Adicione um pedido de cliente';
+  document.getElementById('wish-picker').classList.add('hidden');
+  document.getElementById('client-picker').classList.add('hidden');
+  const meds=document.getElementById('d-meds');meds.innerHTML='';
+  if(id){
+    const o=db.dailyOrders.find(x=>x.id===id);
+    document.getElementById('d-client').value=o.client;
+    document.getElementById('d-phone').value=o.phone||'';
+    document.getElementById('d-date').value=o.date;
+    document.getElementById('d-status').value=o.status;
+    document.getElementById('d-obs').value=o.obs||'';
+    (o.meds||[]).forEach(m=>addMedRow('d-meds',m.name,m.qty,m.price,m.notes));
+  }else{
+    document.getElementById('d-client').value='';
+    document.getElementById('d-phone').value='';
+    document.getElementById('d-date').value=currentDate;
+    document.getElementById('d-status').value='pending';
+    document.getElementById('d-obs').value='';
+    addMedRow('d-meds');
+  }
+  document.getElementById('d-client').onchange=autoFillPhone;
+  recalcModalTotal();
+}
+function autoFillPhone(e){
+  const c=db.clients.find(x=>x.name===e.target.value);
+  if(c?.phone&&!document.getElementById('d-phone').value)document.getElementById('d-phone').value=c.phone;
+}
+
+// Pickers
+function toggleWishPicker(){
+  document.getElementById('client-picker').classList.add('hidden');
+  const p=document.getElementById('wish-picker');
+  p.classList.toggle('hidden');
+  if(!p.classList.contains('hidden'))renderWishPicker();
+}
+function toggleClientPicker(){
+  document.getElementById('wish-picker').classList.add('hidden');
+  const p=document.getElementById('client-picker');
+  p.classList.toggle('hidden');
+  if(!p.classList.contains('hidden'))renderClientPicker();
+}
+function renderWishPicker(){
+  const p=document.getElementById('wish-picker');
+  if(!db.wishlist.length){p.innerHTML='<div class="picker-empty">Sua lista de espera está vazia.</div>';return;}
+  p.innerHTML=`<div class="picker-head">Lista de espera — clique para adicionar</div>`+
+    db.wishlist.map(w=>`
+      <div class="picker-item" onclick="moveWishToOrder('${w.id}')">
+        <div style="flex:1;min-width:0">
+          <strong>${esc(w.name)}</strong>${w.qty?` <span style="color:var(--muted);font-size:.78rem">· ${esc(w.qty)}</span>`:''}
+          ${w.client?`<div style="color:var(--muted);font-size:.74rem;margin-top:1px">Para: ${esc(w.client)}</div>`:''}
+        </div>
+        ${w.price?`<span class="mono" style="color:var(--forest);font-size:.78rem;font-weight:500">${fmt(w.price)}</span>`:''}
+        <span style="color:var(--moss)">${ic('arrowRight')}</span>
+      </div>`).join('');
+}
+function moveWishToOrder(wid){
+  const w=db.wishlist.find(x=>x.id===wid);if(!w)return;
+  addMedRow('d-meds',w.name,w.qty,w.price,w.notes||'');
+  if(w.client&&!document.getElementById('d-client').value){
+    document.getElementById('d-client').value=w.client;
+    const c=db.clients.find(x=>x.name===w.client);
+    if(c?.phone&&!document.getElementById('d-phone').value)document.getElementById('d-phone').value=c.phone;
+  }
+  db.wishlist=db.wishlist.filter(x=>x.id!==wid);
+  saveDB();renderWishPicker();renderTabs();
+  toast('Item adicionado ao pedido');
+}
+
+function renderClientPicker(){
+  const p=document.getElementById('client-picker');
+  if(!db.clients.length){p.innerHTML='<div class="picker-empty">Nenhum cliente mensal cadastrado.</div>';return;}
+  p.innerHTML=`<div class="picker-head">Clientes mensais — clique para preencher</div>`+
+    db.clients.map(c=>{
+      const total=sumMeds(c.meds);
+      return `<div class="picker-item" onclick="fillFromClient('${c.id}')">
+        <div style="flex:1;min-width:0">
+          <strong>${esc(c.name)}</strong>${c.phone?` <span style="color:var(--muted);font-size:.78rem">· ${esc(c.phone)}</span>`:''}
+          <div style="color:var(--muted);font-size:.74rem;margin-top:1px">${(c.meds||[]).length} med · <span class="mono" style="color:var(--forest);font-weight:500">${fmt(total)}</span></div>
+        </div>
+        <span style="color:var(--moss)">${ic('arrowRight')}</span>
+      </div>`;
+    }).join('');
+}
+function fillFromClient(cid){
+  const c=db.clients.find(x=>x.id===cid);if(!c)return;
+  document.getElementById('d-client').value=c.name;
+  if(c.phone)document.getElementById('d-phone').value=c.phone;
+  (c.meds||[]).forEach(m=>addMedRow('d-meds',m.name,m.qty,m.price,m.notes));
+  document.getElementById('client-picker').classList.add('hidden');
+  recalcModalTotal();
+  toast(`${c.name} preenchido com ${(c.meds||[]).length} med(s)`);
+}
+
+function saveDailyOrder(){
+  const client=document.getElementById('d-client').value.trim();
+  if(!client){toast('Informe o nome do cliente');return;}
+  const date=document.getElementById('d-date').value;
+  if(!date){toast('Informe a data');return;}
+  const data={
+    client,phone:document.getElementById('d-phone').value.trim(),
+    date,status:document.getElementById('d-status').value,
+    obs:document.getElementById('d-obs').value.trim(),
+    meds:getMedRows('d-meds')
+  };
+  let reprog=null;
+  if(editDailyId){
+    const existing=db.dailyOrders.find(x=>x.id===editDailyId);
+    const dataAntiga=existing.date;
+    // preserve per-item status of existing meds by matching names
+    const oldStatus={},oldSched={};
+    (existing.meds||[]).forEach(m=>{
+      if(m.istatus&&m.istatus!=='pending')oldStatus[m.name]=m.istatus;
+      // schedRef é o que liga o item ao produto programado do cliente;
+      // getMedRows recria os itens do zero, então o vínculo tem que voltar aqui
+      if(m.schedRef)oldSched[m.name]=m.schedRef;
+    });
+    data.meds.forEach(m=>{
+      if(oldStatus[m.name]){m.istatus=oldStatus[m.name];delete oldStatus[m.name];}
+      if(oldSched[m.name]){m.schedRef=oldSched[m.name];delete oldSched[m.name];}
+      m.received=m.istatus==='received'||m.istatus==='delivered';
+    });
+    Object.assign(existing,data);
+    if(existing.autoFrom&&dataAntiga!==existing.date)reprog=reprogramarProgramado(existing,dataAntiga);
+  }else db.dailyOrders.push({id:uid(),createdAt:Date.now(),...data});
+  saveDB();closeModal('modal-daily');renderDaily();renderDaySummary();renderFilterbar();
+  if(reprog)stashUndo('reprog',reprog,`Programação de ${reprog.nome}: dia ${reprog.antes} → <b>dia ${reprog.novoDia}</b>.`);
+  else toast(editDailyId?'Pedido atualizado':'Pedido salvo');
+}
+
+function cycleDaily(id){
+  const o=db.dailyOrders.find(x=>x.id===id);
+  o.status=CYCLE[o.status]||'pending';
+  // ao mudar o status do pedido inteiro, alinha os itens (sem rebaixar os já entregues)
+  if(o.status==='received')(o.meds||[]).forEach(m=>{if(m.istatus!=='delivered')m.istatus='received';m.received=true;});
+  else if(o.status==='ordered')(o.meds||[]).forEach(m=>{if(!m.istatus||m.istatus==='pending')m.istatus='ordered';});
+  else if(o.status==='pending')(o.meds||[]).forEach(m=>{m.istatus='pending';m.received=false;});
+  saveDB();renderDaily();renderDaySummary();renderFilterbar();
+}
+function deleteDaily(id){
+  const o=db.dailyOrders.find(x=>x.id===id);if(!o)return;
+  const dismissed=[];
+  if(o.autoFrom){
+    // record dismissal so it isn't regenerated for this exact date
+    db.dismissedSchedule=db.dismissedSchedule||[];
+    (o.meds||[]).forEach(m=>{
+      if(m.schedRef){const k=`${o.date}|${o.autoFrom.clientId}|${m.schedRef}`;db.dismissedSchedule.push(k);dismissed.push(k);}
+    });
+  }
+  db.dailyOrders=db.dailyOrders.filter(x=>x.id!==id);
+  saveDB();renderDaily();renderDaySummary();renderFilterbar();
+  stashUndo('order',{order:o,dismissed},'Pedido removido.');
+}
+
+// Avança o status de um item: A pedir → Solicitado → Recebido → Entregue → (volta)
+function cycleMedStatus(orderId,medId){
+  const o=db.dailyOrders.find(x=>x.id===orderId);if(!o)return;
+  const m=(o.meds||[]).find(x=>x.id===medId);if(!m)return;
+  m.istatus=ICYCLE[m.istatus||'pending']||'pending';
+  m.received=m.istatus==='received'||m.istatus==='delivered';
+  syncOrderStatus(o);
+  saveDB();renderDaily();renderDaySummary();renderFilterbar();
+}
+// Deriva o status do pedido a partir dos itens
+function syncOrderStatus(o){
+  const meds=o.meds||[];
+  if(!meds.length)return;
+  const allReceived=meds.every(m=>isReceived(m));       // todos recebidos ou entregues
+  const anyMoved=meds.some(m=>m.istatus&&m.istatus!=='pending');
+  if(allReceived)o.status='received';
+  else if(anyMoved)o.status='ordered';
+  else o.status='pending';
+}
+
+// ── Seleção de itens do dia → lista de espera ────────────────────────────────
+function toggleDaySelect(oid,mid){
+  const k=oid+'|'+mid;
+  if(daySelected.has(k))daySelected.delete(k);else daySelected.add(k);
+  renderDaily();
+}
+function clearDaySelection(){daySelected.clear();renderDaily();}
+
+function getDaySelected(){
+  const out=[];
+  daySelected.forEach(k=>{
+    const i=k.indexOf('|');
+    const oid=k.slice(0,i),mid=k.slice(i+1);
+    const o=db.dailyOrders.find(x=>x.id===oid);
+    if(!o)return;
+    const idx=(o.meds||[]).findIndex(x=>x.id===mid);
+    if(idx<0)return;
+    out.push({key:k,order:o,med:o.meds[idx],index:idx});
+  });
+  return out;
+}
+
+/* ═══════ Copiar itens para cotação ═══════
+   O cotador aceita um item por linha, no formato "- Produto 2cx": ele tira o
+   traço da frente, lê o número colado em x/un/cx/caixa como quantidade e usa o
+   resto como nome do produto. Item repetido entra uma vez só com as quantidades
+   somadas — cotar o mesmo produto duas vezes é tempo perdido nas distribuidoras. */
+function qtdNumero(q){
+  const m = String(q == null ? '' : q).match(/\d+/);
+  const n = m ? parseInt(m[0], 10) : 1;
+  return n > 0 ? n : 1;
+}
+function textoCotacao(pares){
+  const mapa = new Map();
+  (pares || []).forEach(p => {
+    const nome = String(p && p.nome != null ? p.nome : '').trim();
+    if (!nome) return;
+    const k = nome.toLowerCase().replace(/\s+/g, ' ');
+    const at = mapa.get(k);
+    if (at) at.qtd += qtdNumero(p.qtd);
+    else mapa.set(k, { nome, qtd: qtdNumero(p.qtd) });
+  });
+  return [...mapa.values()].map(i => i.qtd > 1 ? `- ${i.nome} ${i.qtd}x` : `- ${i.nome}`).join('\n');
+}
+function copiarTexto(txt){
+  // textarea + execCommand funciona dentro do iframe do hub, onde a API nova
+  // de clipboard nem sempre tem permissão. A API fica como reserva.
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:-1000px;left:0;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, txt.length);
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (ok) return true;
+  } catch (e) { /* cai na API nova */ }
+  try { navigator.clipboard.writeText(txt); return true; } catch (e) { return false; }
+}
+function copiarLista(pares, oque){
+  const txt = textoCotacao(pares);
+  if (!txt) { toast('Nada para copiar.'); return; }
+  const n = txt.split('\n').length;
+  toast(copiarTexto(txt)
+    ? `${n} item(ns) ${oque} copiado(s) — cole no seu cotador`
+    : 'Não consegui copiar. Tente de novo.');
+}
+function copiarCotacaoDia(){
+  let orders = db.dailyOrders.filter(o => o.date === currentDate);
+  if (dailyFilter !== 'all') orders = orders.filter(o => o.status === dailyFilter);
+  const pares = [];
+  orders.forEach(o => (o.meds || []).forEach(m => pares.push({ nome: m.name, qtd: m.qty })));
+  copiarLista(pares, 'do dia');
+}
+function copiarCotacaoSelecionados(){
+  copiarLista(getDaySelected().map(({ med }) => ({ nome: med.name, qtd: med.qty })), 'selecionado(s)');
+}
+function copiarCotacaoWish(){
+  let items = [...db.wishlist];
+  if (wishSelected.size) items = items.filter(w => wishSelected.has(w.id));
+  else if (wishTagFilter !== 'all') items = items.filter(w => (w.tag || 'gray') === wishTagFilter);
+  copiarLista(items.map(w => ({ nome: w.name, qtd: w.qty })), 'da lista de espera');
+}
+
+function renderDailyToolbar(){
+  const tb=document.getElementById('daily-toolbar');
+  if(!tb)return;
+  const sel=getDaySelected();
+  if(!sel.length){tb.innerHTML='';return;}
+  const sum=sel.reduce((s,x)=>s+(Number(x.med.price)||0),0);
+  const days=new Set(sel.map(x=>x.order.date)).size;
+  tb.innerHTML=`<div class="wtoolbar">
+    <div style="font-size:.85rem;font-weight:500">${sel.length} item(ns) selecionado(s)${days>1?` · ${days} dias`:''} · <span class="num">${fmt(sum)}</span></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="clearDaySelection()" style="background:transparent;color:var(--paper);border-color:rgba(255,255,255,.3)">Limpar</button>
+<button class="btn btn-sm" onclick="copiarCotacaoSelecionados()" style="background:transparent;color:var(--paper);border-color:rgba(255,255,255,.3)">📋 Copiar p/ cotação</button>
+            <button class="btn btn-amber btn-sm" onclick="moveSelectedToWish()">${ic('bookmark')} Mover p/ lista de espera</button>
+    </div>
+  </div>`;
+}
+
+function moveSelectedToWish(){
+  const sel=getDaySelected();
+  if(!sel.length)return;
+  const wishIds=[],restore=[];
+  sel.forEach(({order,med,index})=>{
+    const wid=uid();
+    db.wishlist.push({
+      id:wid,addedAt:Date.now(),name:med.name,qty:med.qty||'',
+      price:Number(med.price)||0,client:order.client||'',supplier:'',
+      notes:med.notes||'',tag:'gray'
+    });
+    wishIds.push(wid);
+    restore.push({orderId:order.id,index,med});
+    order.meds.splice(order.meds.findIndex(x=>x.id===med.id),1);
+  });
+
+  let removedOrders=[];
+  const empties=db.dailyOrders.filter(o=>!(o.meds||[]).length);
+  if(empties.length){
+    const msg=`${empties.length} pedido(s) ficaram sem nenhum item:\n\n`+
+      empties.map(o=>`• ${o.client} (${o.date.split('-').reverse().join('/')})`).join('\n')+
+      `\n\nRemover esses pedidos vazios? (Cancelar mantém eles na lista)`;
+    if(confirm(msg)){
+      removedOrders=empties;
+      db.dailyOrders=db.dailyOrders.filter(o=>(o.meds||[]).length);
+    }
+  }
+  db.dailyOrders.forEach(o=>syncOrderStatus(o));
+  daySelected.clear();
+  saveDB();refreshAll();
+  stashUndo('towish',{wishIds,restore,removedOrders},`${sel.length} item(ns) na lista de espera.`);
+}
+
+function renderDaily(){
+  ensureScheduledOrders(currentDate);
+  renderOverdue();
+  renderDailyToolbar();
+  let orders=db.dailyOrders.filter(o=>o.date===currentDate);
+  if(dailyFilter!=='all')orders=orders.filter(o=>o.status===dailyFilter);
+  const _S={pending:0,ordered:1,received:2};
+  if(dailySort==='value')orders.sort((a,b)=>sumMeds(b.meds)-sumMeds(a.meds));
+  else if(dailySort==='name')orders.sort((a,b)=>a.client.localeCompare(b.client,'pt-BR'));
+  else if(dailySort==='created')orders.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  else orders.sort((a,b)=>(_S[a.status]||0)-(_S[b.status]||0));
+  const list=document.getElementById('daily-list');
+  if(!orders.length){
+    list.innerHTML=`<div class="empty">
+      <div class="empty-mark">${ic('calendar')}</div>
+      <div class="empty-title">Nada por aqui</div>
+      <div class="empty-text">${dailyFilter!=='all'?'Nenhum pedido neste filtro.':'Clique em <strong>Novo pedido</strong> para começar.'}</div>
+    </div>`;
+    return;
+  }
+  list.innerHTML=orders.map(o=>{
+    const total=sumMeds(o.meds);
+    const meds=o.meds||[];
+    const received=meds.filter(m=>isReceived(m)).length;
+    const delivered=meds.filter(m=>m.istatus==='delivered').length;
+    const wa=waLink(o.phone);
+    const isAuto=!!o.autoFrom;
+    return `
+    <div class="ocard ${SC[o.status]} ${isAuto?'scheduled':''}">
+      <div class="ocard-row">
+        <div class="ocard-status"></div>
+        <div class="ocard-body">
+          <div class="ocard-head">
+            <div style="flex:1;min-width:0">
+              <div class="ocard-name">${esc(o.client)}${isAuto?` <span class="sched-badge">${ic('calendar')} Programado</span>`:''}</div>
+              <div class="ocard-meta">
+                ${o.phone?(wa?`<a href="${wa}" target="_blank" rel="noopener" title="Abrir WhatsApp">${ic('phone')} ${esc(o.phone)}</a>`:`<span>${ic('phone')} ${esc(o.phone)}</span>`):''}
+                <span class="ocard-status-label" onclick="cycleDaily('${o.id}')">${SL[o.status]}</span>
+                ${o.notified?`<span class="notif-ok">${ic('check')} Cliente avisado</span>`:''}
+              </div>
+              ${o.obs?`<div style="margin-top:4px;font-size:.8rem;color:var(--muted);font-style:italic">"${esc(o.obs)}"</div>`:''}
+            </div>
+            <div class="ocard-actions">
+              <button onclick="duplicateDaily('${o.id}')" class="iact" title="Duplicar pedido">${ic('copy')}</button>
+              <button onclick="openDailyModal('${o.id}')" class="iact" title="Editar">${ic('edit')}</button>
+              <button onclick="deleteDaily('${o.id}')" class="iact danger" title="Remover">${ic('trash')}</button>
+            </div>
+          </div>
+          ${meds.length?`
+            <div class="ocard-meds">
+              ${meds.map(m=>{const st=m.istatus||'pending';const _sel=daySelected.has(o.id+'|'+m.id);return `
+                <div class="omed ${st==='delivered'?'done':''} ${_sel?'selected':''}">
+                  <div class="omed-check ${_sel?'checked':''}" onclick="toggleDaySelect('${o.id}','${m.id}')" title="Selecionar item"></div>
+                  <div class="omed-status st-${st}" onclick="cycleMedStatus('${o.id}','${m.id}')" title="Clique para avançar: A pedir → Solicitado → Recebido → Entregue"><span class="sdot"></span>${IL[st]}</div>
+                  <div class="omed-info">
+                    <b>${esc(m.name)}</b>${m.qty?` <span style="color:var(--muted)">· ${esc(m.qty)}</span>`:''}${m.notes?` <span style="color:var(--subtle);font-style:italic">(${esc(m.notes)})</span>`:''}
+                  </div>
+                  ${m.price?`<span class="omed-price">${fmt(m.price)}</span>`:''}
+                </div>`;}).join('')}
+            </div>`:''}
+          <div class="ocard-foot">
+            ${meds.length?`<span class="ocard-foot-progress">${received}/${meds.length} recebido(s)${delivered?` · ${delivered} entregue(s)`:''}</span>`:''}
+            ${o.status==='received'&&wa?`<a class="btn btn-teal btn-xs wa-notify" href="${notifyWaUrl(o)}" target="_blank" rel="noopener" onclick="markNotified('${o.id}')">${ic('whatsapp')} ${o.notified?'Avisar de novo':'Avisar que chegou'}</a>`:''}
+            ${total>0?`<span class="ocard-foot-val">${fmt(total)}</span>`:''}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Wishlist ─────────────────────────────────────────────────────────────────
+function renderTagPicker(){
+  document.getElementById('w-tag-picker').innerHTML=TAG_ORDER.map(t=>`
+    <div class="tag-opt ${t} ${wishModalTag===t?'selected':''}" onclick="selectWishTag('${t}')">
+      <span class="tag-dot ${t}"></span>${TAGS[t].label}
+    </div>`).join('');
+}
+function selectWishTag(t){wishModalTag=t;renderTagPicker();}
+
+function openWishModal(id=null){
+  editWishId=id;
+  buildMedOptions();
+  document.getElementById('client-options-w').innerHTML=db.clients.map(c=>`<option value="${esc(c.name)}">`).join('');
+  document.getElementById('modal-wish').classList.remove('hidden');
+  document.getElementById('wish-modal-title').textContent=id?'Editar anotação':'Anotar item';
+  if(id){
+    const w=db.wishlist.find(x=>x.id===id);
+    document.getElementById('w-name').value=w.name;
+    document.getElementById('w-qty').value=w.qty||'';
+    document.getElementById('w-price').value=w.price||'';
+    document.getElementById('w-client').value=w.client||'';
+    document.getElementById('w-supplier').value=w.supplier||'';
+    document.getElementById('w-notes').value=w.notes||'';
+    wishModalTag=w.tag||'gray';
+    document.getElementById('wish-edit-note').textContent='Anotado '+fmtRelative(w.addedAt||Date.now());
+  }else{
+    ['w-name','w-qty','w-price','w-client','w-supplier','w-notes'].forEach(i=>document.getElementById(i).value='');
+    wishModalTag='gray';
+    document.getElementById('wish-edit-note').textContent='';
+  }
+  renderTagPicker();
+}
+function saveWish(){
+  const name=document.getElementById('w-name').value.trim();
+  if(!name){toast('Informe o produto');return;}
+  const data={name,qty:document.getElementById('w-qty').value.trim(),price:Number(document.getElementById('w-price').value)||0,client:document.getElementById('w-client').value.trim(),supplier:document.getElementById('w-supplier').value.trim(),notes:document.getElementById('w-notes').value.trim(),tag:wishModalTag};
+  if(editWishId)Object.assign(db.wishlist.find(x=>x.id===editWishId),data);
+  else db.wishlist.push({id:uid(),addedAt:Date.now(),...data});
+  saveDB();closeModal('modal-wish');renderWishFilterbar();renderWishlist();renderTabs();
+  toast(editWishId?'Anotação atualizada':'Adicionado à lista');
+}
+function deleteWish(id){
+  const w=db.wishlist.find(x=>x.id===id);if(!w)return;
+  db.wishlist=db.wishlist.filter(x=>x.id!==id);wishSelected.delete(id);
+  saveDB();renderWishFilterbar();renderWishlist();renderTabs();
+  stashUndo('wish',{wish:w},'Removido da lista.');
+}
+function toggleWishSelect(id){if(wishSelected.has(id))wishSelected.delete(id);else wishSelected.add(id);renderWishlist();}
+function clearWishSelection(){wishSelected.clear();renderWishlist();}
+
+function setWishTagFilter(f){wishTagFilter=f;renderWishFilterbar();renderWishlist();}
+
+function renderWishFilterbar(){
+  const counts={all:db.wishlist.length};
+  TAG_ORDER.forEach(t=>counts[t]=db.wishlist.filter(w=>(w.tag||'gray')===t).length);
+  let html=`<button class="fchip ${wishTagFilter==='all'?'active':''}" onclick="setWishTagFilter('all')">Todos <span class="num">(${counts.all})</span></button>`;
+  TAG_ORDER.forEach(t=>{
+    if(!counts[t])return;
+    html+=`<button class="fchip ${wishTagFilter===t?'active':''}" onclick="setWishTagFilter('${t}')"><span class="tag-dot ${t}"></span>${TAGS[t].label} <span class="num">(${counts[t]})</span></button>`;
+  });
+  document.getElementById('wish-filterbar').innerHTML=html;
+}
+
+const CLIENTE_ESTOQUE='Estoque';
+
+function createOrderFromSelected(){
+  if(!wishSelected.size)return;
+  const items=db.wishlist.filter(w=>wishSelected.has(w.id));
+  const clientNames=[...new Set(items.map(i=>i.client).filter(Boolean))];
+
+  // Antes usava prompt(), que o Electron não suporta: retornava null e o botão
+  // não fazia nada. Agora: um nome só usa ele; sem nome ou nomes divergentes
+  // vira pedido de "Estoque".
+  let client;
+  if(clientNames.length===1){
+    client=clientNames[0];
+  }else if(clientNames.length===0){
+    client=CLIENTE_ESTOQUE;
+  }else{
+    const ok=confirm(
+      `Os itens selecionados são de clientes diferentes:\n\n• ${clientNames.join('\n• ')}\n\n`
+      +`Juntar tudo num pedido único do cliente "${CLIENTE_ESTOQUE}"?\n\n`
+      +`Se preferir separar por cliente, cancele e crie um pedido de cada vez.`);
+    if(!ok){toast('Operação cancelada');return;}
+    client=CLIENTE_ESTOQUE;
+  }
+  const phone=db.clients.find(c=>c.name===client)?.phone||'';
+  db.dailyOrders.push({
+    id:uid(),createdAt:Date.now(),client,phone,date:today(),status:'pending',obs:'',
+    meds:items.map(i=>({id:uid(),name:i.name,qty:i.qty,price:i.price,notes:i.notes,received:false}))
+  });
+  db.wishlist=db.wishlist.filter(w=>!wishSelected.has(w.id));
+  wishSelected.clear();
+  saveDB();renderWishFilterbar();renderWishlist();renderTabs();
+  toast(`${items.length} item(s) movido(s) para pedido do dia`);
+}
+
+function renderWishlist(){
+  const list=document.getElementById('wish-list');
+  const tb=document.getElementById('wish-toolbar');
+  if(wishSelected.size){
+    const items=db.wishlist.filter(w=>wishSelected.has(w.id));
+    const sum=items.reduce((s,i)=>s+(Number(i.price)||0),0);
+    tb.innerHTML=`<div class="wtoolbar">
+      <div style="font-size:.85rem;font-weight:500">${wishSelected.size} item(s) · <span class="num">${fmt(sum)}</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="clearWishSelection()" style="background:transparent;color:var(--paper);border-color:rgba(255,255,255,.3)">Limpar</button>
+<button class="btn btn-sm" onclick="copiarCotacaoWish()" style="background:transparent;color:var(--paper);border-color:rgba(255,255,255,.3)">📋 Copiar p/ cotação</button>
+                <button class="btn btn-amber btn-sm" onclick="createOrderFromSelected()">${ic('arrowRight')} Criar pedido do dia</button>
+      </div>
+    </div>`;
+  }else tb.innerHTML='';
+  if(!db.wishlist.length){
+    list.innerHTML=`<div class="empty">
+      <div class="empty-mark">${ic('bookmark')}</div>
+      <div class="empty-title">Sua lista está limpa</div>
+      <div class="empty-text">Anote aqui produtos pra pedir <em>quando der</em>.<br>Quando for fazer um pedido real, basta puxar daqui.</div>
+    </div>`;
+    return;
+  }
+  let items=[...db.wishlist];
+  if(wishTagFilter!=='all')items=items.filter(w=>(w.tag||'gray')===wishTagFilter);
+  // sort by tag priority, then by date
+  items.sort((a,b)=>{
+    const ta=TAGS[a.tag||'gray'].order, tb2=TAGS[b.tag||'gray'].order;
+    if(ta!==tb2)return ta-tb2;
+    return (b.addedAt||0)-(a.addedAt||0);
+  });
+  if(!items.length){
+    list.innerHTML=`<div class="empty"><div class="empty-mark">${ic('bookmark')}</div><div class="empty-title">Nenhum item nesta cor</div><div class="empty-text">Tente outro filtro.</div></div>`;
+    return;
+  }
+  list.innerHTML=items.map(w=>{
+    const sel=wishSelected.has(w.id);
+    const tag=w.tag||'gray';
+    return `<div class="wcard tag-${tag}">
+      <div class="wcheck ${sel?'checked':''}" onclick="toggleWishSelect('${w.id}')"></div>
+      <div class="wcard-info" onclick="toggleWishSelect('${w.id}')" style="cursor:pointer">
+        <div class="wcard-title">
+          ${esc(w.name)}${w.qty?` <span style="color:var(--muted);font-weight:400;font-size:.85rem">· ${esc(w.qty)}</span>`:''}
+          ${tag!=='gray'?`<span class="tag-badge ${tag}" style="margin-left:6px"><span class="tag-dot ${tag}"></span>${TAGS[tag].label}</span>`:''}
+        </div>
+        <div class="wcard-sub">
+          ${w.client?`<span>${ic('users')} ${esc(w.client)}</span>`:''}
+          ${w.supplier?`<span>${ic('notebook')} ${esc(w.supplier)}</span>`:''}
+          ${w.notes?`<span style="font-style:italic">"${esc(w.notes)}"</span>`:''}
+          <span style="color:var(--subtle)">anotado ${fmtRelative(w.addedAt||Date.now())}</span>
+        </div>
+      </div>
+      ${w.price?`<span class="wcard-price">${fmt(w.price)}</span>`:''}
+      <div class="wcard-actions">
+        <button onclick="openWishModal('${w.id}')" class="iact" title="Editar">${ic('edit')}</button>
+        <button onclick="deleteWish('${w.id}')" class="iact danger" title="Remover">${ic('trash')}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Clients ──────────────────────────────────────────────────────────────────
+function openClientModal(id=null){
+  editClientId=id;
+  buildMedOptions();
+  document.getElementById('modal-client').classList.remove('hidden');
+  document.getElementById('client-modal-title').textContent=id?'Editar cliente':'Novo cliente';
+  const meds=document.getElementById('c-meds');meds.innerHTML='';
+  if(id){
+    const c=db.clients.find(x=>x.id===id);
+    document.getElementById('c-name').value=c.name;
+    document.getElementById('c-phone').value=c.phone||'';
+    document.getElementById('c-notes').value=c.notes||'';
+    (c.meds||[]).forEach(m=>addMedRow('c-meds',m.name,m.qty,m.price,m.notes));
+  }else{
+    ['c-name','c-phone','c-notes'].forEach(i=>document.getElementById(i).value='');
+    addMedRow('c-meds');
+  }
+  recalcModalTotal();
+}
+function saveClient(){
+  const name=document.getElementById('c-name').value.trim();
+  if(!name){toast('Informe o nome do cliente');return;}
+  const data={name,phone:document.getElementById('c-phone').value.trim(),notes:document.getElementById('c-notes').value.trim(),meds:getMedRows('c-meds')};
+  if(editClientId)Object.assign(db.clients.find(x=>x.id===editClientId),data);
+  else db.clients.push({id:uid(),...data});
+  saveDB();closeModal('modal-client');renderClients();renderTabs();
+  toast(editClientId?'Cliente atualizado':'Cliente salvo');
+}
+function deleteClient(id){
+  if(!confirm('Remover este cliente? Os dados mensais associados serão removidos também.'))return;
+  const c=db.clients.find(x=>x.id===id);if(!c)return;
+  const ms={};
+  Object.keys(db.monthlyStatus).forEach(m=>{if(db.monthlyStatus[m][id]){ms[m]=db.monthlyStatus[m][id];}delete db.monthlyStatus[m][id];});
+  db.clients=db.clients.filter(x=>x.id!==id);
+  saveDB();renderClients();renderTabs();
+  stashUndo('client',{client:c,ms},'Cliente removido.');
+}
+function toggleExpand(id){document.getElementById('cb-'+id).classList.toggle('hidden');}
+
+function renderClients(){
+  const q=(document.getElementById('clientSearch')?.value||'').toLowerCase();
+  const filtered=db.clients.filter(c=>!q||c.name.toLowerCase().includes(q)||(c.phone||'').includes(q));
+  const list=document.getElementById('clients-list');
+  if(!filtered.length){
+    list.innerHTML=`<div class="empty">
+      <div class="empty-mark">${ic('users')}</div>
+      <div class="empty-title">${db.clients.length?'Nenhum resultado':'Nenhum cliente cadastrado'}</div>
+      <div class="empty-text">${db.clients.length?'Tente outro termo.':'Cadastre clientes recorrentes e seus produtos mensais.'}</div>
+    </div>`;
+    return;
+  }
+  list.innerHTML=filtered.map(c=>{
+    const total=sumMeds(c.meds);
+    const wa=waLink(c.phone);
+    return `<div class="lcard">
+      <div class="lcard-head" onclick="toggleExpand('${c.id}')">
+        <div>
+          <div class="lcard-name">${esc(c.name)}</div>
+          <div class="lcard-meta">
+            ${c.phone?(wa?`<a href="${wa}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${ic('phone')} ${esc(c.phone)}</a>`:`<span>${ic('phone')} ${esc(c.phone)}</span>`):''}
+            <span>${(c.meds||[]).length} produto(s)</span>
+            <span class="mc-money">${fmt(total)}/mês</span>
+          </div>
+        </div>
+        <div class="ocard-actions">
+          <button onclick="event.stopPropagation();openClientModal('${c.id}')" class="iact" title="Editar">${ic('edit')}</button>
+          <button onclick="event.stopPropagation();deleteClient('${c.id}')" class="iact danger" title="Remover">${ic('trash')}</button>
+        </div>
+      </div>
+      <div id="cb-${c.id}" class="lcard-body hidden">
+        <div class="lcard-body-inner">
+          ${c.notes?`<p style="font-size:.82rem;color:var(--muted);margin-bottom:8px;font-style:italic">"${esc(c.notes)}"</p>`:''}
+          ${(c.meds||[]).length?c.meds.map(m=>`
+            <div class="med-row">
+              <span><b>${esc(m.name)}</b>${m.notes?` <span style="color:var(--subtle);font-style:italic">· ${esc(m.notes)}</span>`:''}</span>
+              ${m.qty?`<span class="pill">${esc(m.qty)}</span>`:'<span></span>'}
+              <span class="price">${m.price?fmt(m.price):'—'}</span>
+            </div>`).join(''):`<p style="font-size:.85rem;color:var(--muted)">Nenhum produto cadastrado.</p>`}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Monthly ──────────────────────────────────────────────────────────────────
+function getMS(month){if(!db.monthlyStatus[month])db.monthlyStatus[month]={};return db.monthlyStatus[month];}
+function cycleMonthly(month,cid,mid){const ms=getMS(month);if(!ms[cid])ms[cid]={};ms[cid][mid]=CYCLE[ms[cid][mid]||'pending'];saveDB();renderMonthly();}
+function setClientBulk(month,cid,status){const ms=getMS(month);if(!ms[cid])ms[cid]={};const c=db.clients.find(x=>x.id===cid);(c?.meds||[]).forEach(m=>{ms[cid][m.id]=status;});saveDB();renderMonthly();}
+
+function setSchedDay(cid,mid,val){
+  const c=db.clients.find(x=>x.id===cid);if(!c)return;
+  const m=(c.meds||[]).find(x=>x.id===mid);if(!m)return;
+  const d=parseInt(val);
+  if(val===''||isNaN(d)){
+    delete m.schedDay;
+    saveDB();
+    toast('Programação removida');
+  }else if(d>=1&&d<=31){
+    m.schedDay=d;
+    saveDB();
+    toast(`${m.name} programado para todo dia ${d}`);
+  }else{
+    toast('Use um dia entre 1 e 31');
+    renderMonthly();return;
+  }
+  renderMonthly();
+}
+
+function renderMonthly(){
+  const month=document.getElementById('monthFilter').value||thisMonth();
+  document.getElementById('month-meta').textContent=fmtMonth(month);
+  renderInsights(month);
+  const ms=getMS(month);
+  if(!db.clients.length){
+    document.getElementById('monthly-list').innerHTML=`<div class="empty">
+      <div class="empty-mark">${ic('barChart')}</div>
+      <div class="empty-title">Sem clientes mensais</div>
+      <div class="empty-text">Cadastre clientes recorrentes primeiro.</div>
+    </div>`;
+    document.getElementById('month-summary-box').innerHTML='';
+    return;
+  }
+  let total=0,recv=0,totalVal=0,recvVal=0;
+  db.clients.forEach(c=>(c.meds||[]).forEach(m=>{
+    total++;const v=Number(m.price)||0;totalVal+=v;
+    if((ms[c.id]||{})[m.id]==='received'){recv++;recvVal+=v;}
+  }));
+  const pct=total?Math.round(recv/total*100):0;
+  document.getElementById('month-summary-box').innerHTML=`
+    <div class="month-summary">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <div class="serif" style="font-size:1.1rem;font-weight:500">Progresso do mês</div>
+        <div style="color:var(--muted);font-size:.82rem"><span class="num" style="color:var(--forest);font-weight:600">${recv}</span>/${total} produtos · <span class="num">${pct}%</span></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div class="month-stats">
+        <div class="mstat recv"><div class="mstat-lbl">Recebido</div><div class="mstat-val">${fmt(recvVal)}</div></div>
+        <div class="mstat todo"><div class="mstat-lbl">A receber</div><div class="mstat-val">${fmt(totalVal-recvVal)}</div></div>
+      </div>
+      <div style="margin-top:12px;padding:10px 12px;background:var(--teal-l);border-radius:var(--r);font-size:.8rem;color:var(--teal);display:flex;align-items:center;gap:8px">
+        ${ic('calendar')}<span>Defina o <strong>dia do mês</strong> ao lado de cada produto — ele entra sozinho no "Pedidos do dia" daquela data, todo mês.</span>
+      </div>
+    </div>`;
+  document.getElementById('monthly-list').innerHTML=db.clients.map(c=>{
+    const cs=ms[c.id]||{};
+    const meds=c.meds||[];
+    const cRecv=meds.filter(m=>cs[m.id]==='received').length;
+    const cTotal=sumMeds(meds);
+    const cRecvVal=meds.filter(m=>cs[m.id]==='received').reduce((s,m)=>s+(Number(m.price)||0),0);
+    const cPct=meds.length?Math.round(cRecv/meds.length*100):0;
+    return `<div class="mcrd">
+      <div class="mchd">
+        <div class="mchd-info">
+          <div style="font-weight:600;font-size:.94rem">${esc(c.name)}</div>
+          <div class="mchd-stats">
+            ${c.phone?`<span>${ic('phone')} ${esc(c.phone)}</span>`:''}
+            <span><span class="num">${cRecv}/${meds.length}</span></span>
+            <span class="mchd-mini-bar"><span class="mchd-mini-fill" style="display:block;width:${cPct}%;height:100%;background:var(--moss)"></span></span>
+            <span class="mc-money">${fmt(cRecvVal)} / ${fmt(cTotal)}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button onclick="setClientBulk('${month}','${c.id}','ordered')" class="btn btn-o btn-xs">Solicitar tudo</button>
+          <button onclick="setClientBulk('${month}','${c.id}','received')" class="btn btn-xs" style="background:var(--forest-l);color:var(--forest);border:1px solid var(--moss)">Receber tudo</button>
+        </div>
+      </div>
+      ${meds.map(m=>{const s=cs[m.id]||'pending';const sd=m.schedDay||'';return `<div class="mcmed">
+        <span class="mcmed-name"><b>${esc(m.name)}</b>${m.qty?` <span style="color:var(--muted)">· ${esc(m.qty)}</span>`:''}${m.notes?` <span style="color:var(--subtle);font-style:italic">(${esc(m.notes)})</span>`:''}</span>
+        <div class="mcmed-controls">
+          <div class="mcmed-sched" title="Dia do mês para pedir automaticamente (deixe vazio para não programar)">
+            ${ic('calendar')}
+            <input type="number" min="1" max="31" class="sched-day-input" value="${sd}" placeholder="—"
+              onchange="setSchedDay('${c.id}','${m.id}',this.value)">
+            <span class="sched-label">do mês</span>
+          </div>
+          <span class="mc-money" style="font-size:.82rem">${m.price?fmt(m.price):''}</span>
+          <span class="status-link ${SC[s]}" onclick="cycleMonthly('${month}','${c.id}','${m.id}')">${SL[s]}</span>
+        </div>
+      </div>`;}).join('')}
+    </div>`;
+  }).join('');
+}
+
+// ── Print Day ────────────────────────────────────────────────────────────────
+function printDay(){
+  const orders=db.dailyOrders.filter(o=>o.date===currentDate&&o.status!=='received');
+  if(!orders.length){toast('Nenhum pedido pendente para imprimir');return;}
+  const grouped={pending:[],ordered:[]};
+  orders.forEach(o=>grouped[o.status]?.push(o));
+  const total=orders.reduce((s,o)=>s+sumMeds(o.meds),0);
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>Pedidos — ${currentDate}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Georgia,serif;color:#1a1a18;padding:30px 36px;font-size:12pt;line-height:1.4}
+.hdr{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1a1a18;padding-bottom:10px;margin-bottom:18px}
+.hdr h1{font-size:20pt;font-weight:600;letter-spacing:-.02em}
+.hdr .sub{font-size:10pt;color:#666;margin-top:2px}
+.hdr .date{text-align:right;font-size:10pt;color:#666}
+h2{font-size:13pt;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid #ccc;font-weight:600}
+.order{margin-bottom:14px;padding:8px 0;border-bottom:1px dashed #ccc;page-break-inside:avoid}
+.order:last-child{border-bottom:none}
+.order-hdr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.client{font-weight:600;font-size:12pt}
+.phone{color:#666;font-size:10pt;font-family:monospace}
+.obs{font-style:italic;color:#666;font-size:10pt;margin-bottom:4px}
+.med{display:flex;align-items:center;padding:3px 0;font-size:11pt;gap:8px}
+.box{width:11pt;height:11pt;border:1.2pt solid #1a1a18;flex-shrink:0;display:inline-block}
+.med-name{flex:1}
+.med-name b{font-weight:600}
+.med-qty{color:#666;font-size:10pt}
+.med-notes{color:#888;font-style:italic;font-size:10pt}
+.med-price{font-family:monospace;font-size:10pt;color:#1a1a18;font-weight:500}
+.total{margin-top:18px;padding-top:10px;border-top:2px solid #1a1a18;display:flex;justify-content:space-between;font-weight:600;font-size:13pt}
+.foot{margin-top:24px;text-align:center;color:#999;font-size:9pt;font-style:italic}
+@media print{body{padding:18mm 14mm}}
+</style></head><body>
+<div class="hdr">
+  <div><h1>Pedidos do dia</h1><div class="sub" data-marca-nome>Minha Empresa</div></div>
+  <div class="date">${fmtFullDate(currentDate)}</div>
+</div>
+${grouped.pending.length?`<h2>A pedir (${grouped.pending.length})</h2>${grouped.pending.map(printOrder).join('')}`:''}
+${grouped.ordered.length?`<h2>Já solicitados — aguardando (${grouped.ordered.length})</h2>${grouped.ordered.map(printOrder).join('')}`:''}
+<div class="total"><span>Total combinado</span><span>${fmt(total)}</span></div>
+<div class="foot">Gerado em ${new Date().toLocaleString('pt-BR')}</div>
+<script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script>
+</body></html>`;
+  const w=window.open('','_blank');
+  if(!w){toast('Permita pop-ups para imprimir');return;}
+  w.document.write(html);w.document.close();
+}
+function printOrder(o){
+  return `<div class="order">
+    <div class="order-hdr">
+      <div><span class="client">${esc(o.client)}</span>${o.phone?` <span class="phone">${esc(o.phone)}</span>`:''}</div>
+      <div class="med-price">${fmt(sumMeds(o.meds))}</div>
+    </div>
+    ${o.obs?`<div class="obs">${esc(o.obs)}</div>`:''}
+    ${(o.meds||[]).map(m=>`<div class="med"><span class="box"></span><span class="med-name"><b>${esc(m.name)}</b>${m.qty?` <span class="med-qty">· ${esc(m.qty)}</span>`:''}${m.notes?` <span class="med-notes">(${esc(m.notes)})</span>`:''}</span>${m.price?`<span class="med-price">${fmt(m.price)}</span>`:''}</div>`).join('')}
+  </div>`;
+}
+
+// ── Calendar ─────────────────────────────────────────────────────────────────
+function renderCalendar(){
+  const [y,m]=calMonth.split('-').map(Number);
+  const first=new Date(y,m-1,1);
+  const startDow=first.getDay();
+  const daysInMonth=new Date(y,m,0).getDate();
+  // count orders per date
+  const counts={};
+  db.dailyOrders.forEach(o=>{counts[o.date]=(counts[o.date]||0)+1;});
+  // scheduled (not-yet-materialised) orders for this month
+  const scheduled=getScheduledDatesInMonth(calMonth);
+  const dow=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  let cells='';
+  for(let i=0;i<startDow;i++)cells+='<div class="cal-day empty"></div>';
+  for(let d=1;d<=daysInMonth;d++){
+    const iso=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    // total = real orders + scheduled ones not yet materialised on that day
+    const realCount=counts[iso]||0;
+    const schedCount=scheduled[iso]||0;
+    const n=Math.max(realCount,realCount+ (realCount?0:schedCount));
+    const display=realCount||schedCount;
+    const cls=['cal-day'];
+    if(iso===today())cls.push('today');
+    if(iso===currentDate)cls.push('selected');
+    if(display>0)cls.push('has-orders');
+    cells+=`<div class="${cls.join(' ')}" onclick="goToDate('${iso}')">
+      <span>${d}</span>
+      ${display>0?`<span class="cal-day-count">${display}${schedCount&&!realCount?'·':''}</span>`:''}
+    </div>`;
+  }
+  document.getElementById('calendar-box').innerHTML=`
+    <div class="cal-wrap">
+      <div class="cal-head">
+        <button class="day-nav-btn" onclick="navCalMonth(-1)">${ic('arrowLeft')}</button>
+        <div class="cal-title">${fmtMonth(calMonth)}</div>
+        <button class="day-nav-btn" onclick="navCalMonth(1)">${ic('arrowRight')}</button>
+      </div>
+      <div class="cal-grid">
+        ${dow.map(d=>`<div class="cal-dow">${d}</div>`).join('')}
+        ${cells}
+      </div>
+      <div class="cal-legend">
+        <div class="cal-legend-item"><span class="cal-legend-box" style="background:var(--forest-l)"></span> Dia com pedidos</div>
+        <div class="cal-legend-item"><span class="cal-legend-box" style="box-shadow:inset 0 0 0 1.5px var(--forest)"></span> Hoje</div>
+        <div class="cal-legend-item"><span class="cal-legend-box" style="background:var(--forest)"></span> Dia selecionado</div>
+        <div class="cal-legend-item">O ponto <strong>·</strong> indica pedidos programados ainda não abertos</div>
+      </div>
+    </div>`;
+}
+function navCalMonth(delta){
+  const [y,m]=calMonth.split('-').map(Number);
+  const d=new Date(y,m-1+delta,1);
+  calMonth=d.toISOString().slice(0,7);
+  renderCalendar();
+}
+function goToDate(iso){
+  currentDate=iso;
+  renderDaySummary();renderFilterbar();renderDaily();
+  switchTab('daily');
+  toast('Abrindo '+fmtFullDate(iso).split(',')[0]);
+}
+
+// ── Boleto calculator ────────────────────────────────────────────────────────
+function initCalc(){
+  const start=document.getElementById('calc-start');
+  if(!start.value)start.value=today();
+  document.getElementById('calc-presets').innerHTML=[7,14,21,28,30,45,60].map(d=>
+    `<button class="calc-preset" onclick="setCalcDays(${d})">${d} dias</button>`).join('');
+  runCalc();
+}
+function setCalcDays(d){document.getElementById('calc-days').value=d;runCalc();}
+
+function addCalendarDays(iso,n){
+  const d=new Date(iso+'T00:00:00');
+  d.setDate(d.getDate()+n);
+  return d;
+}
+function addBusinessDays(iso,n){
+  const d=new Date(iso+'T00:00:00');
+  let added=0;
+  while(added<n){
+    d.setDate(d.getDate()+1);
+    const dow=d.getDay();
+    if(dow!==0&&dow!==6)added++;
+  }
+  return d;
+}
+function dateToISO(d){return d.toISOString().slice(0,10);}
+
+function runCalc(){
+  const start=document.getElementById('calc-start').value;
+  const days=parseInt(document.getElementById('calc-days').value);
+  const mode=document.getElementById('calc-mode').value;
+  const out=document.getElementById('calc-output');
+  if(!start||isNaN(days)||days<0){
+    out.innerHTML=`<div style="margin-top:14px;color:var(--muted);font-size:.85rem">Informe a data inicial e o prazo em dias.</div>`;
+    return;
+  }
+  const result=mode==='uteis'?addBusinessDays(start,days):addCalendarDays(start,days);
+  const dow=result.getDay();
+  const isWeekend=dow===0||dow===6;
+  const dowNames=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+
+  // quick reference: a few common terms
+  const quickTerms=[7,14,21,28,30];
+  let quickHtml='';
+  if(mode==='corridos'){
+    quickHtml=`<div class="calc-quick">
+      <div style="font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:6px">Outros prazos a partir de ${fmtFullDate(start).split(',')[1].trim()}</div>
+      ${quickTerms.map(t=>{
+        const r=addCalendarDays(start,t);
+        const w=r.getDay()===0||r.getDay()===6;
+        return `<div class="calc-quick-row"><span>${t} dias</span><span class="mono">${fmtFullDate(dateToISO(r)).split(',')[1].trim()}${w?' ⚠':''}</span></div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  out.innerHTML=`
+    <div class="calc-result">
+      <div class="calc-result-label">Vencimento — ${days} ${mode==='uteis'?'dias úteis':'dias corridos'}</div>
+      <div class="calc-result-date">${result.toLocaleDateString('pt-BR')}</div>
+      <div class="calc-result-dow">${dowNames[dow]}</div>
+    </div>
+    ${isWeekend?`<div class="calc-warn">${ic('calendar')} Cai num ${dowNames[dow]}. Bancos podem processar no próximo dia útil.</div>`:''}
+    ${quickHtml}
+  `;
+}
+
+// ── Cleanup old orders ───────────────────────────────────────────────────────
+function renderCleanupInfo(){
+  document.getElementById('b-cleanup').innerHTML=ic('trash')+' Limpar histórico';
+  updateCleanupInfo();
+  document.getElementById('cleanup-range').onchange=updateCleanupInfo;
+}
+function updateCleanupInfo(){
+  const range=parseInt(document.getElementById('cleanup-range').value);
+  const cutoff=addDays(today(),-range);
+  const toRemove=db.dailyOrders.filter(o=>o.date<cutoff);
+  const info=document.getElementById('cleanup-info');
+  if(!toRemove.length){
+    info.innerHTML=`<span style="color:var(--moss)">Nenhum pedido para remover neste período.</span>`;
+  }else{
+    const val=toRemove.reduce((s,o)=>s+sumMeds(o.meds),0);
+    info.innerHTML=`Serão removidos <strong>${toRemove.length} pedido(s)</strong> anteriores a ${cutoff.split('-').reverse().join('/')} (valor histórico ${fmt(val)}).`;
+  }
+}
+function cleanupOrders(){
+  const range=parseInt(document.getElementById('cleanup-range').value);
+  const cutoff=addDays(today(),-range);
+  const toRemove=db.dailyOrders.filter(o=>o.date<cutoff);
+  if(!toRemove.length){toast('Nenhum pedido para remover');return;}
+  if(!confirm(`Limpar histórico de pedidos?\n\n• ${toRemove.length} pedido(s) anteriores a ${cutoff.split('-').reverse().join('/')} serão removidos\n• Clientes, lista de espera e resumo mensal NÃO são afetados\n\nDica: faça um backup antes, se quiser guardar o histórico.\n\nContinuar?`))return;
+  db.dailyOrders=db.dailyOrders.filter(o=>o.date>=cutoff);
+  saveDB();
+  updateCleanupInfo();renderCalendar();renderDaySummary();renderFilterbar();renderDaily();renderTabs();
+  toast(`${toRemove.length} pedido(s) removido(s)`);
+}
+
+// ── Backup / Import ──────────────────────────────────────────────────────────
+function exportBackup(){
+  const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`farmapedidos_${today()}.json`;
+  a.click();URL.revokeObjectURL(a.href);
+  changesSinceBackup=0;
+  document.getElementById('btn-backup').classList.remove('alert');
+  document.getElementById('btn-backup').title='';
+  toast('Backup exportado');
+}
+function importBackup(ev){
+  const file=ev.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=async e=>{
+    try{
+      const imp=JSON.parse(e.target.result);
+      if(!Array.isArray(imp.clients)||!Array.isArray(imp.dailyOrders)){toast('Arquivo inválido');return;}
+      if(!confirm(`Importar backup?\n\nIsso substituirá todos os dados atuais.\n\n• ${imp.clients.length} cliente(s)\n• ${imp.dailyOrders.length} pedido(s)\n• ${(imp.wishlist||[]).length} item(ns) na lista de espera\n\nContinuar?`))return;
+      db={clients:imp.clients,dailyOrders:imp.dailyOrders,wishlist:imp.wishlist||[],monthlyStatus:imp.monthlyStatus||{},dismissedSchedule:imp.dismissedSchedule||[]};
+      ensureShape();
+      await saveDB();
+      renderDaily();renderDaySummary();renderFilterbar();renderTabs();
+      toast('Dados importados');
+    }catch(err){toast('Erro ao ler arquivo');}
+    ev.target.value='';
+  };
+  r.readAsText(file);
+}
+
+// ══ v6 — Novas funções ═══════════════════════════════════════════════════════
+
+// ── Tema claro/escuro ────────────────────────────────────────────────────────
+function applyTheme(){
+  let t='light';
+  try{t=localStorage.getItem('farma_theme')||'light';}catch(e){}
+  document.documentElement.setAttribute('data-theme',t);
+  const b=document.getElementById('btn-theme');
+  if(b)b.innerHTML=ic(t==='dark'?'sun':'moon')+(t==='dark'?' Claro':' Escuro');
+}
+function toggleTheme(){
+  let cur='light';
+  try{cur=localStorage.getItem('farma_theme')||'light';}catch(e){}
+  const t=cur==='dark'?'light':'dark';
+  try{localStorage.setItem('farma_theme',t);}catch(e){}
+  applyTheme();
+}
+
+// ── Desfazer exclusão ────────────────────────────────────────────────────────
+function stashUndo(kind,payload,msg){
+  undoBuf={kind,payload};
+  clearTimeout(undoTimer);
+  const t=document.getElementById('toast');
+  t.innerHTML=`${msg} <button onclick="doUndo()">Desfazer</button>`;
+  t.classList.add('show');
+  undoTimer=setTimeout(()=>{t.classList.remove('show');undoBuf=null;},6000);
+}
+function doUndo(){
+  if(!undoBuf)return;
+  const {kind,payload}=undoBuf;
+  undoBuf=null;clearTimeout(undoTimer);
+  document.getElementById('toast').classList.remove('show');
+  if(kind==='order'){
+    db.dailyOrders.push(payload.order);
+    if(payload.dismissed&&payload.dismissed.length)
+      db.dismissedSchedule=(db.dismissedSchedule||[]).filter(k=>!payload.dismissed.includes(k));
+  }
+  if(kind==='reprog'){
+    const c=db.clients.find(x=>x.id===payload.clientId);
+    if(c)(payload.alterados||[]).forEach(a=>{
+      const m=(c.meds||[]).find(x=>x.id===a.medId);
+      if(m)m.schedDay=a.antes;
+    });
+    if(payload.dismissed&&payload.dismissed.length)
+      db.dismissedSchedule=(db.dismissedSchedule||[]).filter(k=>!payload.dismissed.includes(k));
+  }
+  if(kind==='wish')db.wishlist.push(payload.wish);
+  if(kind==='towish'){
+    db.wishlist=db.wishlist.filter(w=>!payload.wishIds.includes(w.id));
+    (payload.removedOrders||[]).forEach(o=>{if(!db.dailyOrders.find(x=>x.id===o.id))db.dailyOrders.push(o);});
+    (payload.restore||[]).forEach(r=>{
+      const o=db.dailyOrders.find(x=>x.id===r.orderId);
+      if(!o)return;
+      o.meds=o.meds||[];
+      o.meds.splice(Math.min(r.index,o.meds.length),0,r.med);
+    });
+    db.dailyOrders.forEach(o=>syncOrderStatus(o));
+  }
+  if(kind==='client'){
+    db.clients.push(payload.client);
+    Object.entries(payload.ms||{}).forEach(([m,v])=>{
+      if(!db.monthlyStatus[m])db.monthlyStatus[m]={};
+      db.monthlyStatus[m][payload.client.id]=v;
+    });
+  }
+  saveDB();refreshAll();
+  setTimeout(()=>toast('Restaurado'),50);
+}
+function refreshAll(){
+  renderTabs();renderDaySummary();renderFilterbar();renderDaily();
+  if(!document.getElementById('tab-wishlist').classList.contains('hidden')){renderWishFilterbar();renderWishlist();}
+  if(!document.getElementById('tab-clients').classList.contains('hidden'))renderClients();
+  if(!document.getElementById('tab-monthly').classList.contains('hidden'))renderMonthly();
+}
+
+// ── Pendências de dias anteriores ────────────────────────────────────────────
+function getOverdue(){
+  const t=today();
+  return db.dailyOrders.filter(o=>o.date<t&&o.status!=='received');
+}
+function renderOverdue(){
+  const box=document.getElementById('overdue-box');if(!box)return;
+  const late=getOverdue().sort((a,b)=>a.date<b.date?-1:1);
+  if(!late.length){box.innerHTML='';return;}
+  const wasOpen=!document.getElementById('overdue-list')?.classList.contains('hidden');
+  const val=late.reduce((s,o)=>s+sumMeds(o.meds),0);
+  box.innerHTML=`<div class="overdue">
+    <div class="overdue-head" onclick="document.getElementById('overdue-list').classList.toggle('hidden')">
+      ${ic('alert')}<span><strong>${late.length} pedido(s) de dias anteriores</strong> ainda não recebidos${val>0?` · <span class="num">${fmt(val)}</span>`:''}</span>
+      <span style="margin-left:auto;font-size:.74rem;text-decoration:underline">mostrar / ocultar</span>
+    </div>
+    <div id="overdue-list" class="${wasOpen?'':'hidden'}">
+      ${late.map(o=>`<div class="overdue-item">
+        <span style="flex:1;min-width:140px"><b>${esc(o.client)}</b> <span style="color:var(--muted)">· ${o.date.split('-').reverse().join('/')} · ${SL[o.status]}${sumMeds(o.meds)>0?' · '+fmt(sumMeds(o.meds)):''}</span></span>
+        <button class="btn btn-o btn-xs" onclick="goToDate('${o.date}')">Abrir dia</button>
+        <button class="btn btn-amber btn-xs" onclick="moveOrderToToday('${o.id}')">Trazer p/ hoje</button>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+function moveOrderToToday(id){
+  const o=db.dailyOrders.find(x=>x.id===id);if(!o)return;
+  o.date=today();
+  saveDB();
+  currentDate=today();
+  renderDaySummary();renderFilterbar();renderDaily();
+  toast('Pedido movido para hoje');
+}
+
+// ── Busca global ─────────────────────────────────────────────────────────────
+function openSearch(){
+  document.getElementById('search-overlay').classList.remove('hidden');
+  const i=document.getElementById('gsearch');
+  i.value='';
+  document.getElementById('gsearch-results').innerHTML='<div class="picker-empty">Digite para buscar em pedidos, clientes e lista de espera.</div>';
+  setTimeout(()=>i.focus(),50);
+}
+function runSearch(){
+  const q=document.getElementById('gsearch').value.trim().toLowerCase();
+  const out=document.getElementById('gsearch-results');
+  if(q.length<2){out.innerHTML='<div class="picker-empty">Digite ao menos 2 letras.</div>';return;}
+  const hit=v=>String(v||'').toLowerCase().includes(q);
+  const res=[];
+  [...db.dailyOrders].sort((a,b)=>a.date<b.date?1:-1).forEach(o=>{
+    const medHit=(o.meds||[]).find(m=>hit(m.name));
+    if(hit(o.client)||hit(o.obs)||medHit)
+      res.push({t:'Pedido',name:o.client+(medHit?' — '+medHit.name:''),sub:`${o.date.split('-').reverse().join('/')} · ${SL[o.status]}${sumMeds(o.meds)>0?' · '+fmt(sumMeds(o.meds)):''}`,act:`closeModal('search-overlay');goToDate('${o.date}')`});
+  });
+  db.clients.forEach(c=>{
+    if(hit(c.name)||hit(c.phone)||(c.meds||[]).some(m=>hit(m.name)))
+      res.push({t:'Cliente',name:c.name,sub:`${(c.meds||[]).length} med · ${fmt(sumMeds(c.meds))}/mês`,act:`closeModal('search-overlay');switchTab('clients');openClientModal('${c.id}')`});
+  });
+  db.wishlist.forEach(w=>{
+    if(hit(w.name)||hit(w.client)||hit(w.supplier)||hit(w.notes))
+      res.push({t:'Espera',name:w.name,sub:w.client?('para '+w.client):TAGS[w.tag||'gray'].label,act:`closeModal('search-overlay');switchTab('wishlist');openWishModal('${w.id}')`});
+  });
+  if(!res.length){out.innerHTML='<div class="picker-empty">Nada encontrado com esse termo.</div>';return;}
+  out.innerHTML=res.slice(0,40).map(r=>`<div class="picker-item" onclick="${r.act}">
+    <div style="flex:1;min-width:0"><strong>${esc(r.name)}</strong><div style="color:var(--muted);font-size:.74rem;margin-top:1px">${esc(r.sub)}</div></div>
+    <span class="pill">${r.t}</span>
+  </div>`).join('')+(res.length>40?`<div class="picker-empty">Mostrando 40 de ${res.length}. Refine a busca.</div>`:'');
+}
+
+// ── Autocomplete de produtos ─────────────────────────────────────────────
+function buildMedOptions(){
+  const set=new Set();
+  db.clients.forEach(c=>(c.meds||[]).forEach(m=>m.name&&set.add(m.name)));
+  db.dailyOrders.forEach(o=>(o.meds||[]).forEach(m=>m.name&&set.add(m.name)));
+  db.wishlist.forEach(w=>w.name&&set.add(w.name));
+  const el=document.getElementById('med-options');
+  if(el)el.innerHTML=[...set].sort((a,b)=>a.localeCompare(b,'pt-BR')).slice(0,500).map(n=>`<option value="${esc(n)}">`).join('');
+}
+
+// ── Duplicar pedido ──────────────────────────────────────────────────────────
+function duplicateDaily(id){
+  const o=db.dailyOrders.find(x=>x.id===id);if(!o)return;
+  openDailyModal();
+  editDailyId=null;
+  document.getElementById('daily-modal-title').textContent='Duplicar pedido';
+  document.getElementById('daily-modal-sub').textContent='Cópia de "'+o.client+'" — ajuste e salve como novo';
+  document.getElementById('d-client').value=o.client;
+  document.getElementById('d-phone').value=o.phone||'';
+  document.getElementById('d-date').value=currentDate;
+  document.getElementById('d-status').value='pending';
+  document.getElementById('d-obs').value=o.obs||'';
+  document.getElementById('d-meds').innerHTML='';
+  (o.meds||[]).forEach(m=>addMedRow('d-meds',m.name,m.qty,m.price,m.notes));
+  recalcModalTotal();
+}
+
+// ── Avisar cliente via WhatsApp ──────────────────────────────────────────────
+function notifyWaUrl(o){
+  const base=waLink(o.phone);if(!base)return '#';
+  let items=(o.meds||[]).filter(m=>m.istatus==='received');
+  if(!items.length)items=(o.meds||[]).filter(m=>isReceived(m)||o.status==='received');
+  const meds=items.map(m=>`- ${m.name}${m.qty?' ('+m.qty+')':''}`).join('\n');
+  const msg=`Olá, ${o.client}! Seu pedido chegou na farmácia:\n${meds}\n\nPode passar aqui para retirar quando quiser. Qualquer coisa é só chamar!`;
+  return base+'?text='+encodeURIComponent(msg);
+}
+function markNotified(id){
+  const o=db.dailyOrders.find(x=>x.id===id);if(!o)return;
+  o.notified=true;
+  saveDB();
+  setTimeout(()=>renderDaily(),400);
+}
+
+// ── Estatísticas (Resumo mensal) ─────────────────────────────────────────────
+function renderInsights(month){
+  const box=document.getElementById('insights-box');if(!box)return;
+  const [y,m]=month.split('-').map(Number);
+  const months=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(y,m-1-i,1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+  const totals=months.map(mk=>{
+    const os=db.dailyOrders.filter(o=>o.date.startsWith(mk));
+    return {mk,v:os.reduce((s,o)=>s+sumMeds(o.meds),0),n:os.length};
+  });
+  const max=Math.max(1,...totals.map(t=>t.v));
+  const mo=db.dailyOrders.filter(o=>o.date.startsWith(month));
+  const byClient={},byMed={};
+  mo.forEach(o=>{
+    byClient[o.client]=(byClient[o.client]||0)+sumMeds(o.meds);
+    (o.meds||[]).forEach(md=>{if(md.name)byMed[md.name]=(byMed[md.name]||0)+1;});
+  });
+  const topC=Object.entries(byClient).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const topM=Object.entries(byMed).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  if(!db.dailyOrders.length){box.innerHTML='';return;}
+  box.innerHTML=`
+    <div class="section-head" style="margin-top:30px">
+      <div>
+        <div class="section-title" style="font-size:1.2rem">Estatísticas</div>
+        <div class="section-meta">Calculado a partir dos pedidos do dia registrados no programa</div>
+      </div>
+    </div>
+    <div class="insight-card" style="margin-top:0">
+      <div class="insight-title">Valor combinado — últimos 6 meses</div>
+      ${totals.map(t=>`<div class="bar-row">
+        <span class="bar-lbl">${fmtMonth(t.mk).split(' de ')[0].slice(0,3).toLowerCase()}/${t.mk.slice(2,4)}</span>
+        <span class="bar-track"><span class="bar-fill" style="width:${Math.round(t.v/max*100)}%"></span></span>
+        <span class="bar-val num">${fmt(t.v)} <span style="color:var(--subtle)">· ${t.n} ped.</span></span>
+      </div>`).join('')}
+    </div>
+    <div class="insight-grid">
+      <div class="insight-card">
+        <div class="insight-title">Top clientes de ${fmtMonth(month).toLowerCase()}</div>
+        ${topC.length?topC.map(([n,v],i)=>`<div class="rank-row"><span class="rank-n">${i+1}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n)}</span><span class="num" style="color:var(--forest);font-weight:600">${fmt(v)}</span></div>`).join(''):'<div style="color:var(--muted);font-size:.82rem">Sem pedidos neste mês ainda.</div>'}
+      </div>
+      <div class="insight-card">
+        <div class="insight-title">Produtos mais pedidos</div>
+        ${topM.length?topM.map(([n,v],i)=>`<div class="rank-row"><span class="rank-n">${i+1}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n)}</span><span class="num">${v}×</span></div>`).join(''):'<div style="color:var(--muted);font-size:.82rem">Sem pedidos neste mês ainda.</div>'}
+      </div>
+    </div>`;
+}
+
+// ── Exportar CSV do mês ──────────────────────────────────────────────────────
+function exportMonthCSV(){
+  const month=document.getElementById('monthFilter').value||thisMonth();
+  const mo=db.dailyOrders.filter(o=>o.date.startsWith(month)).sort((a,b)=>a.date<b.date?-1:1);
+  if(!mo.length){toast('Nenhum pedido neste mês para exportar');return;}
+  const rows=[['Data','Cliente','Telefone','Situação','Produto','Qtd','Status item','Valor (R$)','Obs. item','Obs. pedido']];
+  mo.forEach(o=>{
+    if((o.meds||[]).length)
+      o.meds.forEach(m=>rows.push([o.date.split('-').reverse().join('/'),o.client,o.phone||'',SL[o.status],m.name,m.qty||'',IL[m.istatus||'pending'],String(m.price||0).replace('.',','),m.notes||'',o.obs||'']));
+    else rows.push([o.date.split('-').reverse().join('/'),o.client,o.phone||'',SL[o.status],'','','','','',o.obs||'']);
+  });
+  const csv='\ufeff'+rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`farmapedidos_${month}.csv`;
+  a.click();URL.revokeObjectURL(a.href);
+  toast('CSV exportado — abre direto no Excel');
+}
+
+// ── Keyboard / outside click ─────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openSearch();return;}
+  if(e.key==='Escape'){
+    const opens=[...document.querySelectorAll('.overlay:not(.hidden)')];
+    if(opens.length)requestCloseModal(opens[opens.length-1].id);
+    return;
+  }
+  const busy=/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||'')||document.querySelector('.overlay:not(.hidden)');
+  if(busy)return;
+  if(e.key==='/'){e.preventDefault();openSearch();return;}
+  if(!document.getElementById('tab-daily').classList.contains('hidden')){
+    if(e.key==='ArrowLeft')navDay(-1);
+    if(e.key==='ArrowRight')navDay(1);
+    if(e.key.toLowerCase()==='t')navDay(0);
+    if(e.key.toLowerCase()==='n')openDailyModal();
+  }
+});
+document.querySelectorAll('.overlay').forEach(o=>{o.addEventListener('click',e=>{
+  if(e.target!==o)return;
+  // Modais de pedido/cliente NÃO fecham ao clicar fora — evita perder o que está digitado
+  if(PROTECTED_MODALS.includes(o.id)){shakeModal(o.id);return;}
+  o.classList.add('hidden');
+});});
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+async function init(){
+  await loadDB();
+  applyTheme();
+  setStaticUI();
+  document.getElementById('monthFilter').value=thisMonth();
+  renderTabs();renderDaySummary();renderFilterbar();renderDaily();
+}
+init();
+</script>
+</body>
+</html>

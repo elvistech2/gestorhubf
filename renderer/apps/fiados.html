@@ -1,0 +1,2818 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fiados — {marca}</title>
+    <script src="../shared/marca.js"></script>
+<script src="../shared/db-storage.js" data-app="fiados"></script>
+    <script src="../vendor/tailwind.min.js"></script>
+    <script src="../vendor/jspdf.umd.min.js"></script>
+    <script src="../vendor/jspdf.plugin.autotable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Zilla+Slab:wght@500;600;700&family=Spline+Sans+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #F1EEE4;
+            --card-bg: #FCFBF6;
+            --text-main: #26302B;
+            --text-sub: #737C6F;
+            --border: #E3DDCF;
+            --th-bg: #EDE8DC;
+            --input-border: #D6D0C1;
+            --input-bg: #FFFFFF;
+            --input-text: #26302B;
+            --accent: #1F7A55;
+            --accent-hover: #17603F;
+            --accent-soft: rgba(31,122,85,0.10);
+            --success: #2E9E6B;
+            --success-hover: #24855A;
+            --debt: #B4432E;
+            --debt-hover: #93361F;
+            --overdue: #A5341F;
+            --warn: #B0791E;
+            --warn-hover: #916218;
+            --paper-line: #E3DDCF;
+            --mono: 'Spline Sans Mono', ui-monospace, 'Courier New', monospace;
+            --slab: 'Zilla Slab', Georgia, serif;
+        }
+        body.dark {
+            --bg: #12140F;
+            --card-bg: #1B1E17;
+            --text-main: #ECEAE0;
+            --text-sub: #99A08F;
+            --border: #2C3026;
+            --th-bg: #22261D;
+            --input-border: #383D30;
+            --input-bg: #22261D;
+            --input-text: #ECEAE0;
+            --accent: #3DA57C;
+            --accent-hover: #4FB98D;
+            --accent-soft: rgba(61,165,124,0.14);
+            --success: #46B98D;
+            --success-hover: #58C79B;
+            --debt: #E0765C;
+            --debt-hover: #EA8067;
+            --overdue: #E0765C;
+            --warn: #D69A3C;
+            --warn-hover: #E0A952;
+            --paper-line: #2C3026;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            transition: background-color 0.3s, color 0.3s;
+            margin: 0;
+        }
+        /* ocupa a largura da janela em vez de uma coluna estreita no meio */
+        .container-fiados {
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 1.75rem 2.5rem;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 0.85rem;
+            box-shadow: 0 1px 2px rgba(38,48,43,0.04), 0 8px 22px rgba(38,48,43,0.05);
+            padding: 1.6rem 1.75rem;
+            margin-bottom: 1.25rem;
+            border: 1px solid var(--border);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        /* ===== Papel timbrado (cabeçalho) ===== */
+        .letterhead {
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin: 0 -1.75rem 1.5rem;
+            padding: 1.6rem 1.75rem 1.5rem;
+            background:
+                linear-gradient(135deg, var(--accent-soft), transparent 62%),
+                var(--card-bg);
+            border-bottom: 1px solid var(--border);
+        }
+        /* cruz gigante de marca d'água, dá profundidade sem poluir */
+        .letterhead::after {
+            content: '';
+            position: absolute;
+            right: 2.2rem; top: 50%;
+            width: 190px; height: 190px;
+            transform: translateY(-50%) rotate(-12deg);
+            background: var(--accent);
+            opacity: 0.05;
+            pointer-events: none;
+            clip-path: polygon(38% 0, 62% 0, 62% 38%, 100% 38%, 100% 62%, 62% 62%, 62% 100%, 38% 100%, 38% 62%, 0 62%, 0 38%, 38% 38%);
+        }
+        .brand { display: flex; align-items: center; gap: 1rem; position: relative; }
+        .rx-cross {
+            width: 54px; height: 54px;
+            border-radius: 0.85rem;
+            background: linear-gradient(140deg, var(--accent), var(--accent-hover));
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            box-shadow: inset 0 0 0 3px rgba(255,255,255,0.18), 0 6px 16px var(--accent-soft);
+        }
+        .rx-cross svg { width: 30px; height: 30px; }
+        .brand h1 {
+            font-family: var(--slab);
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.015em;
+            color: var(--text-main);
+            line-height: 1.05;
+        }
+        .brand p {
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--accent);
+            margin-top: 0.3rem;
+        }
+        .letterhead-rule { display: none; }
+
+        /* ===== Resumo: cartões soltos, respirando ===== */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+            gap: 0.85rem;
+            margin-bottom: 1.5rem;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            overflow: visible;
+        }
+        .summary-card {
+            position: relative;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1rem 1.15rem 1.05rem;
+            text-align: left;
+            overflow: hidden;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 3px;
+            background: var(--accent);
+            opacity: 0.55;
+        }
+        .summary-card:nth-child(2)::before { background: var(--debt); }
+        .summary-card:nth-child(3)::before { background: var(--debt); }
+        .summary-card:nth-child(4)::before { background: var(--overdue); }
+        .summary-card:nth-child(5)::before { background: var(--success); }
+        .summary-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(38,48,43,0.09);
+        }
+        .summary-card .label {
+            font-family: var(--slab);
+            font-size: 0.71rem;
+            color: var(--text-sub);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.09em;
+        }
+        .summary-card .value {
+            font-family: var(--mono);
+            font-size: 1.75rem;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            margin-top: 0.4rem;
+            letter-spacing: -0.03em;
+            line-height: 1.05;
+        }
+
+        .money { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.4rem;
+            font-weight: 600;
+            font-size: 0.86rem;
+            transition: all 0.15s;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            border: none;
+            letter-spacing: 0.01em;
+        }
+        .btn:active { transform: translateY(1px); }
+        .btn-primary { background-color: var(--accent); color: #fff; }
+        .btn-primary:hover { background-color: var(--accent-hover); }
+        .btn-secondary { background-color: #6b7068; color: #fff; }
+        .btn-secondary:hover { background-color: #565b53; }
+        .btn-danger { background-color: var(--debt); color: #fff; }
+        .btn-danger:hover { background-color: var(--debt-hover); }
+        .btn-success { background-color: var(--success); color: #fff; }
+        .btn-success:hover { background-color: var(--success-hover); }
+        .btn-warning { background-color: var(--warn); color: #fff; }
+        .btn-warning:hover { background-color: var(--warn-hover); }
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-sub);
+            border: 1px solid var(--border);
+        }
+        .btn-ghost:hover { background: var(--th-bg); color: var(--text-main); }
+        .btn-xs { padding: 0.28rem 0.65rem; font-size: 0.72rem; border-radius: 0.3rem; }
+        .btn-sm { padding: 0.42rem 0.85rem; font-size: 0.8rem; }
+        .input-field {
+            width: 100%;
+            padding: 0.65rem 0.85rem;
+            border: 1px solid var(--input-border);
+            border-radius: 0.4rem;
+            margin-bottom: 0.85rem;
+            background: var(--input-bg);
+            color: var(--input-text);
+            font-size: 0.9rem;
+            transition: border-color 0.15s, box-shadow 0.15s, background 0.3s;
+            font-family: 'Inter', sans-serif;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-soft);
+        }
+        .search-container { position: relative; margin-bottom: 1rem; }
+        .search-container input { padding-left: 2.5rem; margin-bottom: 0; }
+        .search-icon {
+            position: absolute;
+            left: 0.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-sub);
+        }
+        #messageBox {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 0.9rem 1.4rem;
+            border-radius: 0.5rem;
+            color: white;
+            z-index: 9999;
+            display: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            box-shadow: 0 10px 30px rgba(38,48,43,0.22);
+            max-width: 320px;
+            animation: slideIn 0.25s ease;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        #messageBox.success { background-color: var(--accent); }
+        #messageBox.error { background-color: var(--debt); }
+        #messageBox.warning { background-color: var(--warn); }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td {
+            padding: 0.7rem 0.85rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.875rem;
+            color: var(--text-main);
+        }
+        th {
+            background-color: var(--th-bg);
+            font-family: var(--slab);
+            font-weight: 600;
+            font-size: 0.74rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-sub);
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background-color: var(--th-bg); }
+        .balance-positive { color: var(--accent); }
+        .balance-negative { color: var(--debt); }
+        .balance-zero { color: var(--text-sub); }
+        #customerBalance { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+        /* lista em grade: aproveita a largura em vez de uma coluna só */
+        #customerList {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 0.7rem;
+            align-items: start;
+        }
+        #customerList .no-results { grid-column: 1 / -1; }
+        .customer-card {
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--border);
+            border-radius: 0.6rem;
+            padding: 1rem 1.2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.9rem;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+            background: var(--card-bg);
+            margin-bottom: 0;
+            min-height: 104px;
+        }
+        .cc-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.32rem; }
+        .cc-nome {
+            font-weight: 600; font-size: 1rem; color: var(--accent);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        /* altura reservada mesmo sem selo de atraso — mantém o alinhamento */
+        .cc-linha { display: flex; align-items: center; gap: 0.4rem; min-height: 22px; flex-wrap: wrap; }
+        .cc-contato {
+            font-size: 0.8rem; color: var(--text-sub);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .cc-acoes { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+        .cc-ver { color: var(--accent); font-size: 0.82rem; font-weight: 500; }
+
+        /* ===== Painel de juros de atraso ===== */
+        .juros-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--warn);
+            border-left: 3px solid var(--warn);
+            border-radius: 0.75rem;
+            padding: 1.1rem 1.35rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1.2rem;
+            flex-wrap: wrap;
+        }
+        .juros-panel .jp-tit {
+            font-family: var(--slab);
+            font-weight: 700;
+            color: var(--warn);
+            margin-bottom: 0.3rem;
+        }
+        .juros-panel .jp-txt { font-size: 0.84rem; color: var(--text-sub); line-height: 1.55; }
+        .juros-panel .jp-valor {
+            font-family: var(--mono);
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+            color: var(--warn);
+        }
+        /* ===== Painel de limite do crediário ===== */
+        .limite-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 0.75rem;
+            padding: 1.1rem 1.35rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1.2rem;
+            flex-wrap: wrap;
+        }
+        .limite-panel.lp-estourado { border-color: var(--debt); border-left-color: var(--debt); }
+        .limite-panel .lp-tit {
+            font-family: var(--slab);
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 0.45rem;
+        }
+        .limite-panel.lp-estourado .lp-tit { color: var(--debt); }
+        .limite-panel .lp-valor {
+            font-family: var(--mono);
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .limite-panel.lp-estourado .lp-valor { color: var(--debt); }
+        .limite-panel .lp-txt { font-size: 0.84rem; color: var(--text-sub); line-height: 1.55; margin-top: 0.45rem; }
+        .limite-panel .lp-bar {
+            height: 10px; border-radius: 99px; background: var(--th-bg);
+            overflow: hidden; border: 1px solid var(--border);
+        }
+        .limite-panel .lp-fill { height: 100%; background: var(--accent); transition: width .25s ease; }
+        .limite-panel.lp-estourado .lp-fill { background: var(--debt); }
+
+        /* ===== Análise do crediário (tela) ===== */
+        .modal-box.modal-analise { max-width: 560px; max-height: 88vh; overflow-y: auto; }
+        .an-selo {
+            border: 2px solid var(--accent); border-radius: 0.6rem;
+            padding: 0.7rem 0.9rem; margin-bottom: 0.9rem; text-align: center;
+        }
+        .an-selo-tag { font-size: 0.72rem; font-weight: 700; letter-spacing: .09em; }
+        .an-selo-tit { font-family: var(--slab); font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin-top: 0.15rem; }
+        .an-nums { border: 1px solid var(--border); border-radius: 0.6rem; padding: 0.5rem 0.8rem; margin-bottom: 0.9rem; }
+        .an-linha {
+            display: flex; justify-content: space-between; gap: 0.75rem;
+            font-size: 0.84rem; color: var(--text-sub);
+            padding: 0.28rem 0; border-bottom: 1px dashed var(--border);
+        }
+        .an-linha:last-child { border-bottom: none; }
+        .an-linha b { color: var(--text-main); font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+        .an-bloco { margin-bottom: 0.85rem; }
+        .an-bloco h4 { font-size: 0.78rem; font-weight: 700; letter-spacing: .06em; margin-bottom: 0.35rem; }
+        .an-bloco h4.an-bom { color: var(--success); }
+        .an-bloco h4.an-ruim { color: var(--warn); }
+        .an-bloco ul { margin: 0; padding-left: 1.1rem; }
+        .an-bloco li { font-size: 0.85rem; color: var(--text-sub); line-height: 1.5; margin-bottom: 0.25rem; }
+        .an-acao-tela {
+            background: var(--accent-soft); border-left: 3px solid var(--accent);
+            border-radius: 0.4rem; padding: 0.7rem 0.85rem;
+            font-size: 0.86rem; color: var(--text-main); line-height: 1.5;
+        }
+
+        .customer-card:hover {
+            border-color: var(--accent);
+            border-left-color: var(--accent);
+            box-shadow: 0 6px 18px var(--accent-soft);
+            transform: translateY(-2px);
+        }
+        .customer-card.card-overdue { border-left: 3px solid var(--overdue); }
+        .customer-card.card-overdue:hover { border-left-color: var(--overdue); }
+        .debt-badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 0.3rem;
+            font-family: var(--mono);
+            font-variant-numeric: tabular-nums;
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+        .debt-high { background: rgba(180,67,46,0.12); color: var(--debt); border: 1px solid rgba(180,67,46,0.25); }
+        .debt-medium { background: rgba(176,121,30,0.12); color: var(--warn); border: 1px solid rgba(176,121,30,0.25); }
+        .debt-low { background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(31,122,85,0.22); }
+        .debt-zero { background: var(--th-bg); color: var(--text-sub); border: 1px solid var(--border); }
+        .age-badge {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 0.3rem;
+            font-family: var(--mono);
+            font-size: 0.68rem;
+            font-weight: 600;
+        }
+        .age-ok { background: var(--th-bg); color: var(--text-sub); border: 1px solid var(--border); }
+        .age-late { background: var(--overdue); color: #fff; }
+        .section-box {
+            margin-bottom: 1.5rem;
+            padding: 1.25rem;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            background: var(--card-bg);
+            transition: background 0.3s;
+        }
+        .section-box h3 {
+            font-family: var(--slab);
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dark-toggle {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-sub);
+            border-radius: 0.4rem;
+            padding: 0.45rem 0.9rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .dark-toggle:hover { background: var(--th-bg); color: var(--text-main); border-color: var(--accent); }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(20,26,22,0.55);
+            z-index: 500;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: var(--card-bg);
+            border-radius: 0.6rem;
+            padding: 2rem;
+            max-width: 400px;
+            width: 90%;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 60px rgba(20,26,22,0.35);
+            animation: modalIn 0.2s ease;
+        }
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.94); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .modal-box h3 { font-family: var(--slab); font-size: 1.2rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text-main); }
+        .modal-box p { font-size: 0.88rem; color: var(--text-sub); margin-bottom: 1.5rem; line-height: 1.55; }
+        .whatsapp-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            background: #1F7A55;
+            color: white;
+            border-radius: 0.35rem;
+            padding: 0.25rem 0.7rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.15s;
+        }
+        .whatsapp-link:hover { background: #17603F; }
+        .import-area {
+            border: 2px dashed var(--input-border);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            text-align: center;
+            color: var(--text-sub);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: border-color 0.15s;
+        }
+        .import-area:hover { border-color: var(--accent); }
+        .no-results {
+            text-align: center;
+            padding: 2.5rem 1rem;
+            color: var(--text-sub);
+        }
+        .no-results .icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    </style>
+</head>
+<body>
+
+    <div id="messageBox"></div>
+
+    <!-- Modal de confirmação customizado -->
+    <div id="confirmModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 id="modalTitle">Confirmar ação</h3>
+            <p id="modalText"></p>
+            <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
+                <button class="btn btn-ghost" id="modalCancelBtn">Cancelar</button>
+                <button class="btn btn-danger" id="modalConfirmBtn">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de juros de atraso -->
+    <div id="jurosModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3>⚙ Juros de atraso</h3>
+            <p style="font-size:0.85rem; color:var(--text-sub); margin-bottom:0.9rem;">
+                Nada é cobrado automaticamente. O app só calcula e sugere — o lançamento na conta
+                do cliente só acontece quando você confirmar, ficha por ficha.
+            </p>
+            <label style="font-size:0.8rem; font-weight:600;">Taxa por mês (%)</label>
+            <input type="number" id="jurosTaxaInput" step="0.1" min="0" max="20" class="input-field" placeholder="Ex.: 2">
+            <label style="font-size:0.8rem; font-weight:600;">Carência — só cobra depois de (dias)</label>
+            <input type="number" id="jurosCarenciaInput" step="1" min="0" max="365" class="input-field" placeholder="Ex.: 30">
+            <p style="font-size:0.76rem; color:var(--text-sub); margin-bottom:0.5rem;">
+                Deixe a taxa em <strong>0</strong> para desligar e não mostrar sugestão nenhuma.
+            </p>
+            <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
+                <button class="btn btn-ghost" id="jurosCancelBtn">Cancelar</button>
+                <button class="btn btn-primary" id="jurosSaveBtn">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de limite padrão do crediário -->
+    <div id="limiteModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3>💳 Limite do crediário</h3>
+            <p style="font-size:0.85rem; color:var(--text-sub); margin-bottom:0.9rem;">
+                Este é o limite usado por todo cliente que não tem um limite próprio na ficha.
+                Para mudar só de um cliente, abra a ficha dele e clique em <strong>Alterar limite</strong>.
+            </p>
+            <label style="font-size:0.8rem; font-weight:600;">Limite padrão (R$)</label>
+            <input type="number" id="limitePadraoInput" step="10" min="0" class="input-field" placeholder="Ex.: 150">
+            <p style="font-size:0.76rem; color:var(--text-sub); margin-bottom:0.5rem;">
+                Deixe em <strong>0</strong> para não controlar limite nenhum.
+                O app nunca bloqueia a venda: ao passar do limite ele avisa e você decide.
+            </p>
+            <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
+                <button class="btn btn-ghost" id="limiteCancelBtn">Cancelar</button>
+                <button class="btn btn-primary" id="limiteSaveBtn">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Análise do crediário -->
+    <div id="analiseModal" class="modal-overlay">
+        <div class="modal-box modal-analise">
+            <h3>📊 Análise do crediário</h3>
+            <p style="margin-bottom:0.9rem;">Como está a conta de <strong id="analiseNome"></strong> hoje.</p>
+            <div id="analiseCorpo"></div>
+            <div style="display:flex; gap:0.75rem; justify-content:flex-end; margin-top:1.1rem;">
+                <button class="btn btn-ghost" id="analiseFecharBtn">Fechar</button>
+                <button class="btn btn-primary" id="analiseImprimirBtn">🖨 Imprimir para o cliente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de edição genérico -->
+    <div id="editModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 id="editModalTitle">Editar</h3>
+            <div id="editModalFields"></div>
+            <div style="display:flex; gap:0.75rem; justify-content:flex-end; margin-top:0.5rem;">
+                <button class="btn btn-ghost" id="editModalCancelBtn">Cancelar</button>
+                <button class="btn btn-primary" id="editModalSaveBtn">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fiados">
+
+        <!-- Cabeçalho (papel timbrado) -->
+        <header class="letterhead">
+            <div class="brand">
+                <span class="rx-cross" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9.5 3h5v6h6v5h-6v6h-5v-6h-6v-5h6V3z" fill="#fff"/>
+                    </svg>
+                </span>
+                <div>
+                    <h1 data-marca-nome>Minha Empresa</h1>
+                    <p>Caderneta de fiados</p>
+                </div>
+            </div>
+            <button class="dark-toggle" id="darkToggleBtn" onclick="App.toggleDark()">
+                <span id="darkIcon">🌙</span> <span id="darkLabel">Modo escuro</span>
+            </button>
+        </header>
+        <div class="letterhead-rule"></div>
+
+        <!-- Resumo Geral -->
+        <div class="summary-grid" id="summaryGrid">
+            <div class="summary-card">
+                <div class="label">Total de Clientes</div>
+                <div class="value" id="summaryClients" style="color:var(--accent)">0</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Total em Aberto</div>
+                <div class="value balance-negative" id="summaryTotal">R$ 0,00</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Com Saldo Devedor</div>
+                <div class="value" id="summaryDebtors" style="color:var(--debt)">0</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Atrasados</div>
+                <div class="value" id="summaryOverdue" style="color:var(--overdue)">0</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Quitados</div>
+                <div class="value balance-positive" id="summaryPaid">0</div>
+            </div>
+        </div>
+
+        <!-- LISTA DE CLIENTES -->
+        <div id="customerListView" class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
+                <h2 style="font-size:1.2rem; font-weight:700; color:var(--text-main);">👥 Meus Clientes</h2>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <button id="showAddCustomerFormBtn" class="btn btn-primary btn-sm">+ Novo Cliente</button>
+                    <button id="jurosConfigBtn" class="btn btn-ghost btn-sm" title="Configurar juros de atraso">⚙ Juros</button>
+                    <button id="limiteConfigBtn" class="btn btn-ghost btn-sm" title="Limite padrão do crediário">💳 Limite</button>
+                    <button id="backupAllDataBtn" class="btn btn-success btn-sm">⬇ Backup JSON</button>
+                    <button id="importDataBtn" class="btn btn-ghost btn-sm">⬆ Importar</button>
+                </div>
+            </div>
+
+            <!-- Aviso de backup -->
+            <div id="backupStatus" style="font-size:0.76rem; margin-bottom:0.9rem; display:none;"></div>
+
+            <!-- Busca -->
+            <div class="search-container">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" placeholder="Buscar cliente pelo nome..." class="input-field">
+            </div>
+
+            <!-- Ordenação -->
+            <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+                <span style="font-size:0.78rem; color:var(--text-sub); align-self:center;">Ordenar:</span>
+                <button class="btn btn-ghost btn-xs sort-btn active-sort" data-sort="name">A–Z</button>
+                <button class="btn btn-ghost btn-xs sort-btn" data-sort="debt-desc">Maior Dívida</button>
+                <button class="btn btn-ghost btn-xs sort-btn" data-sort="debt-asc">Menor Dívida</button>
+                <button class="btn btn-ghost btn-xs sort-btn" data-sort="overdue">⏱ Atraso</button>
+            </div>
+
+            <!-- Formulário novo cliente -->
+            <div id="addCustomerFormContainer" class="hidden section-box" style="margin-bottom:1.25rem;">
+                <h3>👤 Novo Cliente</h3>
+                <input type="text" id="customerNameInput" placeholder="Nome do Cliente" class="input-field">
+                <input type="text" id="customerContactInput" placeholder="Telefone / Email / Contato" class="input-field">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                    <input type="number" id="customerLimitInput" step="10" min="0" placeholder="Limite (R$) — vazio usa o padrão" class="input-field">
+                    <select id="customerCicloSelect" class="input-field">
+                        <option value="padrao">Fechamento dia 20 · vence dia 5</option>
+                        <option value="minerador">Minerador: fecha dia 10 · vence dia 25</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:0.5rem;">
+                    <button id="addCustomerBtn" class="btn btn-primary">Salvar</button>
+                    <button id="cancelAddCustomerBtn" class="btn btn-ghost">Cancelar</button>
+                </div>
+            </div>
+
+            <!-- Input oculto para importar -->
+            <input type="file" id="importFileInput" accept=".json" style="display:none">
+
+            <div id="customerList">
+                <div class="no-results"><div class="icon">📋</div>Nenhum cliente cadastrado ainda.</div>
+            </div>
+        </div>
+
+        <!-- DETALHE DO CLIENTE -->
+        <div id="customerDetailView" class="hidden">
+            <div class="card" style="margin-bottom:1rem;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.75rem;">
+                    <div>
+                        <button id="backToListBtn" class="btn btn-ghost btn-sm" style="margin-bottom:0.75rem;">← Voltar</button>
+                        <h2 id="detailCustomerName" style="font-size:1.4rem; font-weight:700; color:var(--text-main);"></h2>
+                        <div id="detailCustomerContactRow" style="display:flex; align-items:center; gap:0.5rem; margin-top:0.25rem; flex-wrap:wrap;">
+                            <p id="detailCustomerContact" style="font-size:0.9rem; color:var(--text-sub);"></p>
+                            <a id="whatsappLink" href="#" target="_blank" class="whatsapp-link" style="display:none;">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+                                WhatsApp
+                            </a>
+                        </div>
+                        <p style="font-size:1.1rem; font-weight:700; margin-top:0.75rem;">
+                            Saldo: <span id="customerBalance" class="font-bold">R$ 0,00</span>
+                        </p>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-self:flex-start; margin-top:2.5rem;">
+                        <button id="editCustomerBtn" class="btn btn-warning btn-sm">✏ Editar</button>
+                        <button id="printWelcomeBtn" class="btn btn-ghost btn-sm" title="Cupom de boas-vindas com as regras do crediário">🎉 Boas-vindas</button>
+                        <button id="analiseBtn" class="btn btn-ghost btn-sm" title="Analisar o crediário e imprimir um aviso para o cliente">📊 Análise</button>
+                        <button id="exportCustomerPdfBtn" class="btn btn-danger btn-sm">📄 PDF</button>
+                        <button id="exportCustomerJsonBtn" class="btn btn-success btn-sm">⬇ JSON</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Limite do crediário -->
+            <div id="limitePanel" class="limite-panel"></div>
+
+            <!-- Juros de atraso: só aparece quando há atraso e taxa configurada -->
+            <div id="jurosPanel" class="juros-panel" style="display:none;"></div>
+
+            <!-- Formulários lado a lado em telas grandes -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;" class="forms-grid">
+                <div class="section-box" style="margin-bottom:0;">
+                    <h3>🛒 Nova Compra</h3>
+                    <input type="text" id="purchaseProductInput" placeholder="Produto/Serviço" class="input-field">
+                    <input type="number" id="purchaseValueInput" placeholder="Valor (R$)" step="0.01" class="input-field">
+                    <input type="date" id="purchaseDateInput" class="input-field">
+                    <button id="addPurchaseBtn" class="btn btn-primary btn-sm" style="width:100%;">Adicionar Compra</button>
+                </div>
+                <div class="section-box" style="margin-bottom:0;">
+                    <h3>💰 Novo Pagamento</h3>
+                    <input type="number" id="paymentAmountInput" placeholder="Valor (R$)" step="0.01" class="input-field">
+                    <input type="date" id="paymentDateInput" class="input-field">
+                    <input type="text" id="paymentNoteInput" placeholder="Observação (opcional)" class="input-field">
+                    <button id="quitarSaldoBtn" class="btn btn-ghost btn-xs" style="width:100%; margin-bottom:0.5rem; display:none;">↧ Quitar saldo total</button>
+                    <button id="addPaymentBtn" class="btn btn-success btn-sm" style="width:100%;">Adicionar Pagamento</button>
+                </div>
+            </div>
+
+            <!-- Histórico de Compras -->
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.75rem;">
+                    <h3 style="font-size:1rem; font-weight:700; color:var(--text-main);">📦 Histórico de Compras</h3>
+                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+                        <span id="selectionInfo" style="font-size:0.78rem; color:var(--text-sub);"></span>
+                        <button id="selectAllPurchasesBtn" class="btn btn-ghost btn-xs">☑ Selecionar tudo</button>
+                        <button id="clearSelectionBtn" class="btn btn-ghost btn-xs">✕ Limpar</button>
+                        <button id="printAbertoBtn" class="btn btn-success btn-xs" title="Imprime só as compras que ainda estão em aberto, já descontando os pagamentos">⚡ Só o que deve</button>
+                        <button id="printCouponBtn" class="btn btn-primary btn-xs">🧾 Imprimir cupom</button>
+                        <button id="printSimplesBtn" class="btn btn-warning btn-xs" title="Folha grande e fácil de entender, para o cliente levar">📄 Versão fácil</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="purchasesTable">
+                        <thead>
+                            <tr>
+                                <th style="width:2.5rem; text-align:center;"><input type="checkbox" id="headerSelectAll" title="Selecionar todas"></th>
+                                <th>Data</th>
+                                <th>Produto/Serviço</th>
+                                <th>Valor</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="purchasesTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Histórico de Pagamentos -->
+            <div class="card">
+                <h3 style="font-size:1rem; font-weight:700; margin-bottom:1rem; color:var(--text-main);">✅ Histórico de Pagamentos</h3>
+                <div class="table-container">
+                    <table id="paymentsTable">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Valor</th>
+                                <th>Observação</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="paymentsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer style="text-align:center; font-size:0.78rem; color:var(--text-sub); padding:1.5rem 0 0.75rem; border-top:1px solid var(--border); margin-top:1rem;">
+        Super Gestor · Fiados
+    </footer>
+
+    <!-- Área do cupom (só aparece na impressão) -->
+    <div id="couponPrintArea"></div>
+
+    <style>
+        @media (max-width: 640px) {
+            .forms-grid { grid-template-columns: 1fr !important; }
+        }
+        .sort-btn.active-sort {
+            background: var(--accent) !important;
+            color: white !important;
+            border-color: var(--accent) !important;
+        }
+
+        /* ===== Cupom (impressão) ===== */
+        #couponPrintArea { display: none; }
+        .purchase-row.selected td { background: var(--accent-soft) !important; }
+
+        @media print {
+            body { background: #fff !important; }
+            body * { visibility: hidden !important; }
+            #couponPrintArea, #couponPrintArea * { visibility: visible !important; }
+            #couponPrintArea {
+                display: block !important;
+                position: absolute;
+                left: 0; top: 0;
+                width: 72mm;
+                margin: 0; padding: 0;
+                color: #000;
+                font-family: 'Courier New', monospace;
+                font-size: 15px;
+                font-weight: 600;
+                line-height: 1.4;
+            }
+            .coupon-center { text-align: center; }
+            .coupon-title { font-size: 18px; font-weight: 700; }
+            .coupon-sub { font-size: 14px; }
+            .coupon-hr { border: none; border-top: 1px dashed #000; margin: 5px 0; }
+            .coupon-line { display: flex; justify-content: space-between; gap: 6px; }
+            .coupon-item-name { flex: 1; word-break: break-word; padding-right: 4px; }
+            .coupon-item-val { white-space: nowrap; }
+            .coupon-total { font-size: 17px; font-weight: 700; }
+            .coupon-small { font-size: 13px; }
+            @page { size: 72mm auto; margin: 0; }
+
+            /* ═══ Versão fácil: mesma bobina de 72mm, letra bem maior ═══ */
+            #couponPrintArea.modo-simples {
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 16px;
+                font-weight: 500;
+                line-height: 1.45;
+                padding: 0 2mm;
+            }
+            .s-topo { text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 9px; }
+            .s-farm { font-size: 17px; font-weight: 700; }
+            .s-sub { font-size: 12px; margin-top: 2px; }
+            .s-nome { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 10px; word-break: break-word; }
+
+            .s-caixa { border: 3px solid #000; padding: 8px 6px; margin-bottom: 10px; text-align: center; }
+            .s-rot { font-size: 13px; font-weight: 700; letter-spacing: .5px; }
+            .s-num { font-size: 34px; font-weight: 700; line-height: 1.05; margin-top: 2px; }
+            .s-num2 { font-size: 24px; font-weight: 700; line-height: 1.05; margin-top: 2px; }
+            .s-obs { font-size: 13px; margin-top: 3px; }
+            .s-pag { border-style: dashed; }
+            .s-lim { border-style: dashed; }
+
+            /* ═══ Cupom de boas-vindas ═══ */
+            .bv-tit { font-size: 20px; font-weight: 700; text-align: center; line-height: 1.15; }
+            .bv-sub { font-size: 13px; text-align: center; margin-top: 3px; }
+            .bv-regra { margin-bottom: 9px; }
+            .bv-rt { font-size: 15px; font-weight: 700; }
+            .bv-rd { font-size: 14px; line-height: 1.42; }
+            .bv-aviso { border: 3px solid #000; padding: 8px 6px; margin: 11px 0 4px;
+                        font-size: 14px; line-height: 1.45; }
+            .bv-aviso-t { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+            .bv-datas { font-size: 14px; line-height: 1.5; margin-top: 4px; }
+
+            /* ═══ Análise do crediário ═══ */
+            .an-sec { font-size: 13px; font-weight: 700; letter-spacing: .5px; margin: 11px 0 4px;
+                      border-bottom: 1px solid #000; padding-bottom: 2px; }
+            .an-num { display: flex; justify-content: space-between; gap: 6px; font-size: 14px; line-height: 1.5; }
+            .an-num b { white-space: nowrap; }
+            .an-obs { font-size: 12.5px; line-height: 1.35; margin-top: 1px; }
+            .an-li { font-size: 13.5px; line-height: 1.4; margin-bottom: 5px; }
+            .an-acao { border: 3px solid #000; padding: 7px 6px; margin-top: 11px;
+                       font-size: 14px; line-height: 1.45; }
+            .an-acao-t { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+            .av-ola { font-size: 15px; font-weight: 700; margin: 10px 0 5px; }
+            .av-p { font-size: 14px; line-height: 1.45; margin-bottom: 7px; }
+
+            .s-secao { font-size: 13px; font-weight: 700; letter-spacing: .5px; margin: 12px 0 5px;
+                       border-bottom: 1px solid #000; padding-bottom: 3px; }
+            /* na bobina não cabe tabela de 3 colunas: cada compra em duas linhas */
+            .s-item { margin-bottom: 7px; }
+            .s-prod { font-size: 16px; font-weight: 700; word-break: break-word; }
+            .s-linha2 { display: flex; justify-content: space-between; gap: 6px; font-size: 14px; }
+
+            .s-rodape { margin-top: 12px; padding-top: 6px; border-top: 1px dashed #000;
+                        font-size: 12px; text-align: center; line-height: 1.5; }
+        }
+    </style>
+
+    <script>
+        const App = {
+            DB_KEY: 'simpleCustomerRecords_v2',
+            customers: [],
+            selectedCustomerId: null,
+            currentView: 'list',
+            sortMode: 'name',
+            searchQuery: '',
+            selectedPurchaseIds: new Set(),
+
+            elements: {
+                messageBox: document.getElementById('messageBox'),
+                customerListView: document.getElementById('customerListView'),
+                showAddCustomerFormBtn: document.getElementById('showAddCustomerFormBtn'),
+                addCustomerFormContainer: document.getElementById('addCustomerFormContainer'),
+                customerNameInput: document.getElementById('customerNameInput'),
+                customerContactInput: document.getElementById('customerContactInput'),
+                customerLimitInput: document.getElementById('customerLimitInput'),
+                customerCicloSelect: document.getElementById('customerCicloSelect'),
+                addCustomerBtn: document.getElementById('addCustomerBtn'),
+                cancelAddCustomerBtn: document.getElementById('cancelAddCustomerBtn'),
+                customerList: document.getElementById('customerList'),
+                backupAllDataBtn: document.getElementById('backupAllDataBtn'),
+                importDataBtn: document.getElementById('importDataBtn'),
+                importFileInput: document.getElementById('importFileInput'),
+                searchInput: document.getElementById('searchInput'),
+
+                customerDetailView: document.getElementById('customerDetailView'),
+                backToListBtn: document.getElementById('backToListBtn'),
+                detailCustomerName: document.getElementById('detailCustomerName'),
+                detailCustomerContact: document.getElementById('detailCustomerContact'),
+                whatsappLink: document.getElementById('whatsappLink'),
+                customerBalance: document.getElementById('customerBalance'),
+
+                purchaseProductInput: document.getElementById('purchaseProductInput'),
+                purchaseValueInput: document.getElementById('purchaseValueInput'),
+                purchaseDateInput: document.getElementById('purchaseDateInput'),
+                addPurchaseBtn: document.getElementById('addPurchaseBtn'),
+                purchasesTableBody: document.getElementById('purchasesTableBody'),
+
+                paymentAmountInput: document.getElementById('paymentAmountInput'),
+                paymentDateInput: document.getElementById('paymentDateInput'),
+                paymentNoteInput: document.getElementById('paymentNoteInput'),
+                addPaymentBtn: document.getElementById('addPaymentBtn'),
+                paymentsTableBody: document.getElementById('paymentsTableBody'),
+
+                exportCustomerJsonBtn: document.getElementById('exportCustomerJsonBtn'),
+                exportCustomerPdfBtn: document.getElementById('exportCustomerPdfBtn'),
+
+                confirmModal: document.getElementById('confirmModal'),
+                modalTitle: document.getElementById('modalTitle'),
+                modalText: document.getElementById('modalText'),
+                modalConfirmBtn: document.getElementById('modalConfirmBtn'),
+                modalCancelBtn: document.getElementById('modalCancelBtn'),
+            },
+
+            _modalCallback: null,
+            _editCallback: null,
+
+            init() {
+                this.loadDarkMode();
+                this.loadCustomers();
+                this.renderCustomerList();
+                this.bindEventListeners();
+                this.updateView();
+                const today = new Date();
+                if (this.elements.purchaseDateInput) this.elements.purchaseDateInput.valueAsDate = today;
+                if (this.elements.paymentDateInput) this.elements.paymentDateInput.valueAsDate = today;
+            },
+
+            loadDarkMode() {
+                if (localStorage.getItem('darkMode') === '1') {
+                    document.body.classList.add('dark');
+                    document.getElementById('darkIcon').textContent = '☀️';
+                    document.getElementById('darkLabel').textContent = 'Modo Claro';
+                }
+            },
+
+            toggleDark() {
+                document.body.classList.toggle('dark');
+                const isDark = document.body.classList.contains('dark');
+                localStorage.setItem('darkMode', isDark ? '1' : '0');
+                document.getElementById('darkIcon').textContent = isDark ? '☀️' : '🌙';
+                document.getElementById('darkLabel').textContent = isDark ? 'Modo Claro' : 'Modo Escuro';
+            },
+
+            showConfirm(title, text, onConfirm) {
+                this.elements.modalTitle.textContent = title;
+                this.elements.modalText.textContent = text;
+                this.elements.confirmModal.classList.add('active');
+                this._modalCallback = onConfirm;
+            },
+
+            closeModal() {
+                this.elements.confirmModal.classList.remove('active');
+                this._modalCallback = null;
+            },
+
+            // Modal de edição genérico.
+            // fields: [{ key, label, type ('text'|'number'|'date'), value, placeholder }]
+            openEditModal(title, fields, onSave) {
+                const box = document.getElementById('editModalFields');
+                document.getElementById('editModalTitle').textContent = title;
+                box.innerHTML = fields.map(f => {
+                    const lab = `<label style="display:block; font-size:0.78rem; color:var(--text-sub); margin-bottom:0.2rem; font-weight:500;">${f.label}</label>`;
+                    if (f.type === 'select') {
+                        const opts = (f.options || []).map(o =>
+                            `<option value="${this.escapeHtml(o.value)}" ${String(o.value) === String(f.value) ? 'selected' : ''}>${this.escapeHtml(o.label)}</option>`
+                        ).join('');
+                        return lab + `<select data-key="${f.key}" class="input-field edit-field">${opts}</select>`;
+                    }
+                    return lab + `
+                    <input type="${f.type || 'text'}" data-key="${f.key}"
+                           class="input-field edit-field"
+                           value="${f.type === 'text' ? this.escapeHtml(f.value ?? '') : (f.value ?? '')}"
+                           ${f.type === 'number' ? 'step="0.01"' : ''}
+                           placeholder="${f.placeholder || ''}">`;
+                }).join('');
+                this._editCallback = onSave;
+                document.getElementById('editModal').classList.add('active');
+                const first = box.querySelector('input');
+                if (first) setTimeout(() => first.focus(), 50);
+            },
+
+            closeEditModal() {
+                document.getElementById('editModal').classList.remove('active');
+                this._editCallback = null;
+            },
+
+            submitEditModal() {
+                if (!this._editCallback) { this.closeEditModal(); return; }
+                const values = {};
+                document.querySelectorAll('#editModalFields .edit-field').forEach(inp => {
+                    values[inp.dataset.key] = inp.value;
+                });
+                const ok = this._editCallback(values); // callback retorna false p/ manter aberto em erro
+                if (ok !== false) this.closeEditModal();
+            },
+
+            editCustomer() {
+                const c = this.customers.find(x => x.id === this.selectedCustomerId);
+                if (!c) return;
+                const padrao = this.loadLimiteCfg().padrao;
+                this.openEditModal('Editar Cliente', [
+                    { key: 'name', label: 'Nome', type: 'text', value: c.name, placeholder: 'Nome do cliente' },
+                    { key: 'contact', label: 'Contato', type: 'text', value: c.contact || '', placeholder: 'Telefone / e-mail' },
+                    {
+                        key: 'limite', type: 'number', value: (c.limite ?? ''),
+                        label: `Limite do crediário (R$) — vazio usa o padrão de R$ ${padrao.toFixed(2).replace('.', ',')}`,
+                        placeholder: 'Ex.: 150 · use 0 para ficha sem limite'
+                    },
+                    {
+                        key: 'ciclo', type: 'select', value: this.getCiclo(c),
+                        label: 'Ciclo de fechamento',
+                        options: [
+                            { value: 'padrao', label: 'Padrão — fecha dia 20, vence dia 5 do mês seguinte' },
+                            { value: 'minerador', label: 'Minerador — fecha dia 10, vence dia 25' }
+                        ]
+                    }
+                ], (v) => {
+                    const name = (v.name || '').trim();
+                    if (!name) { this.showMessage('O nome não pode ficar vazio.', 'error'); return false; }
+                    const raw = String(v.limite ?? '').trim();
+                    if (raw === '') {
+                        delete c.limite;
+                    } else {
+                        const n = parseFloat(raw.replace(',', '.'));
+                        if (isNaN(n) || n < 0) { this.showMessage('Limite inválido.', 'error'); return false; }
+                        c.limite = Math.round(n * 100) / 100;
+                    }
+                    c.ciclo = this.CICLOS[v.ciclo] ? v.ciclo : 'padrao';
+                    c.name = name;
+                    c.contact = (v.contact || '').trim();
+                    this.saveCustomers();
+                    this.renderSelectedCustomerDetails();
+                    this.renderCustomerList();
+                    this.showMessage('Cliente atualizado!');
+                });
+            },
+
+            editPurchase(customerId, purchaseId) {
+                const c = this.customers.find(x => x.id === customerId);
+                if (!c) return;
+                const p = c.purchases.find(x => x.id === purchaseId);
+                if (!p) return;
+                this.openEditModal('Editar Compra', [
+                    { key: 'product', label: 'Produto/Serviço', type: 'text', value: p.product },
+                    { key: 'value', label: 'Valor (R$)', type: 'number', value: p.value },
+                    { key: 'date', label: 'Data', type: 'date', value: p.date }
+                ], (v) => {
+                    const product = (v.product || '').trim();
+                    const value = parseFloat(v.value);
+                    if (!product) { this.showMessage('Informe o produto.', 'error'); return false; }
+                    if (isNaN(value) || value <= 0) { this.showMessage('Valor inválido.', 'error'); return false; }
+                    if (!v.date) { this.showMessage('Informe a data.', 'error'); return false; }
+                    this.checarLimite(c, value, p.value, () => {
+                        p.product = product; p.value = value; p.date = v.date;
+                        c.purchases.sort((a, b) => new Date(b.date + 'T00:00:00') - new Date(a.date + 'T00:00:00'));
+                        this.saveCustomers();
+                        this.renderPurchases(c);
+                        this.updateCustomerBalanceDisplay(c);
+                        this.renderLimitePanel(c);
+                        this.showMessage('Compra atualizada!');
+                    });
+                });
+            },
+
+            editPayment(customerId, paymentId) {
+                const c = this.customers.find(x => x.id === customerId);
+                if (!c) return;
+                const p = c.payments.find(x => x.id === paymentId);
+                if (!p) return;
+                this.openEditModal('Editar Pagamento', [
+                    { key: 'amount', label: 'Valor (R$)', type: 'number', value: p.amount },
+                    { key: 'date', label: 'Data', type: 'date', value: p.date },
+                    { key: 'note', label: 'Observação', type: 'text', value: p.note || '', placeholder: 'Opcional' }
+                ], (v) => {
+                    const amount = parseFloat(v.amount);
+                    if (isNaN(amount) || amount <= 0) { this.showMessage('Valor inválido.', 'error'); return false; }
+                    if (!v.date) { this.showMessage('Informe a data.', 'error'); return false; }
+                    p.amount = amount; p.date = v.date; p.note = (v.note || '').trim();
+                    c.payments.sort((a, b) => new Date(b.date + 'T00:00:00') - new Date(a.date + 'T00:00:00'));
+                    this.saveCustomers();
+                    this.renderPayments(c);
+                    this.updateCustomerBalanceDisplay(c);
+                    this.showMessage('Pagamento atualizado!');
+                });
+            },
+
+            showMessage(text, type = 'success', duration = 3000) {
+                const { messageBox } = this.elements;
+                messageBox.textContent = text;
+                messageBox.className = type;
+                messageBox.style.display = 'block';
+                clearTimeout(this._msgTimer);
+                this._msgTimer = setTimeout(() => { messageBox.style.display = 'none'; }, duration);
+            },
+
+            loadCustomers() {
+                const data = localStorage.getItem(this.DB_KEY);
+                if (data) {
+                    try {
+                        const parsedData = JSON.parse(data);
+                        if (Array.isArray(parsedData)) {
+                            this.customers = parsedData.map(c => ({
+                                ...c,
+                                purchases: Array.isArray(c.purchases) ? c.purchases : [],
+                                payments: Array.isArray(c.payments) ? c.payments : []
+                            }));
+                        } else {
+                            this.customers = [];
+                        }
+                    } catch (e) {
+                        this.customers = [];
+                        this.showMessage('Erro ao carregar dados.', 'error', 5000);
+                    }
+                } else {
+                    this.customers = [];
+                }
+            },
+
+            saveCustomers() {
+                try {
+                    localStorage.setItem(this.DB_KEY, JSON.stringify(this.customers));
+                } catch (e) {
+                    this.showMessage('Não foi possível salvar. Armazenamento cheio?', 'error', 5000);
+                }
+            },
+
+            generateId() {
+                return '_' + Math.random().toString(36).substr(2, 9);
+            },
+
+            /* ═══════ Limite do crediário ═══════
+               Regras iguais às do cartãozinho entregue ao cliente: ciclo padrão fecha
+               dia 20 e vence dia 5 do mês seguinte; mineradores fecham dia 10 e vencem
+               dia 25. O limite NUNCA bloqueia a venda — só avisa e pede confirmação,
+               quem decide é o balcão. Limite 0 = ficha sem teto. */
+            LIMITE_KEY: 'fiadosLimiteCfg',
+            LIMITE_PADRAO: 150,
+
+            CICLOS: {
+                padrao:    { nome: 'Padrão',    fecha: 20, vence: 5,  venceMesSeguinte: true },
+                minerador: { nome: 'Minerador', fecha: 10, vence: 25, venceMesSeguinte: false }
+            },
+
+            loadLimiteCfg() {
+                try {
+                    const d = JSON.parse(localStorage.getItem(this.LIMITE_KEY) || 'null');
+                    const p = Number(d?.padrao);
+                    return { padrao: Number.isFinite(p) && p >= 0 ? p : this.LIMITE_PADRAO };
+                } catch (e) { return { padrao: this.LIMITE_PADRAO }; }
+            },
+            saveLimiteCfg(cfg) {
+                try { localStorage.setItem(this.LIMITE_KEY, JSON.stringify(cfg)); } catch (e) {}
+            },
+
+            // limite desta ficha; sem limite próprio, cai no padrão da loja
+            getLimite(customer) {
+                const v = Number(customer?.limite);
+                if (Number.isFinite(v) && v >= 0) return v;
+                return this.loadLimiteCfg().padrao;
+            },
+
+            getCiclo(customer) {
+                return this.CICLOS[customer?.ciclo] ? customer.ciclo : 'padrao';
+            },
+
+            // quanto ainda dá para comprar (negativo = passou). Infinity se sem limite.
+            getDisponivel(customer) {
+                const lim = this.getLimite(customer);
+                if (lim <= 0) return Infinity;
+                return Math.round((lim - this.calculateBalance(customer)) * 100) / 100;
+            },
+
+            acimaDoLimite(customer) {
+                const d = this.getDisponivel(customer);
+                return d !== Infinity && d < -0.005;
+            },
+
+            // próximo fechamento e o vencimento correspondente, a partir de hoje
+            proximoCiclo(ciclo) {
+                const c = this.CICLOS[this.CICLOS[ciclo] ? ciclo : 'padrao'];
+                const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+                let f = new Date(hoje.getFullYear(), hoje.getMonth(), c.fecha);
+                if (f < hoje) f = new Date(hoje.getFullYear(), hoje.getMonth() + 1, c.fecha);
+                const v = c.venceMesSeguinte
+                    ? new Date(f.getFullYear(), f.getMonth() + 1, c.vence)
+                    : new Date(f.getFullYear(), f.getMonth(), c.vence);
+                return { fechamento: f, vencimento: v };
+            },
+
+            abrirLimiteConfig() {
+                document.getElementById('limitePadraoInput').value = this.loadLimiteCfg().padrao;
+                document.getElementById('limiteModal').classList.add('active');
+            },
+            salvarLimiteConfig() {
+                const v = parseFloat(document.getElementById('limitePadraoInput').value);
+                if (isNaN(v) || v < 0) { this.showMessage('Limite inválido.', 'error'); return; }
+                this.saveLimiteCfg({ padrao: Math.round(v * 100) / 100 });
+                document.getElementById('limiteModal').classList.remove('active');
+                this.showMessage(v > 0
+                    ? `Limite padrão de R$ ${v.toFixed(2).replace('.', ',')} salvo.`
+                    : 'Controle de limite desligado.');
+                this.renderCustomerList();
+                const c = this.customers.find(x => x.id === this.selectedCustomerId);
+                if (c) this.renderLimitePanel(c);
+            },
+
+            renderLimitePanel(customer) {
+                const el = document.getElementById('limitePanel');
+                if (!el) return;
+                const brl = v => `R$ ${v.toFixed(2).replace('.', ',')}`;
+                const dt = d => d.toLocaleDateString('pt-BR');
+                const ciclo = this.getCiclo(customer);
+                const cfgCiclo = this.CICLOS[ciclo];
+                const prox = this.proximoCiclo(ciclo);
+                const linhaCiclo = `${cfgCiclo.nome} · fecha dia ${cfgCiclo.fecha} (${dt(prox.fechamento)}) · vence ${dt(prox.vencimento)}`;
+                const lim = this.getLimite(customer);
+                const proprio = Number.isFinite(Number(customer.limite));
+
+                if (lim <= 0) {
+                    el.className = 'limite-panel';
+                    el.innerHTML = `
+                        <div style="flex:1; min-width:260px;">
+                            <div class="lp-tit">💳 Sem limite de crediário</div>
+                            <div class="lp-txt">Esta ficha não tem teto definido. ${linhaCiclo}.</div>
+                        </div>
+                        <button id="editLimiteBtn" class="btn btn-ghost btn-sm">Definir limite</button>`;
+                } else {
+                    const usado = Math.max(0, this.calculateBalance(customer));
+                    const disp = Math.round((lim - usado) * 100) / 100;
+                    const pct = Math.max(0, Math.min(100, (usado / lim) * 100));
+                    const estourou = disp < -0.005;
+                    el.className = 'limite-panel' + (estourou ? ' lp-estourado' : '');
+                    el.innerHTML = `
+                        <div style="flex:1; min-width:260px;">
+                            <div class="lp-tit">
+                                💳 Limite do crediário: <span class="lp-valor">${brl(lim)}</span>
+                                ${proprio ? '' : '<span style="font-size:0.72rem; font-weight:400; color:var(--text-sub);">(padrão da loja)</span>'}
+                            </div>
+                            <div class="lp-bar"><div class="lp-fill" style="width:${pct.toFixed(1)}%"></div></div>
+                            <div class="lp-txt">
+                                Usado ${brl(usado)} de ${brl(lim)} ·
+                                ${estourou
+                                    ? `<strong style="color:var(--debt)">passou ${brl(Math.abs(disp))} do limite</strong>`
+                                    : `<strong>ainda dá para comprar ${brl(disp)}</strong>`}
+                                <br>${linhaCiclo}
+                            </div>
+                        </div>
+                        <button id="editLimiteBtn" class="btn btn-ghost btn-sm">Alterar limite</button>`;
+                }
+                document.getElementById('editLimiteBtn').addEventListener('click', () => this.editLimite(customer.id));
+            },
+
+            editLimite(customerId) {
+                const c = this.customers.find(x => x.id === customerId);
+                if (!c) return;
+                const padrao = this.loadLimiteCfg().padrao;
+                this.openEditModal('Limite do crediário', [
+                    {
+                        key: 'limite', type: 'number', value: (c.limite ?? ''),
+                        label: `Limite deste cliente (R$) — vazio usa o padrão de R$ ${padrao.toFixed(2).replace('.', ',')}`,
+                        placeholder: 'Ex.: 150 · use 0 para ficha sem limite'
+                    },
+                    {
+                        key: 'ciclo', type: 'select', value: this.getCiclo(c),
+                        label: 'Ciclo de fechamento',
+                        options: [
+                            { value: 'padrao', label: 'Padrão — fecha dia 20, vence dia 5 do mês seguinte' },
+                            { value: 'minerador', label: 'Minerador — fecha dia 10, vence dia 25' }
+                        ]
+                    }
+                ], (v) => {
+                    const raw = String(v.limite ?? '').trim();
+                    if (raw === '') {
+                        delete c.limite;
+                    } else {
+                        const n = parseFloat(raw.replace(',', '.'));
+                        if (isNaN(n) || n < 0) { this.showMessage('Limite inválido.', 'error'); return false; }
+                        c.limite = Math.round(n * 100) / 100;
+                    }
+                    c.ciclo = this.CICLOS[v.ciclo] ? v.ciclo : 'padrao';
+                    this.saveCustomers();
+                    this.renderSelectedCustomerDetails();
+                    this.renderCustomerList();
+                    this.showMessage('Limite atualizado!');
+                });
+            },
+
+            /* Avisa quando a compra estoura o limite. valorAntigo > 0 quando é edição
+               de uma compra já lançada (o valor velho sai da conta antes de comparar). */
+            checarLimite(customer, valorNovo, valorAntigo, aplicar) {
+                const lim = this.getLimite(customer);
+                const saldoDepois = this.calculateBalance(customer) - (valorAntigo || 0) + valorNovo;
+                if (lim <= 0 || saldoDepois <= lim + 0.005) { aplicar(); return; }
+                const brl = v => `R$ ${v.toFixed(2).replace('.', ',')}`;
+                this.showConfirm(
+                    'Passa do limite do crediário',
+                    `${customer.name} tem limite de ${brl(lim)}. Com esta compra a ficha vai para `
+                    + `${brl(saldoDepois)} — ${brl(saldoDepois - lim)} acima do limite. Lançar assim mesmo?`,
+                    aplicar
+                );
+            },
+
+            /* ═══════ Análise do crediário ═══════
+               Diagnóstico da ficha em números: o que está bom, o que precisa
+               melhorar e o que fazer agora. Serve para o balcão decidir e para o
+               cliente levar impresso — por isso o texto fala com ele, não sobre ele. */
+
+            diasEntre(a, b) {
+                return Math.max(0, Math.round(
+                    (new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000));
+            },
+
+            /* Percorre compras e pagamentos em ordem, com o saldo andando junto.
+               É daqui que saem duas respostas que a ficha sozinha não dá:
+               se cada pagamento quitou tudo ou só uma parte, e quantas vezes a
+               conta chegou a zerar (e em quantos dias). */
+            linhaDoTempo(customer) {
+                const evs = [];
+                (customer.purchases || []).forEach(p => evs.push({ tipo: 'compra', data: p.date, valor: p.value }));
+                (customer.payments || []).forEach(p => evs.push({ tipo: 'pagamento', data: p.date, valor: p.amount, note: p.note }));
+                evs.sort((a, b) => {
+                    const d = String(a.data).localeCompare(String(b.data));
+                    if (d !== 0) return d;
+                    return a.tipo === 'compra' ? -1 : 1;   // no mesmo dia, a compra entra antes
+                });
+
+                let saldo = 0, inicioCiclo = null;
+                const pagamentos = [], ciclos = [];
+                evs.forEach(e => {
+                    if (e.tipo === 'compra') {
+                        if (saldo <= 0.005 && !inicioCiclo) inicioCiclo = e.data;
+                        saldo += e.valor;
+                    } else {
+                        const antes = saldo;
+                        saldo -= e.valor;
+                        const quitou = saldo <= 0.005;
+                        pagamentos.push({
+                            data: e.data, valor: e.valor, antes, total: quitou,
+                            cobriu: antes > 0.005 ? Math.min(1, e.valor / antes) : 1,
+                            sobrou: Math.max(0, Math.round(saldo * 100) / 100), note: e.note
+                        });
+                        if (quitou && inicioCiclo) {
+                            ciclos.push({ de: inicioCiclo, ate: e.data, dias: this.diasEntre(inicioCiclo, e.data) });
+                            inicioCiclo = null;
+                        }
+                    }
+                });
+                return { pagamentos, ciclos };
+            },
+
+            /* Parte do saldo que vem de compras mais velhas que a régua de atraso.
+               Aloca os pagamentos nas compras mais antigas primeiro (FIFO), igual
+               ao resto do app faz para calcular a idade da dívida. */
+            valorVencido(customer) {
+                const compras = [...(customer.purchases || [])].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+                let pago = (customer.payments || []).reduce((s, p) => s + p.amount, 0);
+                const corte = new Date(); corte.setHours(0, 0, 0, 0);
+                corte.setDate(corte.getDate() - this.OVERDUE_DAYS);
+                let vencido = 0;
+                for (const c of compras) {
+                    let aberto = c.value;
+                    if (pago > 0) { const usa = Math.min(pago, aberto); aberto -= usa; pago -= usa; }
+                    if (aberto <= 0.005) continue;
+                    if (new Date(c.date + 'T00:00:00') <= corte) vencido += aberto;
+                }
+                return Math.round(vencido * 100) / 100;
+            },
+
+            analisarCrediario(customer) {
+                const brl = v => `R$ ${v.toFixed(2).replace('.', ',')}`;
+                const dt = d => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR');
+                const saldo = Math.round(this.calculateBalance(customer) * 100) / 100;
+                const lim = this.getLimite(customer);
+                const disp = lim > 0 ? Math.round((lim - Math.max(0, saldo)) * 100) / 100 : Infinity;
+                const uso = lim > 0 ? Math.max(0, saldo) / lim : 0;
+                const lt = this.linhaDoTempo(customer);
+                const pags = lt.pagamentos;
+                const ult = pags.length ? pags[pags.length - 1] : null;
+                const ultimos = pags.slice(-3);
+                const parciais = ultimos.filter(p => !p.total).length;
+                const totaisTudo = pags.filter(p => p.total).length;
+                const idade = this.getDebtAgeDays(customer);
+                const vencido = saldo > 0.005 ? this.valorVencido(customer) : 0;
+                const juros = (customer.purchases || []).filter(p => p.juros).reduce((s, p) => s + p.value, 0);
+                const datas = [...(customer.purchases || []), ...(customer.payments || [])]
+                    .map(x => x.date).filter(Boolean).sort();
+                const desde = datas[0] || null;
+                const mesesCliente = desde ? Math.floor(this.diasEntre(desde, this.hoje()) / 30) : 0;
+                const mediaDias = lt.ciclos.length
+                    ? Math.round(lt.ciclos.reduce((s, c) => s + c.dias, 0) / lt.ciclos.length) : null;
+                const prox = this.proximoCiclo(this.getCiclo(customer));
+                const semMovimento = !(customer.purchases || []).length && !(customer.payments || []).length;
+
+                // ── selo da conta ──
+                let status, titulo;
+                if (lim > 0 && saldo > lim + 0.005)      { status = 'critico';   titulo = 'CONTA ACIMA DO LIMITE'; }
+                else if (vencido > 0.005 && idade >= 60) { status = 'critico';   titulo = 'CONTA MUITO ATRASADA'; }
+                else if (vencido > 0.005)                { status = 'atencao';   titulo = 'TEM VALOR VENCIDO'; }
+                else if (parciais >= 2)                  { status = 'atencao';   titulo = 'PAGAMENTOS SAINDO EM PARTES'; }
+                else if (saldo > 0.005 && uso >= 0.9)    { status = 'atencao';   titulo = 'LIMITE QUASE NO FIM'; }
+                else if (semMovimento)                   { status = 'bom';       titulo = 'FICHA NOVA'; }
+                else if (saldo > 0.005 && lt.ciclos.length >= 2 && parciais === 0 && vencido <= 0.005)
+                                                         { status = 'excelente'; titulo = 'EM DIA E COM HISTÓRICO IMPECÁVEL'; }
+                else if (saldo <= 0.005)                 { status = lt.ciclos.length ? 'excelente' : 'bom';
+                                                           titulo = 'CONTA EM DIA, NADA EM ABERTO'; }
+                else                                     { status = 'bom';       titulo = 'CONTA EM DIA'; }
+
+                // ── o que está bom ──
+                const bons = [];
+                if (semMovimento) bons.push('Ficha aberta e sem nenhuma pendência.');
+                if (saldo <= 0.005 && !semMovimento) bons.push('Sua conta está zerada: nada em aberto hoje.');
+                if (lt.ciclos.length) bons.push(
+                    `Você já quitou a conta ${lt.ciclos.length} vez(es)${mediaDias != null ? `, levando em média ${mediaDias} dia(s)` : ''}.`);
+                if (pags.length && totaisTudo === pags.length) bons.push('Todos os seus pagamentos quitaram a conta inteira.');
+                else if (totaisTudo > 0) bons.push(`${totaisTudo} de ${pags.length} pagamentos quitaram tudo de uma vez.`);
+                if (juros <= 0.005 && pags.length) bons.push('Você nunca pagou juros de atraso aqui.');
+                if (saldo > 0.005 && vencido <= 0.005) bons.push('Nada vencido: o que está em aberto ainda está no prazo.');
+                if (lim > 0 && saldo > 0.005 && uso <= 0.5) bons.push(`Você usa menos da metade do limite — ${brl(disp)} continuam livres.`);
+                if (mesesCliente >= 3) bons.push(`Cliente de crediário há ${mesesCliente} meses.`);
+
+                // ── o que precisa melhorar ──
+                const ruins = [];
+                if (vencido > 0.005) ruins.push(
+                    `${brl(vencido)} já passaram do prazo (compra em aberto há ${idade} dias). Valor vencido gera juros e trava compra nova.`);
+                if (ult && !ult.total) ruins.push(
+                    `Seu último pagamento (${brl(ult.valor)}, em ${dt(ult.data)}) cobriu ${Math.round(ult.cobriu * 100)}% da conta — sobraram ${brl(ult.sobrou)} em aberto.`);
+                if (parciais >= 2) ruins.push(
+                    `${parciais} dos seus últimos ${ultimos.length} pagamentos vieram em partes. Pagar pedaço por pedaço segura o seu limite e atrasa o aumento dele.`);
+                if (lim > 0 && saldo > lim + 0.005) ruins.push(
+                    `A conta está ${brl(saldo - lim)} acima do limite de ${brl(lim)}. Novas compras ficam bloqueadas até regularizar.`);
+                else if (lim > 0 && saldo > 0.005 && uso >= 0.9) ruins.push(
+                    `Restam só ${brl(disp)} do seu limite de ${brl(lim)}.`);
+                if (juros > 0.005) ruins.push(`Já foram lançados ${brl(juros)} de juros por atraso nesta ficha.`);
+
+                // ── o que fazer agora ──
+                let acao;
+                if (saldo <= 0.005) acao = lim > 0
+                    ? `Conta quitada. Você tem ${brl(lim)} de limite livre para a próxima compra.`
+                    : 'Conta quitada. Nada a pagar por enquanto.';
+                else if (vencido > 0.005) acao =
+                    `Regularize ${brl(vencido)} o quanto antes. O total da sua conta hoje é ${brl(saldo)} — quitando tudo, o limite volta cheio na hora.`;
+                else acao =
+                    `Pague ${brl(saldo)} até ${prox.vencimento.toLocaleDateString('pt-BR')} — o valor total, de uma vez só, mantém seu limite livre e faz ele subir mais rápido.`;
+
+                return {
+                    status, titulo, bons, ruins, acao,
+                    saldo, limite: lim, disponivel: disp, uso, idade, vencido, juros,
+                    ultimo: ult, pagamentos: pags.length, ciclos: lt.ciclos.length, mediaDias,
+                    desde, mesesCliente, prox, semMovimento
+                };
+            },
+
+            SELO_LB: {
+                excelente: { txt: 'CREDIÁRIO EXEMPLAR', cor: 'var(--success)' },
+                bom:       { txt: 'CREDIÁRIO EM ORDEM', cor: 'var(--accent)' },
+                atencao:   { txt: 'ATENÇÃO',            cor: 'var(--warn)' },
+                critico:   { txt: 'SITUAÇÃO CRÍTICA',   cor: 'var(--debt)' }
+            },
+
+            abrirAnalise() {
+                const c = this.customers.find(x => x.id === this.selectedCustomerId);
+                if (!c) return;
+                const a = this.analisarCrediario(c);
+                const brl = v => `R$ ${v.toFixed(2).replace('.', ',')}`;
+                const dt = d => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR');
+                const selo = this.SELO_LB[a.status];
+
+                const linha = (rot, val) =>
+                    `<div class="an-linha"><span>${rot}</span><b>${val}</b></div>`;
+
+                document.getElementById('analiseCorpo').innerHTML = `
+                    <div class="an-selo" style="border-color:${selo.cor}">
+                        <div class="an-selo-tag" style="color:${selo.cor}">${selo.txt}</div>
+                        <div class="an-selo-tit">${a.titulo}</div>
+                    </div>
+                    <div class="an-nums">
+                        ${linha('Saldo devedor', a.saldo > 0.005 ? brl(a.saldo) : (a.saldo < -0.005 ? brl(Math.abs(a.saldo)) + ' a favor' : 'quitado'))}
+                        ${a.limite > 0 ? linha('Limite', brl(a.limite)) : ''}
+                        ${a.limite > 0 ? (a.vencido > 0.005 || a.disponivel < 0
+                            ? linha('Compras novas', 'travadas até regularizar')
+                            : linha('Disponível', brl(a.disponivel))) : ''}
+                        ${a.vencido > 0.005 ? linha('Vencido', brl(a.vencido)) : ''}
+                        ${a.ultimo ? linha('Último pagamento', `${brl(a.ultimo.valor)} em ${dt(a.ultimo.data)} · ${a.ultimo.total ? 'quitou tudo' : 'parcial (' + Math.round(a.ultimo.cobriu * 100) + '%)'}`) : linha('Último pagamento', 'nenhum ainda')}
+                        ${a.desde ? linha('Cliente desde', dt(a.desde)) : ''}
+                    </div>
+                    ${a.bons.length ? `<div class="an-bloco"><h4 class="an-bom">✓ O que está bom</h4><ul>${a.bons.map(t => `<li>${this.escapeHtml(t)}</li>`).join('')}</ul></div>` : ''}
+                    ${a.ruins.length ? `<div class="an-bloco"><h4 class="an-ruim">! O que precisa melhorar</h4><ul>${a.ruins.map(t => `<li>${this.escapeHtml(t)}</li>`).join('')}</ul></div>` : ''}
+                    <div class="an-acao-tela"><strong>O que fazer agora:</strong> ${this.escapeHtml(a.acao)}</div>
+                `;
+                document.getElementById('analiseNome').textContent = c.name;
+                document.getElementById('analiseModal').classList.add('active');
+            },
+
+            /* Mesma análise em bobina de 72mm, para o cliente levar. */
+            /* Texto do aviso impresso. Aqui não é relatório: é conversa de balcão.
+               Sem porcentagem, sem histórico, sem elogio — só o que está pegando,
+               o que isso custa para o cliente e o que fazer para resolver. */
+            avisoParagrafos(a, customer) {
+                const brl = v => `R$ ${v.toFixed(2).replace('.', ',')}`;
+                const p = [];
+
+                if (a.saldo <= 0.005) {
+                    p.push('Passando só para avisar que sua conta está quitada — nada em aberto por aqui. Obrigado por manter em dia!');
+                    return p;
+                }
+
+                if (a.vencido > 0.005) {
+                    p.push(`Ficaram ${brl(a.vencido)} parados há ${a.idade} dias. Enquanto esse valor não é acertado, sua conta fica travada: numa próxima necessidade não dá para levar fiado, e o atraso ainda gera juros.`);
+                } else {
+                    p.push(`Sua conta está com ${brl(a.saldo)} em aberto, ainda dentro do prazo. Quitando no vencimento, fica tudo certo e seu limite continua livre.`);
+                }
+
+                if (a.ultimo && !a.ultimo.total) {
+                    p.push(`Seu último pagamento foi de ${brl(a.ultimo.valor)}, mas a conta estava em ${brl(a.ultimo.antes)} — sobraram ${brl(a.ultimo.sobrou)} correndo. Pagar em pedaços mantém a conta sempre aberta e segura o seu limite.`);
+                }
+
+                if (a.limite > 0 && a.saldo > a.limite + 0.005) {
+                    p.push(`A conta também passou do limite de ${brl(a.limite)}, então compras novas ficam suspensas até regularizar.`);
+                }
+
+                if (a.juros > 0.005) {
+                    p.push(`Já entraram ${brl(a.juros)} de juros por atraso. Acertando agora, isso para de crescer.`);
+                }
+
+                return p;
+            },
+
+            /* Aviso em bobina de 72mm para entregar na mão do cliente. */
+            printAnalise() {
+                const c = this.customers.find(x => x.id === this.selectedCustomerId);
+                if (!c) return;
+                const a = this.analisarCrediario(c);
+                const brl = v => `R$ ${v.toFixed(2).replace('.', ',')}`;
+                const hoje = new Date().toLocaleDateString('pt-BR');
+                const primeiro = (c.name || '').trim().split(/\s+/)[0] || '';
+                const paras = this.avisoParagrafos(a, c);
+                const quitado = a.saldo <= 0.005;
+                const venceEm = a.prox.vencimento.toLocaleDateString('pt-BR');
+
+                const caixaSituacao = quitado
+                    ? `<div class="s-caixa">
+                         <div class="s-rot">SUA CONTA HOJE</div>
+                         <div class="s-num">EM DIA</div>
+                       </div>`
+                    : `<div class="s-caixa">
+                         <div class="s-rot">SUA CONTA HOJE</div>
+                         <div class="s-num">${brl(a.saldo)}</div>
+                         <div class="s-obs">${a.vencido > 0.005
+                            ? `sendo ${brl(a.vencido)} já vencidos`
+                            : `com vencimento em ${venceEm}`}</div>
+                       </div>`;
+
+                const caixaAcao = quitado ? '' : `
+                    <div class="an-acao">
+                      <div class="an-acao-t">PARA DEIXAR TUDO CERTO</div>
+                      Pague <strong>${brl(a.saldo)}</strong>${a.vencido > 0.005 ? ' o quanto antes' : ` até ${venceEm}`}.<br>
+                      Aceitamos dinheiro ou PIX. Pagando o total de uma vez, sua conta zera e o limite volta cheio na hora.
+                    </div>`;
+
+                const area = document.getElementById('couponPrintArea');
+                area.className = 'modo-simples';
+                area.innerHTML = `
+                  <div class="simples">
+                    <div class="s-topo">
+                      <div class="s-farm">${window.marcaNome().toUpperCase()}</div>
+                      <div class="s-sub">Aviso do seu crediário · ${hoje}</div>
+                    </div>
+
+                    <div class="s-nome">${this.escapeHtml(c.name)}</div>
+
+                    ${caixaSituacao}
+
+                    <div class="av-ola">Olá${primeiro ? ', ' + this.escapeHtml(primeiro) : ''}!</div>
+                    ${paras.map(t => `<div class="av-p">${this.escapeHtml(t)}</div>`).join('')}
+
+                    ${caixaAcao}
+
+                    <div class="s-rodape">
+                      ${quitado
+                        ? 'Obrigado pela preferência!'
+                        : 'Se apertou esse mês, passe aqui e a gente combina um jeito — preferimos resolver junto a bloquear sua conta.'}<br>
+                      Documento sem valor fiscal.
+                    </div>
+                  </div>
+                `;
+                window.print();
+            },
+
+            /* ═══ Cupom de boas-vindas ═══
+               Mesma bobina de 72mm. Entrega as regras do crediário por escrito
+               na hora de abrir a ficha, junto com o limite que a pessoa recebeu. */
+            printBoasVindas() {
+                const customer = this.customers.find(c => c.id === this.selectedCustomerId);
+                if (!customer) return;
+                const brl = v => `R$ ${v.toFixed(2).replace('.', ',')}`;
+                const dt = d => d.toLocaleDateString('pt-BR');
+                const hoje = new Date().toLocaleDateString('pt-BR');
+                const lim = this.getLimite(customer);
+                const padrao = this.loadLimiteCfg().padrao;
+                const ciclo = this.getCiclo(customer);
+                const prox = this.proximoCiclo(ciclo);
+                const saldo = this.calculateBalance(customer);
+
+                const regraFechamento = ciclo === 'minerador'
+                    ? `Você é do grupo <strong>Mineradores</strong>: suas compras fecham todo <strong>dia 10</strong> e vencem no <strong>dia 25</strong> do mesmo mês.`
+                    : `Suas compras fecham todo <strong>dia 20</strong> e vencem no <strong>dia 5 do mês seguinte</strong>. Compras feitas entre os dias 21 e 5 entram no fechamento do próximo mês.`;
+
+                const area = document.getElementById('couponPrintArea');
+                area.className = 'modo-simples';
+                area.innerHTML = `
+                  <div class="simples">
+                    <div class="s-topo">
+                      <div class="s-farm">${window.marcaNome().toUpperCase()}</div>
+                      <div class="s-sub">Crediário do cliente · ${hoje}</div>
+                    </div>
+
+                    <div class="bv-tit">SUA CONTA FOI<br>CRIADA COM SUCESSO!</div>
+                    <div class="bv-sub">Seja bem-vindo(a) ao nosso crediário</div>
+
+                    <div class="s-nome" style="margin-top:10px;">${this.escapeHtml(customer.name)}</div>
+
+                    <div class="s-caixa">
+                      <div class="s-rot">SEU LIMITE ATUAL</div>
+                      <div class="s-num">${lim > 0 ? brl(lim) : 'SEM LIMITE'}</div>
+                      <div class="s-obs">${lim > 0
+                        ? 'Pagando em dia, o limite aumenta automaticamente a cada 3 meses.'
+                        : 'Sua ficha não tem teto definido.'}</div>
+                    </div>
+
+                    <div class="s-secao">COMO FUNCIONA SEU CREDIÁRIO</div>
+
+                    <div class="bv-regra">
+                      <div class="bv-rt">1. Fechamento e vencimento</div>
+                      <div class="bv-rd">${regraFechamento}</div>
+                    </div>
+
+                    <div class="bv-regra">
+                      <div class="bv-rt">2. Limite inicial de ${brl(padrao)}</div>
+                      <div class="bv-rd">Para clientes novos, sujeito a análise. Pagando em dia, o limite <strong>aumenta automaticamente a cada 3 meses</strong>.</div>
+                    </div>
+
+                    <div class="bv-regra">
+                      <div class="bv-rt">3. Pagamento em dinheiro ou PIX</div>
+                      <div class="bv-rd">O crediário <strong>não pode ser quitado com cartão</strong> de débito ou de crédito.</div>
+                    </div>
+
+                    <div class="bv-regra">
+                      <div class="bv-rt">4. Pague sempre o total da conta</div>
+                      <div class="bv-rd">Pagar por partes deixa a conta aberta: o que sobra continua ocupando o seu limite, segura as próximas compras e ainda conta como atraso. <strong>Quitando tudo no vencimento</strong>, seu limite volta cheio e aumenta mais rápido.</div>
+                    </div>
+
+                    <div class="bv-aviso">
+                      <div class="bv-aviso-t">MANTENHA SEU CREDIÁRIO EM DIA</div>
+                      Atrasos geram juros e bloqueio de crédito. A loja quer ser parceira
+                      da sua saúde — e isso começa pela confiança mútua.
+                    </div>
+
+                    <div class="bv-datas">
+                      <strong>Próximo fechamento:</strong> ${dt(prox.fechamento)}<br>
+                      <strong>Vencimento:</strong> ${dt(prox.vencimento)}
+                      ${saldo > 0 ? `<br><strong>Saldo de hoje:</strong> ${brl(saldo)}` : ''}
+                    </div>
+
+                    <div class="s-rodape">
+                      Este comprovante é pessoal e intransferível.<br>
+                      Guarde-o em local seguro.<br>
+                      Documento sem valor fiscal.
+                    </div>
+                  </div>
+                `;
+                window.print();
+            },
+
+            /* ═══════ Juros de atraso ═══════
+               Config fica em chave própria — não encosta na lista de clientes.
+               Cálculo é sempre sugestão: só vira lançamento após confirmação. */
+            JUROS_KEY: 'fiadosJuros',
+
+            loadJuros() {
+                try {
+                    const d = JSON.parse(localStorage.getItem(this.JUROS_KEY) || 'null');
+                    return { taxaMes: Number(d?.taxaMes) || 0, carenciaDias: Number(d?.carenciaDias) || 30 };
+                } catch (e) { return { taxaMes: 0, carenciaDias: 30 }; }
+            },
+            saveJuros(cfg) {
+                try { localStorage.setItem(this.JUROS_KEY, JSON.stringify(cfg)); } catch (e) {}
+            },
+
+            hoje() { return new Date().toISOString().split('T')[0]; },
+            // juros já lançados nesta ficha (linhas marcadas), para não cobrar duas vezes
+            lancamentosJuros(customer) { return customer.purchases.filter(p => p.juros); },
+
+            // juros simples sobre a dívida de mercadoria.
+            // A base EXCLUI juros já lançados — não existe juros sobre juros.
+            calcJuros(customer) {
+                const cfg = this.loadJuros();
+                if (cfg.taxaMes <= 0) return null;
+                const saldo = this.calculateBalance(customer);
+                if (saldo <= 0) return null;
+
+                const jaLancado = this.lancamentosJuros(customer).reduce((s, p) => s + p.value, 0);
+                const base = Math.round((saldo - jaLancado) * 100) / 100;
+                if (base <= 0) return null;
+
+                const idade = this.getDebtAgeDays(customer);
+                const diasCobrados = idade - cfg.carenciaDias;
+                if (diasCobrados <= 0) return null;
+
+                const bruto = base * (cfg.taxaMes / 100) * (diasCobrados / 30);
+                // desconta o que já foi cobrado de juros, para o botão não empilhar
+                const valor = Math.round((bruto - jaLancado) * 100) / 100;
+                if (valor <= 0) return null;
+
+                return {
+                    saldo, base, jaLancado, idade, diasCobrados,
+                    taxaMes: cfg.taxaMes, carencia: cfg.carenciaDias, valor
+                };
+            },
+
+            renderJurosPanel(customer) {
+                const el = document.getElementById('jurosPanel');
+                if (!el) return;
+                const j = this.calcJuros(customer);
+                if (!j) { el.style.display = 'none'; el.innerHTML = ''; return; }
+                const brl = v => `R$ ${v.toFixed(2).replace('.', ',')}`;
+                el.style.display = 'flex';
+                el.innerHTML = `
+                    <div style="flex:1; min-width:240px;">
+                        <div class="jp-tit">⏰ Juros de atraso sugerido: <span class="jp-valor">${brl(j.valor)}</span></div>
+                        <div class="jp-txt">
+                            Dívida de mercadoria de ${brl(j.base)} parada há ${j.idade} dias.
+                            Passou ${j.diasCobrados} dia(s) da carência de ${j.carencia} —
+                            ${j.taxaMes}% ao mês proporcional.
+                            ${j.jaLancado > 0 ? `<br>Já foram lançados ${brl(j.jaLancado)} de juros nesta ficha — o valor acima é só a diferença.` : ''}
+                            <br><strong>Ainda não foi cobrado.</strong> Só entra na conta se você confirmar.
+                        </div>
+                    </div>
+                    <button id="aplicarJurosBtn" class="btn btn-warning btn-sm">Lançar juros na conta</button>`;
+                document.getElementById('aplicarJurosBtn').addEventListener('click', () => this.confirmarJuros());
+            },
+
+            confirmarJuros() {
+                const customer = this.customers.find(c => c.id === this.selectedCustomerId);
+                if (!customer) return;
+                const j = this.calcJuros(customer);
+                if (!j) return;
+                const brl = v => `R$ ${v.toFixed(2).replace('.', ',')}`;
+                this.showConfirm(
+                    'Lançar juros de atraso',
+                    `Adicionar ${brl(j.valor)} de juros na ficha de ${customer.name}? `
+                    + `Base: ${brl(j.base)} de mercadoria · ${j.diasCobrados} dias além da carência · ${j.taxaMes}% ao mês. `
+                    + `O saldo passa a ${brl(j.saldo + j.valor)}. Entra como uma linha no histórico e pode ser apagada depois.`,
+                    () => {
+                        customer.purchases.push({
+                            id: this.generateId(),
+                            product: `Juros de atraso (${j.diasCobrados} dias · ${j.taxaMes}% a.m.)`,
+                            value: j.valor,
+                            date: this.hoje(),
+                            juros: true
+                        });
+                        customer.purchases.sort((a, b) => new Date(b.date + 'T00:00:00') - new Date(a.date + 'T00:00:00'));
+                        this.saveCustomers();
+                        this.renderPurchases(customer);
+                        this.updateCustomerBalanceDisplay(customer);
+                        this.renderJurosPanel(customer);
+                        this.showMessage('Juros lançados na conta.');
+                    }
+                );
+            },
+
+            abrirJurosConfig() {
+                const cfg = this.loadJuros();
+                document.getElementById('jurosTaxaInput').value = cfg.taxaMes || '';
+                document.getElementById('jurosCarenciaInput').value = cfg.carenciaDias;
+                document.getElementById('jurosModal').classList.add('active');
+            },
+            salvarJurosConfig() {
+                const taxa = parseFloat(document.getElementById('jurosTaxaInput').value) || 0;
+                const car = parseInt(document.getElementById('jurosCarenciaInput').value, 10);
+                if (taxa < 0 || taxa > 20) { this.showMessage('Taxa fora do intervalo (0 a 20%).', 'error'); return; }
+                this.saveJuros({ taxaMes: taxa, carenciaDias: isNaN(car) ? 30 : Math.max(0, car) });
+                document.getElementById('jurosModal').classList.remove('active');
+                this.showMessage(taxa > 0 ? `Juros de ${taxa}% ao mês configurado.` : 'Juros desligado.');
+                const c = this.customers.find(x => x.id === this.selectedCustomerId);
+                if (c) this.renderJurosPanel(c);
+            },
+
+            calculateBalance(customer) {
+                const totalPurchases = customer.purchases.reduce((s, p) => s + p.value, 0);
+                const totalPayments = customer.payments.reduce((s, p) => s + p.amount, 0);
+                return totalPurchases - totalPayments;
+            },
+
+            // Dias após os quais uma dívida em aberto é considerada "atrasada".
+            // Ciclo típico do crediário: ~1 mês. Ajuste aqui se quiser.
+            OVERDUE_DAYS: 30,
+
+            // Data da compra mais ANTIGA que ainda não foi coberta pelos pagamentos.
+            // Aloca pagamentos por ordem cronológica (FIFO) só para fins de "idade da dívida".
+            // NÃO altera o cálculo do saldo. Retorna null se a ficha está quitada.
+            getOldestOpenDate(customer) {
+                if (this.calculateBalance(customer) <= 0) return null;
+                const purchases = [...customer.purchases].sort(
+                    (a, b) => new Date(a.date + 'T00:00:00') - new Date(b.date + 'T00:00:00')
+                );
+                let paid = customer.payments.reduce((s, p) => s + p.amount, 0);
+                for (const p of purchases) {
+                    if (paid >= p.value) { paid -= p.value; continue; }
+                    // esta compra é a primeira ainda em aberto (total ou parcialmente)
+                    return p.date;
+                }
+                return null;
+            },
+
+            // Idade da dívida em dias (0 se quitado ou dívida de hoje).
+            getDebtAgeDays(customer) {
+                const d = this.getOldestOpenDate(customer);
+                if (!d) return 0;
+                const start = new Date(d + 'T00:00:00');
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                return Math.max(0, Math.round((today - start) / 86400000));
+            },
+
+            isOverdue(customer) {
+                return this.getDebtAgeDays(customer) >= this.OVERDUE_DAYS;
+            },
+
+            // Monta a mensagem de cobrança pronta pro WhatsApp.
+            buildCobrancaMessage(customer) {
+                const saldo = this.calculateBalance(customer);
+                const fmt = v => 'R$ ' + v.toFixed(2).replace('.', ',');
+                const primeiro = (customer.name || '').trim().split(/\s+/)[0] || 'tudo bem';
+                const idade = this.getDebtAgeDays(customer);
+                let linhas = [
+                    `Olá, ${primeiro}! Tudo bem? Aqui é da ${window.marcaNome()}. 😊`,
+                    ``,
+                    `Passando pra lembrar do seu saldo em aberto: *${fmt(saldo)}*.`
+                ];
+                if (idade >= this.OVERDUE_DAYS) {
+                    linhas.push(`Consta como pendente há ${idade} dias.`);
+                }
+                linhas.push(``, `Quando puder acertar, agradecemos! Qualquer dúvida é só chamar. 🙏`);
+                return linhas.join('\n');
+            },
+
+            updateSummary() {
+                const total = this.customers.length;
+                const debtors = this.customers.filter(c => this.calculateBalance(c) > 0).length;
+                const paid = this.customers.filter(c => this.calculateBalance(c) <= 0).length;
+                const totalDebt = this.customers.reduce((s, c) => {
+                    const b = this.calculateBalance(c);
+                    return s + (b > 0 ? b : 0);
+                }, 0);
+                const overdue = this.customers.filter(c => this.isOverdue(c)).length;
+                document.getElementById('summaryClients').textContent = total;
+                document.getElementById('summaryDebtors').textContent = debtors;
+                document.getElementById('summaryPaid').textContent = paid;
+                document.getElementById('summaryOverdue').textContent = overdue;
+                document.getElementById('summaryTotal').textContent = `R$ ${totalDebt.toFixed(2).replace('.', ',')}`;
+            },
+
+            getSortedFilteredCustomers() {
+                let list = [...this.customers];
+                if (this.searchQuery) {
+                    list = list.filter(c => c.name.toLowerCase().includes(this.searchQuery.toLowerCase()));
+                }
+                if (this.sortMode === 'name') {
+                    list.sort((a, b) => a.name.localeCompare(b.name));
+                } else if (this.sortMode === 'debt-desc') {
+                    list.sort((a, b) => this.calculateBalance(b) - this.calculateBalance(a));
+                } else if (this.sortMode === 'debt-asc') {
+                    list.sort((a, b) => this.calculateBalance(a) - this.calculateBalance(b));
+                } else if (this.sortMode === 'overdue') {
+                    list.sort((a, b) => this.getDebtAgeDays(b) - this.getDebtAgeDays(a));
+                }
+                return list;
+            },
+
+            updateBackupStatus() {
+                const el = document.getElementById('backupStatus');
+                if (!el) return;
+                if (this.customers.length === 0) { el.style.display = 'none'; return; }
+                const last = parseInt(localStorage.getItem('lastBackup') || '0', 10);
+                el.style.display = 'block';
+                if (!last) {
+                    el.innerHTML = '⚠️ <strong>Você ainda não fez backup.</strong> Seus dados só existem neste navegador — se o cache for limpo, tudo se perde. Faça o Backup JSON.';
+                    el.style.color = 'var(--debt)';
+                    return;
+                }
+                const days = Math.floor((Date.now() - last) / 86400000);
+                if (days >= 7) {
+                    el.innerHTML = `⚠️ Último backup há <strong>${days} dias</strong>. Recomendo gerar um novo Backup JSON.`;
+                    el.style.color = 'var(--warn)';
+                } else {
+                    el.innerHTML = `✓ Último backup ${days === 0 ? 'hoje' : `há ${days} dia(s)`}.`;
+                    el.style.color = 'var(--text-sub)';
+                }
+            },
+
+            renderCustomerList() {
+                this.updateSummary();
+                this.updateBackupStatus();
+                const { customerList } = this.elements;
+                customerList.innerHTML = '';
+                const list = this.getSortedFilteredCustomers();
+
+                if (list.length === 0) {
+                    customerList.innerHTML = `<div class="no-results"><div class="icon">${this.searchQuery ? '🔍' : '📋'}</div>${this.searchQuery ? 'Nenhum cliente encontrado.' : 'Nenhum cliente cadastrado ainda.'}</div>`;
+                    return;
+                }
+
+                list.forEach(customer => {
+                    const balance = this.calculateBalance(customer);
+
+                    let badgeClass, badgeText;
+                    if (balance > 200) { badgeClass = 'debt-high'; badgeText = `Deve R$ ${balance.toFixed(2).replace('.', ',')}`; }
+                    else if (balance > 0) { badgeClass = 'debt-medium'; badgeText = `Deve R$ ${balance.toFixed(2).replace('.', ',')}`; }
+                    else if (balance < 0) { badgeClass = 'debt-low'; badgeText = `Crédito R$ ${Math.abs(balance).toFixed(2).replace('.', ',')}`; }
+                    else { badgeClass = 'debt-zero'; badgeText = 'Quitado'; }
+
+                    // Idade da dívida / selo de atraso
+                    const ageDays = this.getDebtAgeDays(customer);
+                    const overdue = balance > 0 && ageDays >= this.OVERDUE_DAYS;
+                    let ageHtml = '';
+                    if (balance > 0 && ageDays > 0) {
+                        ageHtml = overdue
+                            ? `<span class="age-badge age-late">⚠ ${ageDays} dias</span>`
+                            : `<span class="age-badge age-ok">há ${ageDays} dias</span>`;
+                    }
+
+                    // limite: aparece na terceira linha do cartão, sem mudar a altura
+                    const limCli = this.getLimite(customer);
+                    const dispCli = Math.round((limCli - Math.max(0, balance)) * 100) / 100;
+                    const limiteInfo = limCli <= 0
+                        ? ''
+                        : dispCli < -0.005
+                            ? ` · 🚫 R$ ${Math.abs(dispCli).toFixed(2).replace('.', ',')} acima do limite`
+                            : ` · limite R$ ${limCli.toFixed(2).replace('.', ',')} (livre R$ ${dispCli.toFixed(2).replace('.', ',')})`;
+
+                    const div = document.createElement('div');
+                    div.className = 'customer-card' + (overdue ? ' card-overdue' : '');
+                    // três linhas fixas (nome / valor / contato) para todos os cartões
+                    // ficarem exatamente do mesmo tamanho, com ou sem selo de atraso
+                    div.innerHTML = `
+                        <div class="cc-info">
+                            <div class="cc-nome">${customer.name}</div>
+                            <div class="cc-linha">
+                                <span class="debt-badge ${badgeClass}">${badgeText}</span>
+                                ${ageHtml}
+                            </div>
+                            <div class="cc-contato">${customer.contact || 'Sem contato'}${limiteInfo}</div>
+                        </div>
+                        <div class="cc-acoes">
+                            <span class="cc-ver">Ver →</span>
+                            <button class="btn btn-danger btn-xs delete-cust-btn" data-id="${customer.id}" data-name="${customer.name}">🗑</button>
+                        </div>
+                    `;
+                    div.addEventListener('click', (e) => {
+                        if (!e.target.closest('.delete-cust-btn')) this.viewCustomerDetail(customer.id);
+                    });
+                    div.querySelector('.delete-cust-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.confirmDeleteCustomer(customer.id, customer.name);
+                    });
+                    customerList.appendChild(div);
+                });
+            },
+
+            addCustomer() {
+                const name = this.elements.customerNameInput.value.trim();
+                const contact = this.elements.customerContactInput.value.trim();
+                const limRaw = (this.elements.customerLimitInput.value || '').trim();
+                const ciclo = this.elements.customerCicloSelect.value === 'minerador' ? 'minerador' : 'padrao';
+                if (!name) { this.showMessage('O nome do cliente é obrigatório.', 'error'); return; }
+                const novo = { id: this.generateId(), name, contact, ciclo, purchases: [], payments: [] };
+                // limite em branco = usa o padrão da loja; 0 = ficha sem teto
+                if (limRaw !== '') {
+                    const n = parseFloat(limRaw.replace(',', '.'));
+                    if (isNaN(n) || n < 0) { this.showMessage('Limite inválido.', 'error'); return; }
+                    novo.limite = Math.round(n * 100) / 100;
+                }
+                this.customers.push(novo);
+                this.customers.sort((a, b) => a.name.localeCompare(b.name));
+                this.saveCustomers();
+                this.renderCustomerList();
+                this.elements.customerNameInput.value = '';
+                this.elements.customerContactInput.value = '';
+                this.elements.customerLimitInput.value = '';
+                this.elements.customerCicloSelect.value = 'padrao';
+                this.elements.addCustomerFormContainer.classList.add('hidden');
+                this.showMessage(`Cliente adicionado com limite de R$ ${this.getLimite(novo).toFixed(2).replace('.', ',')}. Abra a ficha para imprimir o cupom de boas-vindas.`);
+            },
+
+            confirmDeleteCustomer(id, name) {
+                this.showConfirm('Apagar cliente', `Tem certeza que deseja apagar a ficha de "${name}"? Todos os dados serão perdidos permanentemente.`, () => {
+                    this.deleteCustomer(id);
+                });
+            },
+
+            deleteCustomer(customerId) {
+                const c = this.customers.find(x => x.id === customerId);
+                if (!c) return;
+                this.customers = this.customers.filter(x => x.id !== customerId);
+                this.saveCustomers();
+                if (this.selectedCustomerId === customerId) { this.selectedCustomerId = null; this.currentView = 'list'; }
+                this.updateView();
+                this.showMessage(`Cliente "${c.name}" apagado.`);
+            },
+
+            viewCustomerDetail(id) {
+                this.selectedCustomerId = id;
+                this.selectedPurchaseIds = new Set();
+                this.currentView = 'detail';
+                this.updateView();
+                this.renderSelectedCustomerDetails();
+            },
+
+            renderSelectedCustomerDetails() {
+                const customer = this.customers.find(c => c.id === this.selectedCustomerId);
+                if (!customer) { this.currentView = 'list'; this.updateView(); return; }
+                this.elements.detailCustomerName.textContent = customer.name;
+                this.elements.detailCustomerContact.textContent = customer.contact || 'Contato não informado';
+
+                // WhatsApp link
+                const wa = this.elements.whatsappLink;
+                const phone = (customer.contact || '').replace(/\D/g, '');
+                if (phone.length >= 8) {
+                    const saldo = this.calculateBalance(customer);
+                    if (saldo > 0) {
+                        const msg = encodeURIComponent(this.buildCobrancaMessage(customer));
+                        wa.href = `https://wa.me/55${phone}?text=${msg}`;
+                        wa.lastChild.textContent = ' Cobrar';
+                    } else {
+                        wa.href = `https://wa.me/55${phone}`;
+                        wa.lastChild.textContent = ' WhatsApp';
+                    }
+                    wa.style.display = 'inline-flex';
+                } else {
+                    wa.style.display = 'none';
+                }
+
+                this.renderPurchases(customer);
+                this.renderPayments(customer);
+                this.updateCustomerBalanceDisplay(customer);
+                this.renderLimitePanel(customer);
+                this.renderJurosPanel(customer);
+            },
+
+            updateCustomerBalanceDisplay(customer) {
+                const balance = this.calculateBalance(customer);
+                const el = this.elements.customerBalance;
+                el.className = 'font-bold';
+                if (balance < 0) {
+                    el.classList.add('balance-positive');
+                    el.textContent = `R$ ${Math.abs(balance).toFixed(2).replace('.', ',')} (Pago a mais)`;
+                } else if (balance > 0) {
+                    el.classList.add('balance-negative');
+                    el.textContent = `R$ ${balance.toFixed(2).replace('.', ',')}`;
+                } else {
+                    el.classList.add('balance-zero');
+                    el.textContent = 'R$ 0,00 (Quitado)';
+                }
+                const qBtn = document.getElementById('quitarSaldoBtn');
+                if (qBtn) {
+                    if (balance > 0) {
+                        qBtn.style.display = 'block';
+                        qBtn.textContent = `↧ Quitar saldo (R$ ${balance.toFixed(2).replace('.', ',')})`;
+                    } else {
+                        qBtn.style.display = 'none';
+                    }
+                }
+                this.renderCustomerList();
+            },
+
+            addPurchase() {
+                if (!this.selectedCustomerId) return;
+                const product = this.elements.purchaseProductInput.value.trim();
+                const value = parseFloat(this.elements.purchaseValueInput.value);
+                const date = this.elements.purchaseDateInput.value;
+                if (!product || isNaN(value) || !date) { this.showMessage('Preencha todos os campos.', 'error'); return; }
+                if (value <= 0) { this.showMessage('Valor deve ser positivo.', 'error'); return; }
+                const customer = this.customers.find(c => c.id === this.selectedCustomerId);
+                if (!customer) return;
+
+                // Passar do limite não trava a venda: checarLimite só pede confirmação.
+                this.checarLimite(customer, value, 0, () => {
+                    customer.purchases.push({ id: this.generateId(), product, value, date });
+                    customer.purchases.sort((a, b) => new Date(b.date + 'T00:00:00') - new Date(a.date + 'T00:00:00'));
+                    this.saveCustomers();
+                    this.renderPurchases(customer);
+                    this.updateCustomerBalanceDisplay(customer);
+                    this.renderLimitePanel(customer);
+                    this.elements.purchaseProductInput.value = '';
+                    this.elements.purchaseValueInput.value = '';
+                    this.showMessage('Compra adicionada!');
+                });
+            },
+
+            renderPurchases(customer) {
+                const tbody = this.elements.purchasesTableBody;
+                tbody.innerHTML = '';
+                if (customer.purchases.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-sub); padding:1.5rem;">Nenhuma compra registrada.</td></tr>';
+                    this.updateSelectionInfo(customer);
+                    return;
+                }
+                customer.purchases.forEach(p => {
+                    const row = tbody.insertRow();
+                    row.className = 'purchase-row';
+                    const checked = this.selectedPurchaseIds.has(p.id);
+                    if (checked) row.classList.add('selected');
+                    row.innerHTML = `
+                        <td style="text-align:center;"><input type="checkbox" class="purchase-check" ${checked ? 'checked' : ''}></td>
+                        <td>${new Date(p.date + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                        <td>${p.product}</td>
+                        <td class="money" style="font-weight:600; color:var(--debt);">R$ ${p.value.toFixed(2).replace('.', ',')}</td>
+                        <td style="white-space:nowrap;">
+                            <button class="btn btn-warning btn-xs edit-btn">✏</button>
+                            <button class="btn btn-danger btn-xs del-btn">🗑</button>
+                        </td>
+                    `;
+                    row.cells[0].querySelector('input').onchange = (e) => this.togglePurchaseSelection(customer, p.id, e.target.checked);
+                    row.cells[4].querySelector('.edit-btn').onclick = () => this.editPurchase(customer.id, p.id);
+                    row.cells[4].querySelector('.del-btn').onclick = () => this.confirmDeletePurchase(customer.id, p.id, p.product);
+                });
+                this.updateSelectionInfo(customer);
+            },
+
+            togglePurchaseSelection(customer, purchaseId, isChecked) {
+                if (isChecked) this.selectedPurchaseIds.add(purchaseId);
+                else this.selectedPurchaseIds.delete(purchaseId);
+                this.renderPurchases(customer);
+            },
+
+            selectAllPurchases(customer, select) {
+                if (select) customer.purchases.forEach(p => this.selectedPurchaseIds.add(p.id));
+                else this.selectedPurchaseIds.clear();
+                this.renderPurchases(customer);
+            },
+
+            updateSelectionInfo(customer) {
+                const selected = customer.purchases.filter(p => this.selectedPurchaseIds.has(p.id));
+                const total = selected.reduce((s, p) => s + p.value, 0);
+                const info = this.elements.selectionInfo;
+                if (info) {
+                    info.textContent = selected.length > 0
+                        ? `${selected.length} item(ns) · R$ ${total.toFixed(2).replace('.', ',')}`
+                        : '';
+                }
+                const header = document.getElementById('headerSelectAll');
+                if (header) {
+                    header.checked = customer.purchases.length > 0 && selected.length === customer.purchases.length;
+                    header.indeterminate = selected.length > 0 && selected.length < customer.purchases.length;
+                }
+            },
+
+            /* ═══ Itens que ainda compõem o saldo ═══
+               Pagamento abate sempre a compra mais antiga primeiro (FIFO), igual
+               ao valorVencido. Sobra o rabicho das compras recentes: é isso que
+               o cliente ainda deve. A compra onde o pagamento parou entra
+               parcial (deve 80 de um item de 120, por exemplo). */
+            itensEmAberto(customer) {
+                const compras = [...(customer.purchases || [])]
+                    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+                let pago = (customer.payments || []).reduce((s, p) => s + p.amount, 0);
+                const itens = [];
+                for (const c of compras) {
+                    let aberto = c.value;
+                    if (pago > 0) { const usa = Math.min(pago, aberto); aberto -= usa; pago -= usa; }
+                    if (aberto <= 0.005) continue;
+                    itens.push({
+                        product: c.product, date: c.date, id: c.id,
+                        aberto: Math.round(aberto * 100) / 100,
+                        original: c.value,
+                        parcial: aberto < c.value - 0.005
+                    });
+                }
+                const total = Math.round(itens.reduce((s, i) => s + i.aberto, 0) * 100) / 100;
+                return { itens, total };
+            },
+
+            /* Recibo rápido: sem selecionar nada na tabela, só o que está em aberto. */
+            printCouponAberto() {
+                const customer = this.customers.find(c => c.id === this.selectedCustomerId);
+                if (!customer) return;
+                const saldo = Math.round(this.calculateBalance(customer) * 100) / 100;
+                if (saldo <= 0.005) {
+                    this.showMessage(saldo < -0.005
+                        ? 'Esta conta está com crédito a favor do cliente — nada em aberto para imprimir.'
+                        : 'Conta quitada — nada em aberto para imprimir.', 'error');
+                    return;
+                }
+                const { itens, total } = this.itensEmAberto(customer);
+                if (!itens.length) { this.showMessage('Nenhuma compra em aberto.', 'error'); return; }
+
+                const fmt = v => 'R$ ' + v.toFixed(2).replace('.', ',');
+                const dt = d => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR');
+                const now = new Date();
+                const dataHora = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+                const itemsHtml = itens.map(p => `
+                    <div class="coupon-line">
+                        <span class="coupon-item-name">${this.escapeHtml(p.product)}</span>
+                        <span class="coupon-item-val">${fmt(p.aberto)}</span>
+                    </div>
+                    <div class="coupon-small" style="margin-bottom:3px;">${dt(p.date)}${p.parcial ? ' - resta (de ' + fmt(p.original) + ')' : ''}</div>
+                `).join('');
+
+                // Se o FIFO não fechar exato no saldo (dado torto), mostra a diferença
+                // em vez de imprimir um total que não bate com a ficha.
+                const dif = Math.round((saldo - total) * 100) / 100;
+                const difHtml = Math.abs(dif) > 0.005
+                    ? `<div class="coupon-line coupon-small"><span>Ajuste da ficha</span><span>${fmt(dif)}</span></div>`
+                    : '';
+
+                const ult = this.ultimoPagamento(customer);
+                const ultHtml = ult
+                    ? `<hr class="coupon-hr">
+                       <div class="coupon-line"><span>Ultimo pagamento</span><span>${fmt(ult.amount)}</span></div>
+                       <div class="coupon-small">em ${dt(ult.date)}${ult.note ? ' - ' + this.escapeHtml(ult.note) : ''}</div>`
+                    : '';
+
+                const limCred = this.getLimite(customer);
+                const dispCred = Math.round((limCred - saldo) * 100) / 100;
+                const limiteHtml = limCred > 0
+                    ? `<div class="coupon-line coupon-small"><span>Limite do crediario</span><span>${fmt(limCred)}</span></div>
+                       <div class="coupon-line coupon-small"><span>${dispCred >= 0 ? 'Disponivel para comprar' : 'Acima do limite em'}</span><span>${fmt(Math.abs(dispCred))}</span></div>`
+                    : '';
+
+                document.getElementById('couponPrintArea').classList.remove('modo-simples');
+                document.getElementById('couponPrintArea').innerHTML = `
+                    <div class="coupon-center coupon-title">${window.marcaNome().toUpperCase()}</div>
+                    <div class="coupon-center coupon-small">${dataHora}</div>
+                    <hr class="coupon-hr">
+                    <div><strong>Cliente:</strong> ${this.escapeHtml(customer.name)}</div>
+                    ${customer.contact ? `<div class="coupon-small">${this.escapeHtml(customer.contact)}</div>` : ''}
+                    <hr class="coupon-hr">
+                    <div class="coupon-center" style="margin-bottom:4px;">O QUE FALTA PAGAR</div>
+                    ${itemsHtml}
+                    ${difHtml}
+                    <hr class="coupon-hr">
+                    <div class="coupon-line coupon-total"><span>SALDO DEVEDOR</span><span>${fmt(saldo)}</span></div>
+                    ${limiteHtml}
+                    ${ultHtml}
+                    <hr class="coupon-hr">
+                    <div class="coupon-center coupon-small">Compras ja quitadas nao aparecem</div>
+                    <div class="coupon-center coupon-small">Documento sem valor fiscal</div>
+                    <div class="coupon-center coupon-small">Obrigado pela preferencia!</div>
+                    <div style="height:14px;"></div>
+                `;
+                window.print();
+            },
+
+            printCoupon() {
+                const customer = this.customers.find(c => c.id === this.selectedCustomerId);
+                if (!customer) return;
+                let items = customer.purchases.filter(p => this.selectedPurchaseIds.has(p.id));
+                // Se nada selecionado, imprime tudo
+                if (items.length === 0) items = [...customer.purchases];
+                if (items.length === 0) { this.showMessage('Nenhuma compra para imprimir.', 'error'); return; }
+
+                // Ordem cronológica (mais antiga primeiro) no cupom
+                items = items.sort((a, b) => new Date(a.date + 'T00:00:00') - new Date(b.date + 'T00:00:00'));
+
+                const totalSel = items.reduce((s, p) => s + p.value, 0);
+                const saldo = this.calculateBalance(customer);
+                // Diferença entre o saldo real da ficha e os itens listados no cupom.
+                // Cobre pagamentos parciais e compras antigas não selecionadas.
+                const saldoAnterior = saldo - totalSel;
+                const now = new Date();
+                const dataHora = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                const fmt = v => 'R$ ' + v.toFixed(2).replace('.', ',');
+
+                const itemsHtml = items.map(p => `
+                    <div class="coupon-line">
+                        <span class="coupon-item-name">${this.escapeHtml(p.product)}</span>
+                        <span class="coupon-item-val">${fmt(p.value)}</span>
+                    </div>
+                    <div class="coupon-small" style="margin-bottom:3px;">${new Date(p.date + 'T00:00:00').toLocaleDateString('pt-BR')}</div>
+                `).join('');
+
+                // Linha de ajuste: só aparece se houver diferença relevante (> 1 centavo)
+                let ajusteHtml = '';
+                if (Math.abs(saldoAnterior) > 0.005) {
+                    if (saldoAnterior > 0) {
+                        ajusteHtml = `
+                            <div class="coupon-line">
+                                <span class="coupon-item-name">Saldo anterior em aberto</span>
+                                <span class="coupon-item-val">${fmt(saldoAnterior)}</span>
+                            </div>`;
+                    } else {
+                        ajusteHtml = `
+                            <div class="coupon-line">
+                                <span class="coupon-item-name">(-) Pagamentos / abatimentos</span>
+                                <span class="coupon-item-val">-${fmt(Math.abs(saldoAnterior))}</span>
+                            </div>`;
+                    }
+                }
+
+                const saldoLine = saldo > 0
+                    ? `<div class="coupon-line coupon-total"><span>SALDO DEVEDOR</span><span>${fmt(saldo)}</span></div>`
+                    : saldo < 0
+                        ? `<div class="coupon-line"><span>Pago a mais</span><span>${fmt(Math.abs(saldo))}</span></div>`
+                        : `<div class="coupon-line coupon-total"><span>SALDO</span><span>QUITADO</span></div>`;
+
+                // Último pagamento: o cliente costuma lembrar do dia que pagou,
+                // não do saldo. Serve de âncora para ele se achar na conta.
+                const ult = this.ultimoPagamento(customer);
+                const ultHtml = ult
+                    ? `<hr class="coupon-hr">
+                       <div class="coupon-line"><span>Ultimo pagamento</span><span>${fmt(ult.amount)}</span></div>
+                       <div class="coupon-small">em ${new Date(ult.date + 'T00:00:00').toLocaleDateString('pt-BR')}${ult.note ? ' - ' + this.escapeHtml(ult.note) : ''}</div>`
+                    : `<hr class="coupon-hr"><div class="coupon-small">Nenhum pagamento registrado ainda</div>`;
+
+                // Limite: o cliente precisa saber quanto ainda pode comprar fiado.
+                const limCred = this.getLimite(customer);
+                const dispCred = Math.round((limCred - saldo) * 100) / 100;
+                const limiteHtml = limCred > 0
+                    ? `<div class="coupon-line coupon-small"><span>Limite do crediario</span><span>${fmt(limCred)}</span></div>
+                       <div class="coupon-line coupon-small"><span>${dispCred >= 0 ? 'Disponivel para comprar' : 'Acima do limite em'}</span><span>${fmt(Math.abs(dispCred))}</span></div>`
+                    : '';
+
+                document.getElementById('couponPrintArea').classList.remove('modo-simples');
+                document.getElementById('couponPrintArea').innerHTML = `
+                    <div class="coupon-center coupon-title">${window.marcaNome().toUpperCase()}</div>
+                    <div class="coupon-center coupon-small">${dataHora}</div>
+                    <hr class="coupon-hr">
+                    <div><strong>Cliente:</strong> ${this.escapeHtml(customer.name)}</div>
+                    ${customer.contact ? `<div class="coupon-small">${this.escapeHtml(customer.contact)}</div>` : ''}
+                    <hr class="coupon-hr">
+                    <div class="coupon-center" style="margin-bottom:4px;">ITENS EM ABERTO</div>
+                    ${itemsHtml}
+                    <div class="coupon-line coupon-small"><span>Subtotal itens listados</span><span>${fmt(totalSel)}</span></div>
+                    ${ajusteHtml}
+                    ${ultHtml}
+                    <hr class="coupon-hr">
+                    ${saldoLine}
+                    ${limiteHtml}
+                    <hr class="coupon-hr">
+                    <div class="coupon-center coupon-small">Documento sem valor fiscal</div>
+                    <div class="coupon-center coupon-small">Obrigado pela preferencia!</div>
+                    <div style="height:14px;"></div>
+                `;
+                window.print();
+            },
+
+            // pagamento mais recente da ficha (por data; empate desempata pela ordem)
+            ultimoPagamento(customer) {
+                const ps = (customer.payments || []).filter(p => p.date);
+                if (!ps.length) return null;
+                return [...ps].sort((a, b) =>
+                    new Date(a.date + 'T00:00:00') - new Date(b.date + 'T00:00:00'))[ps.length - 1];
+            },
+
+            /* ═══ Versão simplificada ═══
+               Letra grande, frase direta, sem jargão. Para o cliente entender
+               de bate-pronto quanto deve e quando pagou da última vez. */
+            printCouponSimples() {
+                const customer = this.customers.find(c => c.id === this.selectedCustomerId);
+                if (!customer) return;
+                let items = customer.purchases.filter(p => this.selectedPurchaseIds.has(p.id));
+                if (items.length === 0) items = [...customer.purchases];
+                if (items.length === 0) { this.showMessage('Nenhuma compra para imprimir.', 'error'); return; }
+
+                items = items.sort((a, b) => new Date(a.date + 'T00:00:00') - new Date(b.date + 'T00:00:00'));
+                const saldo = this.calculateBalance(customer);
+                const fmt = v => 'R$ ' + v.toFixed(2).replace('.', ',');
+                const dt = d => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR');
+                const hoje = new Date().toLocaleDateString('pt-BR');
+                const ult = this.ultimoPagamento(customer);
+
+                const linhas = items.map(p => `
+                    <div class="s-item">
+                      <div class="s-prod">${this.escapeHtml(p.product)}</div>
+                      <div class="s-linha2"><span>${dt(p.date)}</span><span>${fmt(p.value)}</span></div>
+                    </div>`).join('');
+
+                const frase = saldo > 0
+                    ? `<div class="s-caixa s-deve">
+                         <div class="s-rot">VOCÊ AINDA DEVE</div>
+                         <div class="s-num">${fmt(saldo)}</div>
+                       </div>`
+                    : saldo < 0
+                        ? `<div class="s-caixa s-credito">
+                             <div class="s-rot">VOCÊ PAGOU A MAIS</div>
+                             <div class="s-num">${fmt(Math.abs(saldo))}</div>
+                             <div class="s-obs">Esse valor fica de crédito para a próxima compra</div>
+                           </div>`
+                        : `<div class="s-caixa s-quitado">
+                             <div class="s-rot">ESTÁ TUDO PAGO</div>
+                             <div class="s-num">R$ 0,00</div>
+                             <div class="s-obs">Não há nada em aberto</div>
+                           </div>`;
+
+                // Caixa do limite: mesma informação do cartãozinho, em letra grande.
+                const limCred = this.getLimite(customer);
+                const dispCred = Math.round((limCred - Math.max(0, saldo)) * 100) / 100;
+                const cicloCli = this.CICLOS[this.getCiclo(customer)];
+                const proxCli = this.proximoCiclo(this.getCiclo(customer));
+                const limiteBox = limCred > 0 ? `
+                    <div class="s-caixa s-lim">
+                      <div class="s-rot">SEU LIMITE</div>
+                      <div class="s-num2">${fmt(limCred)}</div>
+                      <div class="s-obs">${dispCred >= 0
+                        ? `Ainda dá para comprar ${fmt(dispCred)}`
+                        : `Você já passou ${fmt(Math.abs(dispCred))} do seu limite`}</div>
+                    </div>` : '';
+
+                document.getElementById('couponPrintArea').classList.add('modo-simples');
+                document.getElementById('couponPrintArea').innerHTML = `
+                  <div class="simples">
+                    <div class="s-topo">
+                      <div class="s-farm">${window.marcaNome().toUpperCase()}</div>
+                      <div class="s-sub">Conta do cliente · impresso em ${hoje}</div>
+                    </div>
+
+                    <div class="s-nome">${this.escapeHtml(customer.name)}</div>
+
+                    ${frase}
+
+                    ${limiteBox}
+
+                    <div class="s-secao">O QUE VOCÊ LEVOU</div>
+                    ${linhas}
+
+                    <div class="s-caixa s-pag">
+                      <div class="s-rot">SEU ÚLTIMO PAGAMENTO</div>
+                      ${ult
+                        ? `<div class="s-num2">${fmt(ult.amount)}</div>
+                           <div class="s-obs">no dia ${dt(ult.date)}${ult.note ? ' — ' + this.escapeHtml(ult.note) : ''}</div>`
+                        : `<div class="s-obs" style="margin-top:6px">Você ainda não fez nenhum pagamento nesta conta</div>`}
+                    </div>
+
+                    <div class="s-rodape">
+                      Sua conta fecha dia ${cicloCli.fecha} e vence em ${proxCli.vencimento.toLocaleDateString('pt-BR')}.<br>
+                      Qualquer dúvida é só trazer este papel na loja.<br>
+                      Documento sem valor fiscal.
+                    </div>
+                  </div>
+                `;
+                window.print();
+            },
+
+            escapeHtml(str) {
+                return String(str).replace(/[&<>"']/g, s => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[s]));
+            },
+
+            confirmDeletePurchase(customerId, purchaseId, product) {
+                this.showConfirm('Apagar compra', `Deseja apagar a compra "${product}"? Esta ação não pode ser desfeita.`, () => {
+                    this.deletePurchase(customerId, purchaseId);
+                });
+            },
+
+            deletePurchase(customerId, purchaseId) {
+                const c = this.customers.find(x => x.id === customerId);
+                if (!c) return;
+                const p = c.purchases.find(x => x.id === purchaseId);
+                if (!p) return;
+                c.purchases = c.purchases.filter(x => x.id !== purchaseId);
+                this.selectedPurchaseIds.delete(purchaseId);
+                this.saveCustomers();
+                this.renderPurchases(c);
+                this.updateCustomerBalanceDisplay(c);
+                this.showMessage(`Compra "${p.product}" apagada.`);
+            },
+
+            addPayment() {
+                if (!this.selectedCustomerId) return;
+                const amount = parseFloat(this.elements.paymentAmountInput.value);
+                const date = this.elements.paymentDateInput.value;
+                const note = this.elements.paymentNoteInput.value.trim();
+                if (isNaN(amount) || !date) { this.showMessage('Preencha o valor e a data.', 'error'); return; }
+                if (amount <= 0) { this.showMessage('Valor deve ser positivo.', 'error'); return; }
+                const customer = this.customers.find(c => c.id === this.selectedCustomerId);
+                if (customer) {
+                    customer.payments.push({ id: this.generateId(), amount, date, note });
+                    customer.payments.sort((a, b) => new Date(b.date + 'T00:00:00') - new Date(a.date + 'T00:00:00'));
+                    this.saveCustomers();
+                    this.renderPayments(customer);
+                    this.updateCustomerBalanceDisplay(customer);
+                    this.elements.paymentAmountInput.value = '';
+                    this.elements.paymentNoteInput.value = '';
+                    this.showMessage('Pagamento adicionado!');
+                }
+            },
+
+            renderPayments(customer) {
+                const tbody = this.elements.paymentsTableBody;
+                tbody.innerHTML = '';
+                if (customer.payments.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-sub); padding:1.5rem;">Nenhum pagamento registrado.</td></tr>';
+                    return;
+                }
+                customer.payments.forEach(p => {
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td>${new Date(p.date + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                        <td class="money" style="font-weight:600; color:var(--accent);">R$ ${p.amount.toFixed(2).replace('.', ',')}</td>
+                        <td style="color:var(--text-sub); font-size:0.82rem;">${p.note || '—'}</td>
+                        <td style="white-space:nowrap;">
+                            <button class="btn btn-warning btn-xs edit-btn">✏</button>
+                            <button class="btn btn-danger btn-xs del-btn">🗑</button>
+                        </td>
+                    `;
+                    row.cells[3].querySelector('.edit-btn').onclick = () => this.editPayment(customer.id, p.id);
+                    row.cells[3].querySelector('.del-btn').onclick = () => this.confirmDeletePayment(customer.id, p.id, p.amount);
+                });
+            },
+
+            confirmDeletePayment(customerId, paymentId, amount) {
+                this.showConfirm('Apagar pagamento', `Deseja apagar o pagamento de R$ ${amount.toFixed(2).replace('.', ',')}? Esta ação não pode ser desfeita.`, () => {
+                    this.deletePayment(customerId, paymentId);
+                });
+            },
+
+            deletePayment(customerId, paymentId) {
+                const c = this.customers.find(x => x.id === customerId);
+                if (!c) return;
+                const p = c.payments.find(x => x.id === paymentId);
+                if (!p) return;
+                c.payments = c.payments.filter(x => x.id !== paymentId);
+                this.saveCustomers();
+                this.renderPayments(c);
+                this.updateCustomerBalanceDisplay(c);
+                this.showMessage(`Pagamento de R$ ${p.amount.toFixed(2).replace('.', ',')} apagado.`);
+            },
+
+            updateView() {
+                if (this.currentView === 'list') {
+                    this.elements.customerListView.classList.remove('hidden');
+                    this.elements.customerDetailView.classList.add('hidden');
+                    this.renderCustomerList();
+                } else {
+                    this.elements.customerListView.classList.add('hidden');
+                    this.elements.customerDetailView.classList.remove('hidden');
+                }
+            },
+
+            exportCustomerJSON() {
+                if (!this.selectedCustomerId) return;
+                const customer = this.customers.find(c => c.id === this.selectedCustomerId);
+                if (customer) {
+                    const blob = new Blob([JSON.stringify({ ...customer, currentBalance: this.calculateBalance(customer) }, null, 2)], { type: 'application/json' });
+                    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                    a.download = `ficha_${customer.name.replace(/\s+/g,'_').toLowerCase()}.json`;
+                    a.click(); URL.revokeObjectURL(a.href);
+                    this.showMessage('Ficha exportada como JSON!');
+                }
+            },
+
+            exportCustomerPDF() {
+                if (!this.selectedCustomerId) return;
+                const customer = this.customers.find(c => c.id === this.selectedCustomerId);
+                if (!customer) return;
+                if (typeof window.jspdf === 'undefined') { this.showMessage('jsPDF não carregado.', 'error'); return; }
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+
+                let y = 22;
+                doc.setFontSize(18); doc.text(`Ficha: ${customer.name}`, 14, y); y += 8;
+                doc.setFontSize(11); doc.text(`Contato: ${customer.contact || 'Não informado'}`, 14, y); y += 7;
+                const balance = this.calculateBalance(customer);
+                doc.setFont(undefined, 'bold');
+                doc.text(balance > 0 ? `Saldo Devedor: R$ ${balance.toFixed(2).replace('.', ',')}` : balance < 0 ? `Pago a mais: R$ ${Math.abs(balance).toFixed(2).replace('.', ',')}` : 'Saldo: R$ 0,00 (Quitado)', 14, y);
+                doc.setFont(undefined, 'normal'); y += 10;
+
+                doc.setFontSize(13); doc.text('Histórico de Compras:', 14, y); y += 6;
+                if (customer.purchases.length > 0) {
+                    doc.autoTable({ head: [['Data','Produto/Serviço','Valor (R$)']], body: customer.purchases.map(p => [new Date(p.date+'T00:00:00').toLocaleDateString('pt-BR'), p.product, `R$ ${p.value.toFixed(2).replace('.', ',')}`]), startY: y, theme: 'striped', headStyles: { fillColor: [30,136,229] }, styles: { fontSize: 10 } });
+                    y = doc.lastAutoTable.finalY + 10;
+                } else { doc.setFontSize(10); doc.text('Nenhuma compra.', 14, y); y += 7; }
+
+                doc.setFontSize(13); doc.text('Histórico de Pagamentos:', 14, y); y += 6;
+                if (customer.payments.length > 0) {
+                    doc.autoTable({ head: [['Data','Valor (R$)','Observação']], body: customer.payments.map(p => [new Date(p.date+'T00:00:00').toLocaleDateString('pt-BR'), `R$ ${p.amount.toFixed(2).replace('.', ',')}`, p.note || '']), startY: y, theme: 'striped', headStyles: { fillColor: [22,160,133] }, styles: { fontSize: 10 } });
+                } else { doc.setFontSize(10); doc.text('Nenhum pagamento.', 14, y); }
+
+                doc.save(`ficha_${customer.name.replace(/\s+/g,'_').toLowerCase()}.pdf`);
+                this.showMessage('PDF exportado!');
+            },
+
+            backupAllData() {
+                if (this.customers.length === 0) { this.showMessage('Não há dados para backup.', 'error'); return; }
+                const blob = new Blob([JSON.stringify(this.customers, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                const ts = new Date().toISOString().slice(0,10).replace(/-/g,'');
+                a.download = `backup_fichas_${ts}.json`; a.click(); URL.revokeObjectURL(a.href);
+                localStorage.setItem('lastBackup', Date.now().toString());
+                this.updateBackupStatus();
+                this.showMessage('Backup realizado!');
+            },
+
+            importData(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (!Array.isArray(data)) throw new Error('Formato inválido');
+                        const valid = data.every(c => c.id && c.name && Array.isArray(c.purchases) && Array.isArray(c.payments));
+                        if (!valid) throw new Error('Estrutura inválida');
+                        this.showConfirm('Importar backup', `Isso irá SUBSTITUIR todos os ${this.customers.length} clientes atuais pelos ${data.length} clientes do arquivo. Tem certeza?`, () => {
+                            this.customers = data;
+                            this.saveCustomers();
+                            this.renderCustomerList();
+                            this.showMessage(`${data.length} clientes importados com sucesso!`);
+                        });
+                    } catch (err) {
+                        this.showMessage('Arquivo inválido. Use um backup JSON gerado por este app.', 'error', 5000);
+                    }
+                };
+                reader.readAsText(file);
+            },
+
+            bindEventListeners() {
+                const { elements } = this;
+
+                elements.showAddCustomerFormBtn.addEventListener('click', () => elements.addCustomerFormContainer.classList.remove('hidden'));
+                elements.cancelAddCustomerBtn.addEventListener('click', () => {
+                    elements.addCustomerFormContainer.classList.add('hidden');
+                    elements.customerNameInput.value = '';
+                    elements.customerContactInput.value = '';
+                    elements.customerLimitInput.value = '';
+                    elements.customerCicloSelect.value = 'padrao';
+                });
+                elements.addCustomerBtn.addEventListener('click', () => this.addCustomer());
+                elements.backToListBtn.addEventListener('click', () => { this.currentView = 'list'; this.updateView(); });
+                document.getElementById('jurosConfigBtn').addEventListener('click', () => this.abrirJurosConfig());
+                document.getElementById('jurosSaveBtn').addEventListener('click', () => this.salvarJurosConfig());
+                document.getElementById('jurosCancelBtn').addEventListener('click', () => document.getElementById('jurosModal').classList.remove('active'));
+                document.getElementById('limiteConfigBtn').addEventListener('click', () => this.abrirLimiteConfig());
+                document.getElementById('limiteSaveBtn').addEventListener('click', () => this.salvarLimiteConfig());
+                document.getElementById('limiteCancelBtn').addEventListener('click', () => document.getElementById('limiteModal').classList.remove('active'));
+                elements.addPurchaseBtn.addEventListener('click', () => this.addPurchase());
+                elements.addPaymentBtn.addEventListener('click', () => this.addPayment());
+                document.getElementById('quitarSaldoBtn').addEventListener('click', () => {
+                    const c = this.customers.find(x => x.id === this.selectedCustomerId);
+                    if (!c) return;
+                    const balance = this.calculateBalance(c);
+                    if (balance > 0) {
+                        this.elements.paymentAmountInput.value = balance.toFixed(2);
+                        this.elements.paymentNoteInput.value = 'Quitação total';
+                        this.elements.paymentAmountInput.focus();
+                    }
+                });
+                elements.exportCustomerJsonBtn.addEventListener('click', () => this.exportCustomerJSON());
+
+                document.getElementById('editCustomerBtn').addEventListener('click', () => this.editCustomer());
+                document.getElementById('editModalSaveBtn').addEventListener('click', () => this.submitEditModal());
+                document.getElementById('editModalCancelBtn').addEventListener('click', () => this.closeEditModal());
+                document.getElementById('editModal').addEventListener('click', (e) => {
+                    if (e.target === document.getElementById('editModal')) this.closeEditModal();
+                });
+                document.getElementById('editModalFields').addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') this.submitEditModal();
+                });
+
+                document.getElementById('printAbertoBtn').addEventListener('click', () => this.printCouponAberto());
+                document.getElementById('printCouponBtn').addEventListener('click', () => this.printCoupon());
+                document.getElementById('printSimplesBtn').addEventListener('click', () => this.printCouponSimples());
+                document.getElementById('printWelcomeBtn').addEventListener('click', () => this.printBoasVindas());
+                document.getElementById('analiseBtn').addEventListener('click', () => this.abrirAnalise());
+                document.getElementById('analiseFecharBtn').addEventListener('click', () => document.getElementById('analiseModal').classList.remove('active'));
+                document.getElementById('analiseImprimirBtn').addEventListener('click', () => { document.getElementById('analiseModal').classList.remove('active'); this.printAnalise(); });
+                document.getElementById('analiseModal').addEventListener('click', (e) => {
+                    if (e.target === document.getElementById('analiseModal')) document.getElementById('analiseModal').classList.remove('active');
+                });
+                document.getElementById('selectAllPurchasesBtn').addEventListener('click', () => {
+                    const c = this.customers.find(x => x.id === this.selectedCustomerId);
+                    if (c) this.selectAllPurchases(c, true);
+                });
+                document.getElementById('clearSelectionBtn').addEventListener('click', () => {
+                    const c = this.customers.find(x => x.id === this.selectedCustomerId);
+                    if (c) this.selectAllPurchases(c, false);
+                });
+                document.getElementById('headerSelectAll').addEventListener('change', (e) => {
+                    const c = this.customers.find(x => x.id === this.selectedCustomerId);
+                    if (c) this.selectAllPurchases(c, e.target.checked);
+                });
+                elements.exportCustomerPdfBtn.addEventListener('click', () => this.exportCustomerPDF());
+                elements.backupAllDataBtn.addEventListener('click', () => this.backupAllData());
+
+                elements.importDataBtn.addEventListener('click', () => elements.importFileInput.click());
+                elements.importFileInput.addEventListener('change', (e) => {
+                    if (e.target.files[0]) { this.importData(e.target.files[0]); e.target.value = ''; }
+                });
+
+                elements.searchInput.addEventListener('input', (e) => {
+                    this.searchQuery = e.target.value;
+                    this.renderCustomerList();
+                });
+
+                document.querySelectorAll('.sort-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active-sort'));
+                        btn.classList.add('active-sort');
+                        this.sortMode = btn.dataset.sort;
+                        this.renderCustomerList();
+                    });
+                });
+
+                elements.modalConfirmBtn.addEventListener('click', () => {
+                    if (this._modalCallback) this._modalCallback();
+                    this.closeModal();
+                });
+                elements.modalCancelBtn.addEventListener('click', () => this.closeModal());
+                elements.confirmModal.addEventListener('click', (e) => {
+                    if (e.target === elements.confirmModal) this.closeModal();
+                });
+
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        this.closeModal();
+                        this.closeEditModal();
+                        elements.addCustomerFormContainer.classList.add('hidden');
+                    }
+                    if (e.key === 'Enter' && !elements.addCustomerFormContainer.classList.contains('hidden')) {
+                        this.addCustomer();
+                    }
+                });
+
+                // Enter nos campos de compra/pagamento
+                elements.purchaseValueInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.addPurchase(); });
+                elements.paymentAmountInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.addPayment(); });
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => { App.init(); });
+    </script>
+</body>
+</html>

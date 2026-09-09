@@ -1,0 +1,2073 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="../shared/marca.js"></script>
+<script src="../shared/db-storage.js" data-app="orcafarma"></script>
+<title>Orçamentos · {marca}</title>
+<style>
+:root{
+  --bg:#0B120F; --surface:#121B16; --surface2:#182420; --surface3:#1F2E28;
+  --border:#26362E; --border2:#33473D;
+  --text:#E9F1EC; --muted:#93A79B; --dim:#5E7168;
+  --accent:#3EDC97; --accent-dark:#1FA96C; --accent-soft:rgba(62,220,151,.12);
+  --danger:#F0655A; --warn:#F0B429; --info:#5AA9F0; --violet:#A78BFA;
+  --madeira1:#6B4226; --madeira2:#A0714F;
+  --bronze1:#8C5A2B; --bronze2:#D89A5B;
+  --prata1:#7E8A96; --prata2:#D7DEE5;
+  --ouro1:#B8860B; --ouro2:#FFD95E;
+  --dia1:#22D3EE; --dia2:#A5F3FC;
+  --radius:14px; --radius-sm:9px;
+  --mono:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,'Roboto Mono',monospace;
+  --sans:system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.5;min-height:100vh;
+  background-image:radial-gradient(1100px 500px at 80% -10%, rgba(62,220,151,.06), transparent 60%);}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:14px;background:var(--bg);border:1px solid var(--border2);color:var(--text);
+  border-radius:var(--radius-sm);padding:9px 11px;width:100%;outline:none;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+input::placeholder,textarea::placeholder{color:var(--dim)}
+label{display:block;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ── Shell ─────────────────────────── */
+.topbar{position:sticky;top:0;z-index:50;background:rgba(11,18,15,.88);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:14px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;letter-spacing:-.02em;white-space:nowrap}
+.logo .cross{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent-dark),var(--accent));
+  display:grid;place-items:center;font-size:16px;color:#06231A;font-weight:900;box-shadow:0 0 18px rgba(62,220,151,.25)}
+.logo small{font-weight:500;color:var(--dim);font-size:11px;display:block;letter-spacing:.08em;text-transform:uppercase}
+.topbar .spacer{flex:1}
+.iconbtn{width:36px;height:36px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);
+  display:grid;place-items:center;font-size:15px;transition:.15s}
+.iconbtn:hover{border-color:var(--accent);color:var(--accent)}
+.iconbtn.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+
+.tabs{display:flex;gap:4px;padding:10px 20px 0;max-width:1180px;margin:0 auto;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:9px 16px;border-radius:10px 10px 0 0;font-weight:600;font-size:13.5px;color:var(--muted);
+  border:1px solid transparent;border-bottom:none;white-space:nowrap;transition:.15s}
+.tab:hover{color:var(--text)}
+.tab.on{background:var(--surface);border-color:var(--border);color:var(--accent)}
+main{max-width:1180px;margin:0 auto;padding:18px 20px 90px}
+.page{display:none}.page.on{display:block;animation:fadein .2s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ── Cards / grids ─────────────────── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+.card+.card{margin-top:14px}
+.card h3{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:12px;
+  display:flex;align-items:center;gap:8px}
+.grid{display:grid;gap:14px}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:900px){.g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.g4,.g3,.g2{grid-template-columns:1fr}}
+
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:15px 17px;position:relative;overflow:hidden}
+.kpi .lb{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.kpi .vl{font-family:var(--mono);font-size:24px;font-weight:700;margin-top:5px;letter-spacing:-.02em}
+.kpi .sub{font-size:12px;color:var(--dim);margin-top:3px}
+.kpi .sub b{color:var(--muted)}
+.kpi.pos .vl{color:var(--accent)} .kpi.neg .vl{color:var(--danger)}
+.up{color:var(--accent)} .down{color:var(--danger)}
+
+/* ── Selo (tier badge) — assinatura ── */
+.selo{--c1:#555;--c2:#999;display:inline-flex;align-items:center;gap:6px;padding:3px 11px 3px 8px;border-radius:999px;
+  font-size:11.5px;font-weight:800;letter-spacing:.04em;color:#0B120F;position:relative;isolation:isolate;
+  background:linear-gradient(135deg,var(--c1),var(--c2));box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -1px 2px rgba(0,0,0,.25),0 1px 3px rgba(0,0,0,.4)}
+.selo::after{content:'';position:absolute;inset:1px;border-radius:999px;z-index:-1;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.28) 48%,transparent 56%)}
+.selo .gem{width:10px;height:10px;background:linear-gradient(135deg,var(--c2),var(--c1));
+  clip-path:polygon(50% 0,100% 38%,79% 100%,21% 100%,0 38%);box-shadow:0 0 4px rgba(0,0,0,.3)}
+.selo.madeira{--c1:var(--madeira1);--c2:var(--madeira2);color:#FBEEE2}
+.selo.bronze{--c1:var(--bronze1);--c2:var(--bronze2);color:#2A1A08}
+.selo.prata{--c1:var(--prata1);--c2:var(--prata2);color:#1B222A}
+.selo.ouro{--c1:var(--ouro1);--c2:var(--ouro2);color:#332403}
+.selo.diamante{--c1:var(--dia1);--c2:var(--dia2);color:#083344;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 14px rgba(103,232,249,.35)}
+.selo.lg{font-size:13px;padding:5px 14px 5px 10px}
+.selo.sm{font-size:10px;padding:2px 8px 2px 6px;gap:4px}
+.selo.sm .gem{width:8px;height:8px}
+.selo.none{--c1:#2A3630;--c2:#3A4A42;color:var(--muted);box-shadow:none}
+
+/* ── Chips / status ────────────────── */
+.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;
+  border:1px solid;letter-spacing:.03em}
+.st-pendente{color:var(--warn);border-color:rgba(240,180,41,.4);background:rgba(240,180,41,.08)}
+.st-aprovado{color:var(--info);border-color:rgba(90,169,240,.4);background:rgba(90,169,240,.08)}
+.st-entregue{color:var(--violet);border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.08)}
+.st-pago{color:var(--accent);border-color:rgba(62,220,151,.4);background:var(--accent-soft)}
+.st-recusado{color:var(--dim);border-color:var(--border2);background:var(--surface2)}
+.st-cancelado{color:var(--danger);border-color:rgba(240,101,90,.35);background:rgba(240,101,90,.07)}
+.chip.pg{color:var(--muted);border-color:var(--border2);background:var(--surface2)}
+.chip.alert{color:var(--danger);border-color:rgba(240,101,90,.45);background:rgba(240,101,90,.1)}
+.chip.okpay{color:var(--accent);border-color:rgba(62,220,151,.35);background:var(--accent-soft)}
+
+/* ── Buttons ───────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;font-weight:700;font-size:13.5px;
+  border:1px solid var(--border2);background:var(--surface2);transition:.15s;white-space:nowrap}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:linear-gradient(135deg,var(--accent-dark),var(--accent));color:#06231A;border:1px solid transparent}
+.btn.primary:hover{filter:brightness(1.1);color:#06231A}
+.btn.danger:hover{border-color:var(--danger);color:var(--danger)}
+.btn.sm{padding:5px 11px;font-size:12px;border-radius:8px}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ── Lists / rows ──────────────────── */
+.row{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;transition:.15s}
+.row:hover{border-color:var(--border2)}
+.row .head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.row .title{font-weight:700;font-size:15px}
+.row .meta{font-size:12.5px;color:var(--muted);margin-top:4px;display:flex;gap:14px;flex-wrap:wrap}
+.row .meta .money{font-family:var(--mono)}
+.row .acts{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.mono{font-family:var(--mono)}
+body.privado .money{filter:blur(7px);user-select:none}
+
+/* ── Toolbar / filters ─────────────── */
+.toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.toolbar input[type=search]{max-width:260px}
+.toolbar select{width:auto;min-width:130px}
+.empty{text-align:center;padding:46px 20px;color:var(--dim)}
+.empty .big{font-size:34px;margin-bottom:10px}
+.empty p{margin-bottom:14px}
+
+/* ── Modal ─────────────────────────── */
+.overlay{position:fixed;inset:0;background:rgba(4,8,6,.72);backdrop-filter:blur(4px);z-index:100;display:none;
+  align-items:flex-start;justify-content:center;padding:30px 14px;overflow-y:auto}
+.overlay.on{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:100%;max-width:680px;
+  padding:22px;animation:pop .18s ease;margin:auto 0}
+.modal.narrow{max-width:440px}
+.modal.wide{max-width:820px}
+@keyframes pop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+.modal h2{font-size:18px;font-weight:800;letter-spacing:-.01em;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:560px){.mgrid{grid-template-columns:1fr}}
+.mfoot{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;flex-wrap:wrap}
+.field{margin-bottom:12px}
+
+/* Dificuldade checkboxes */
+.difgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+@media(max-width:560px){.difgrid{grid-template-columns:1fr}}
+.difopt{display:flex;align-items:flex-start;gap:9px;background:var(--bg);border:1px solid var(--border2);
+  border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;cursor:pointer;transition:.15s;user-select:none}
+.difopt:hover{border-color:var(--accent)}
+.difopt input{width:auto;accent-color:var(--warn);cursor:pointer;margin-top:3px}
+.difopt.on{border-color:var(--warn);background:rgba(240,180,41,.07)}
+.difopt small{color:var(--dim);display:block;font-size:11px;line-height:1.3}
+
+/* Itens do orçamento */
+.itens-table{width:100%;border-collapse:collapse;margin-top:4px}
+.itens-table th{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);text-align:left;padding:4px 6px;font-weight:700}
+.itens-table td{padding:3px 3px}
+.itens-table input{padding:7px 9px;font-size:13px}
+.itens-table .n{width:60px}.itens-table .m{width:96px}
+.itens-table .del{width:30px;text-align:center}
+.itens-table .del button{color:var(--dim);font-size:15px;padding:4px}
+.itens-table .del button:hover{color:var(--danger)}
+.item-lucro{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap;width:86px;text-align:right}
+@media(max-width:560px){.itens-wrap{overflow-x:auto}.itens-table{min-width:520px}}
+
+/* Live preview do orçamento */
+.preview{background:var(--bg);border:1px dashed var(--border2);border-radius:var(--radius);padding:13px 15px;margin-top:14px;
+  display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.preview .pvb .pv{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);font-weight:700}
+.preview .pvb .pvv{font-family:var(--mono);font-weight:700;font-size:16px}
+.preview .alertbox{flex-basis:100%;font-size:12.5px;color:var(--warn);display:none}
+.preview .alertbox.on{display:block}
+
+/* ── Score breakdown bars ──────────── */
+.sbar{margin-bottom:11px}
+.sbar .sl{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px}
+.sbar .sl b{font-family:var(--mono);color:var(--text)}
+.sbar .track{height:8px;background:var(--bg);border-radius:99px;overflow:hidden;border:1px solid var(--border)}
+.sbar .fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent-dark),var(--accent));transition:width .4s ease}
+
+/* ── Charts (SVG) ──────────────────── */
+.chartwrap{overflow-x:auto}
+.legend{display:flex;gap:16px;font-size:12px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+/* ── Insights ──────────────────────── */
+.insight{display:flex;gap:11px;padding:10px 12px;border-radius:var(--radius-sm);background:var(--surface2);
+  border:1px solid var(--border);margin-bottom:8px;font-size:13.5px;align-items:flex-start}
+.insight .ic{font-size:16px;line-height:1.4}
+.insight b{color:var(--accent)} .insight .warnb{color:var(--warn)} .insight .dangb{color:var(--danger)}
+
+/* ── Radar de cobrança ─────────────── */
+.radar-item{display:flex;align-items:center;gap:12px;padding:11px 13px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);margin-bottom:8px;flex-wrap:wrap}
+.radar-item.overdue{border-color:rgba(240,101,90,.45);background:rgba(240,101,90,.06)}
+.radar-item .who{font-weight:700;font-size:14px}
+.radar-item .det{font-size:12px;color:var(--muted)}
+.radar-item .spc{flex:1}
+.wa{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;
+  background:rgba(37,211,102,.12);color:#25D366;border:1px solid rgba(37,211,102,.35);text-decoration:none;transition:.15s;cursor:pointer}
+.wa:hover{background:rgba(37,211,102,.2)}
+
+/* ── Meta mensal ───────────────────── */
+.goal .track{height:14px;background:var(--bg);border:1px solid var(--border);border-radius:99px;overflow:hidden;margin-top:8px}
+.goal .fill{height:100%;background:linear-gradient(90deg,var(--accent-dark),var(--accent));border-radius:99px;transition:width .5s ease;
+  box-shadow:0 0 12px rgba(62,220,151,.4)}
+.goal .gl{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-top:6px}
+
+/* ── Tier distribution ─────────────── */
+.tierdist{display:flex;gap:10px;flex-wrap:wrap}
+.tierdist .td{flex:1;min-width:96px;text-align:center;background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:11px 8px}
+.tierdist .td .n{font-family:var(--mono);font-size:22px;font-weight:800;margin-bottom:4px}
+
+/* ── Toast ─────────────────────────── */
+#toasts{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;align-items:center;width:max-content;max-width:92vw}
+.toast{background:var(--surface3);border:1px solid var(--accent);color:var(--text);padding:11px 20px;border-radius:12px;
+  font-size:13.5px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.5);animation:pop .2s ease}
+.toast.err{border-color:var(--danger)}
+
+/* ── FAB novo orçamento ────────────── */
+.fab{position:fixed;bottom:22px;right:22px;z-index:60;width:56px;height:56px;border-radius:18px;
+  background:linear-gradient(135deg,var(--accent-dark),var(--accent));color:#06231A;font-size:26px;font-weight:800;
+  box-shadow:0 10px 30px rgba(62,220,151,.35);transition:.15s;display:grid;place-items:center}
+.fab:hover{transform:scale(1.06)}
+
+.hint{font-size:12px;color:var(--dim);margin-top:5px;line-height:1.45}
+.divider{height:1px;background:var(--border);margin:16px 0}
+.right{text-align:right}
+
+/* ── Follow-up (pendentes esfriando) ── */
+.fup-item{display:flex;align-items:center;gap:12px;padding:11px 13px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);margin-bottom:8px;flex-wrap:wrap}
+.fup-item.cold{border-color:rgba(90,169,240,.4);background:rgba(90,169,240,.05)}
+.fup-item .who{font-weight:700;font-size:14px}
+.fup-item .det{font-size:12px;color:var(--muted)}
+.fup-item .spc{flex:1}
+
+/* ── Aging chips do crediário ── */
+.aging{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.aging .ag{font-size:11.5px;font-weight:700;padding:4px 11px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--surface2);color:var(--muted);display:inline-flex;gap:6px;align-items:center}
+.aging .ag b{font-family:var(--mono);color:var(--text)}
+.aging .ag.a1{border-color:rgba(240,180,41,.4);color:var(--warn)}
+.aging .ag.a2{border-color:rgba(240,101,90,.4);color:var(--danger)}
+.aging .ag.a3{border-color:rgba(240,101,90,.7);color:var(--danger);background:rgba(240,101,90,.1)}
+
+/* ── Toast com ação (desfazer) ── */
+.toast .undo{margin-left:12px;color:var(--accent);font-weight:800;text-decoration:underline;cursor:pointer;font-size:13px}
+
+/* ── Delta (comparativo de período) ── */
+.delta{font-size:11.5px;font-family:var(--mono);font-weight:700;margin-left:6px}
+.delta.up{color:var(--accent)}.delta.down{color:var(--danger)}.delta.flat{color:var(--dim)}
+
+/* ── Datalist inputs herdam estilo nativo; nada a fazer ── */
+
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ── Impressão: orçamento para o cliente ── */
+#printArea{display:none}
+@media print{
+  body{background:#fff!important;color:#111}
+  body>*:not(#printArea){display:none!important}
+  #printArea{display:block!important;font-family:Georgia,'Times New Roman',serif;color:#111;padding:10mm}
+  #printArea .ph{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:14px}
+  #printArea h1{font-size:20px;margin:0}
+  #printArea .ph small{color:#555;font-size:12px}
+  #printArea table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}
+  #printArea th{text-align:left;border-bottom:1.5px solid #111;padding:6px 4px;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+  #printArea td{padding:7px 4px;border-bottom:1px solid #ccc}
+  #printArea .tot{text-align:right;font-size:17px;font-weight:700;margin-top:10px}
+  #printArea .foot{margin-top:22px;font-size:12px;color:#555;border-top:1px solid #ccc;padding-top:8px}
+
+  /* ── orçamento judicial: layout próprio, formal, sem enfeite ── */
+  #printArea.judicial{font-family:Arial,Helvetica,sans-serif;padding:18mm 20mm;font-size:12pt;color:#000}
+  #printArea.judicial .jcab{line-height:1.45;margin-bottom:20px}
+  #printArea.judicial .jcli{line-height:1.5;font-weight:700;margin-bottom:26px}
+  #printArea.judicial .jtit{text-align:center;font-weight:700;text-decoration:underline;margin:0 0 26px;font-size:13pt}
+  #printArea.judicial table{width:100%;border-collapse:collapse;margin:0 0 16px;font-size:11pt}
+  #printArea.judicial th,#printArea.judicial td{border:1px solid #000;padding:8px 6px;text-align:center;vertical-align:middle}
+  #printArea.judicial th{font-weight:700;text-transform:none;letter-spacing:0;background:none}
+  #printArea.judicial td.jprod,#printArea.judicial td.jqtd{font-weight:700}
+  #printArea.judicial .jtotal{font-weight:700;margin-bottom:64px}
+  #printArea.judicial .jass{text-align:center;margin:0 auto 8px;width:62%;border-top:1px solid #000;padding-top:8px;font-weight:700}
+  #printArea.judicial .jobs{margin-top:78px;font-weight:700;line-height:1.5}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo">
+    <div class="cross">✚</div>
+    <div>Orçamentos<small data-marca-nome>Minha Empresa</small></div>
+  </div>
+  <div class="spacer"></div>
+  <button class="iconbtn" id="btnPrivado" data-action="toggle-privado" title="Modo privado (oculta valores)">👁</button>
+  <button class="iconbtn" data-action="exportar" title="Exportar backup JSON">⬇</button>
+  <button class="iconbtn" data-action="importar" title="Importar backup JSON">⬆</button>
+  <input type="file" id="fileImport" accept=".json,application/json" style="display:none">
+</header>
+
+<nav class="tabs">
+  <button class="tab on" data-action="tab" data-tab="dashboard">📊 Dashboard</button>
+  <button class="tab" data-action="tab" data-tab="orcamentos">🧾 Orçamentos</button>
+  <button class="tab" data-action="tab" data-tab="clientes">👥 Clientes</button>
+  <button class="tab" data-action="tab" data-tab="relatorios">📈 Relatórios</button>
+  <button class="tab" data-action="tab" data-tab="config">⚙️ Ajustes</button>
+</nav>
+
+<main>
+  <!-- ══════════ DASHBOARD ══════════ -->
+  <section class="page on" id="page-dashboard">
+    <div class="grid g4" id="dashKpis"></div>
+    <div class="card goal" id="dashMeta" style="margin-top:14px"></div>
+    <div class="grid g2" style="margin-top:14px;align-items:start">
+      <div>
+        <div class="card">
+          <h3>📅 Lucro por mês <span style="font-weight:400;text-transform:none;letter-spacing:0">(últimos 6)</span></h3>
+          <div class="chartwrap" id="chartMeses"></div>
+          <div class="legend"><span><i style="background:var(--accent)"></i>Realizado (pago)</span><span><i style="background:var(--info)"></i>Em aberto</span></div>
+        </div>
+        <div class="card">
+          <h3>💳 Lucro por forma de pagamento</h3>
+          <div id="chartPagamento"></div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <h3>🏅 Clientes por padrão</h3>
+          <div class="tierdist" id="dashTiers"></div>
+        </div>
+        <div class="card">
+          <h3>🧠 Inteligência do balcão</h3>
+          <div id="dashInsights"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <h3>📡 Radar de cobrança — crediário em aberto</h3>
+      <div id="dashAging"></div>
+      <div id="dashRadar"></div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <h3>🔥 Follow-up — orçamentos esfriando</h3>
+      <div id="dashFollowup"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ ORÇAMENTOS ══════════ -->
+  <section class="page" id="page-orcamentos">
+    <div class="toolbar">
+      <button class="btn primary" data-action="novo-orc">＋ Novo orçamento</button>
+      <input type="search" id="fBusca" placeholder="Buscar cliente ou produto…">
+      <select id="fStatus">
+        <option value="">Todos os status</option>
+        <option value="pendente">Pendente</option><option value="aprovado">Aprovado</option>
+        <option value="entregue">Entregue</option><option value="pago">Pago</option>
+        <option value="recusado">Recusado</option><option value="cancelado">Cancelado</option>
+      </select>
+      <select id="fPag">
+        <option value="">Todo pagamento</option>
+        <option value="avista">À vista / PIX</option><option value="cartao">Cartão</option><option value="crediario">Crediário</option>
+      </select>
+      <select id="fTier">
+        <option value="">Todo padrão</option>
+        <option value="diamante">Diamante</option><option value="ouro">Ouro</option>
+        <option value="prata">Prata</option><option value="bronze">Bronze</option><option value="madeira">Madeira</option>
+      </select>
+      <select id="fPeriodo">
+        <option value="">Todo período</option>
+        <option value="mes">Este mês</option><option value="mespassado">Mês passado</option>
+        <option value="30">Últimos 30 dias</option><option value="90">Últimos 90 dias</option>
+      </select>
+      <button class="btn sm ghost" data-action="exportar-csv" title="Exporta a lista filtrada em CSV (Excel)">📄 CSV</button>
+    </div>
+    <div id="listaOrcamentos"></div>
+  </section>
+
+  <!-- ══════════ CLIENTES ══════════ -->
+  <section class="page" id="page-clientes">
+    <div class="toolbar">
+      <button class="btn primary" data-action="novo-cliente">＋ Novo cliente</button>
+      <input type="search" id="fBuscaCli" placeholder="Buscar cliente…">
+      <select id="fTierCli">
+        <option value="">Todo padrão</option>
+        <option value="diamante">Diamante</option><option value="ouro">Ouro</option>
+        <option value="prata">Prata</option><option value="bronze">Bronze</option><option value="madeira">Madeira</option>
+      </select>
+      <select id="fOrdCli">
+        <option value="score">Ordenar: score</option>
+        <option value="lucro">Ordenar: lucro</option>
+        <option value="nome">Ordenar: nome</option>
+        <option value="recente">Ordenar: mais recente</option>
+      </select>
+    </div>
+    <div id="listaClientes"></div>
+  </section>
+
+  <!-- ══════════ RELATÓRIOS ══════════ -->
+  <section class="page" id="page-relatorios">
+    <div class="toolbar">
+      <select id="rPeriodo">
+        <option value="mes">Este mês</option><option value="mespassado">Mês passado</option>
+        <option value="90">Últimos 90 dias</option><option value="ano">Este ano</option><option value="">Tudo</option>
+      </select>
+    </div>
+    <div id="relatorioBody"></div>
+  </section>
+
+  <!-- ══════════ AJUSTES ══════════ -->
+  <section class="page" id="page-config">
+    <div class="card">
+      <h3>⚖️ Pesos do score de cliente <span style="text-transform:none;letter-spacing:0;font-weight:400">(devem somar 100)</span></h3>
+      <div class="grid g4">
+        <div class="field"><label>Lucratividade</label><input type="number" id="cfgPesoLucro" min="0" max="100"></div>
+        <div class="field"><label>Pagamento</label><input type="number" id="cfgPesoPag" min="0" max="100"></div>
+        <div class="field"><label>Esforço ÷ retorno</label><input type="number" id="cfgPesoEsf" min="0" max="100"></div>
+        <div class="field"><label>Recorrência</label><input type="number" id="cfgPesoRec" min="0" max="100"></div>
+      </div>
+      <div class="hint" id="cfgPesoSoma"></div>
+    </div>
+    <div class="card">
+      <h3>🎯 Referências de cálculo</h3>
+      <div class="mgrid">
+        <div class="field"><label>Lucro-referência por orçamento (R$)</label><input type="text" inputmode="decimal" id="cfgLucroRef">
+          <div class="hint">Um orçamento com esse lucro marca 100 pts no critério de lucro absoluto. Ajuste à realidade do seu balcão.</div></div>
+        <div class="field"><label>Margem-referência (%)</label><input type="text" inputmode="decimal" id="cfgMargemRef">
+          <div class="hint">Margem que vale nota máxima. Padrão: 40%.</div></div>
+        <div class="field"><label>Meta de lucro mensal (R$)</label><input type="text" inputmode="decimal" id="cfgMeta"></div>
+        <div class="field"><label>Taxa padrão do cartão (%)</label><input type="text" inputmode="decimal" id="cfgTaxaCartao">
+          <div class="hint">Usada para estimar o desconto da maquininha quando você não informa o líquido recebido no orçamento. Deixe 0 para desligar.</div></div>
+        <div class="field"><label>Tolerância do crediário (dias)</label><input type="number" id="cfgTolerancia" min="0">
+          <div class="hint">Sem data de vencimento, o radar considera atrasado após esse prazo da data do orçamento.</div></div>
+        <div class="field"><label>Dia de vencimento padrão do crediário</label><input type="number" id="cfgDiaVenc" min="0" max="28">
+          <div class="hint">Ao escolher crediário, o vencimento é sugerido no próximo dia N do mês (ex.: 5). Deixe 0 para não sugerir.</div></div>
+        <div class="field"><label>Follow-up de pendentes (dias)</label><input type="number" id="cfgFollowup" min="1">
+          <div class="hint">Orçamentos pendentes há mais dias que isso aparecem no card de follow-up do dashboard.</div></div>
+      </div>
+      <button class="btn primary" data-action="salvar-config">Salvar ajustes</button>
+    </div>
+    <div class="card">
+      <h3>💾 Backup & dados</h3>
+      <p class="hint" style="margin-bottom:12px" id="backupInfo"></p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn" data-action="exportar">⬇ Exportar backup (JSON)</button>
+        <button class="btn" data-action="importar">⬆ Importar backup</button>
+        <button class="btn" data-action="restaurar-snap" id="btnSnap" style="display:none">🛟 Restaurar snapshot</button>
+        <button class="btn danger" data-action="zerar">🗑 Zerar todos os dados</button>
+      </div>
+      <div class="hint" style="margin-top:10px">Os dados vivem no localStorage deste navegador. Limpou o histórico do navegador = perdeu tudo. Exporte com frequência.</div>
+    </div>
+    <div class="card">
+      <h3>ℹ️ Como o score funciona</h3>
+      <p style="font-size:13.5px;color:var(--muted);line-height:1.6">
+        Cada cliente recebe um score de 0 a 100 composto por: <b style="color:var(--text)">Lucratividade</b> (lucro acumulado relativo ao seu melhor cliente + margem média),
+        <b style="color:var(--text)">Pagamento</b> (à vista &gt; cartão &gt; crediário em dia &gt; atrasado &gt; calote),
+        <b style="color:var(--text)">Esforço ÷ retorno</b> (margem obtida por unidade de dificuldade do pedido) e
+        <b style="color:var(--text)">Recorrência</b> (taxa de aprovação e frequência).
+        Padrões: Madeira 0–20 · Bronze 21–40 · Prata 41–60 · Ouro 61–80 · Diamante 81–100.
+        Cada orçamento também tem seu próprio selo, independente do cliente.</p>
+    </div>
+  </section>
+</main>
+
+<button class="fab" data-action="novo-orc" title="Novo orçamento">＋</button>
+
+<!-- ══════════ MODAL ORÇAMENTO ══════════ -->
+<div class="overlay" id="ovOrc">
+  <div class="modal wide">
+    <h2 id="orcModalTitle">Novo orçamento</h2>
+    <div class="mgrid">
+      <div class="field">
+        <label>Cliente</label>
+        <div style="display:flex;gap:7px">
+          <select id="oCliente" style="flex:1"></select>
+          <button class="btn sm" data-action="quick-cliente" title="Cadastrar cliente rápido" style="align-self:stretch">＋</button>
+        </div>
+      </div>
+      <div class="field"><label>Data</label><input type="date" id="oData"></div>
+      <div class="field">
+        <label>Forma de pagamento</label>
+        <select id="oPag">
+          <option value="avista">À vista / PIX</option>
+          <option value="cartao">Cartão</option>
+          <option value="crediario">Crediário</option>
+        </select>
+      </div>
+      <div class="field" id="oVencWrap" style="display:none"><label>Vencimento do crediário</label><input type="date" id="oVenc"></div>
+      <div class="field" id="oLiqWrap" style="display:none"><label>Líquido recebido no cartão (R$)</label>
+        <input type="text" inputmode="decimal" id="oLiq" placeholder="deixe vazio p/ usar a taxa padrão">
+        <div class="hint" id="oLiqHint">Quanto de fato caiu na conta depois da taxa da maquininha.</div></div>
+    </div>
+
+    <div class="field">
+      <label>Dificuldade do pedido</label>
+      <div class="difgrid" id="oDif">
+        <label class="difopt"><input type="checkbox" value="encomenda"><span>📦 Encomenda<small>não tem em estoque, pedir à distribuidora</small></span></label>
+        <label class="difopt"><input type="checkbox" value="fornecedor"><span>🚚 Fornecedor distante<small>fora do estado, prazo/frete complicado</small></span></label>
+        <label class="difopt"><input type="checkbox" value="controlado"><span>🔒 Item controlado<small>exige documento ou autorização</small></span></label>
+        <label class="difopt"><input type="checkbox" value="cotacao"><span>🧪 Manipulado / cotação<small>precisa cotar com terceiros</small></span></label>
+        <label class="difopt"><input type="checkbox" value="urgencia"><span>⏱ Urgência<small>cliente precisa pra ontem</small></span></label>
+        <label class="difopt"><input type="checkbox" value="negociacao"><span>🗣 Negociação intensa<small>pechincha, fracionamento, retrabalho</small></span></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Itens</label>
+      <div class="itens-wrap">
+      <table class="itens-table">
+        <thead><tr><th>Produto</th><th class="n">Qtd</th><th class="m">Custo un.</th><th class="m">Venda un.</th><th class="right">Lucro</th><th class="del"></th></tr></thead>
+        <tbody id="oItens"></tbody>
+      </table>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn sm" data-action="add-item">＋ Adicionar item</button>
+        <button class="btn sm ghost" data-action="sugerir-precos" id="btnSugerir" title="Preenche a venda dos itens sem preço usando a margem-referência">🎯 Sugerir preços</button>
+        <button class="btn sm ghost" data-action="copiar-cotacao-modal" title="Copiar estes itens no formato de lista para cotação">📋 Copiar p/ cotação</button>
+        <span class="hint" style="margin:0">Digite o produto: se já passou pelo balcão, custo e venda vêm sozinhos.</span>
+      </div>
+      <datalist id="dlProdutos"></datalist>
+    </div>
+
+    <div class="field"><label>Observações</label><textarea id="oObs" rows="2" placeholder="Anotações do pedido…"></textarea></div>
+
+    <div class="preview" id="oPreview"></div>
+
+    <div class="mfoot">
+      <button class="btn ghost" data-action="fechar-modal">Cancelar</button>
+      <button class="btn primary" data-action="salvar-orc">Salvar orçamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL CLIENTE ══════════ -->
+<div class="overlay" id="ovCliente">
+  <div class="modal narrow">
+    <h2 id="cliModalTitle">Novo cliente</h2>
+    <div class="field"><label>Nome</label><input type="text" id="cNome" placeholder="Nome do cliente"></div>
+    <div class="field"><label>WhatsApp / telefone</label><input type="tel" id="cTel" placeholder="(48) 99999-9999"></div>
+    <div class="field"><label>CPF <span style="color:var(--muted);font-weight:400">(usado no orçamento judicial)</span></label><input type="text" id="cCpf" placeholder="000.000.000-00"></div>
+    <div class="field"><label>Observações</label><textarea id="cObs" rows="2" placeholder="Ex.: cliente antigo, pede sempre para a mãe…"></textarea></div>
+    <div class="mfoot">
+      <button class="btn ghost" data-action="fechar-modal">Cancelar</button>
+      <button class="btn primary" data-action="salvar-cliente">Salvar cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL DETALHE CLIENTE ══════════ -->
+<div class="overlay" id="ovDetCliente">
+  <div class="modal wide" id="detClienteBody"></div>
+</div>
+
+<!-- ══════════ MODAL ORÇAMENTO JUDICIAL ══════════ -->
+<div class="overlay" id="ovJudicial">
+  <div class="modal wide">
+    <h2>⚖️ Orçamento judicial</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
+      Confira os dados antes de gerar. Só o valor de venda vai para o documento — custo e margem não aparecem.
+    </p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field"><label>Nome do cliente</label><input type="text" id="jNome" placeholder="Nome completo"></div>
+      <div class="field"><label>CPF</label><input type="text" id="jCpf" placeholder="000.000.000-00"></div>
+    </div>
+
+    <div class="field"><label>Itens <span style="color:var(--muted);font-weight:400">— descrição igual à da receita/processo</span></label></div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr>
+        <th style="text-align:left;padding:4px;width:78px">Qtd</th>
+        <th style="text-align:left;padding:4px;width:120px">Unidade</th>
+        <th style="text-align:left;padding:4px">Produto</th>
+        <th style="text-align:right;padding:4px;width:120px">Valor unit.</th>
+      </tr></thead>
+      <tbody id="jItens"></tbody>
+    </table>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
+      <div class="field"><label>Cidade</label><input type="text" id="jCidade" placeholder="LAURO MÜLLER"></div>
+      <div class="field"><label>Data do documento</label><input type="date" id="jData"></div>
+    </div>
+
+    <details style="margin-top:6px">
+      <summary style="cursor:pointer;font-size:13px;color:var(--muted)">Dados do negócio e observação (fica salvo para os próximos)</summary>
+      <div style="display:grid;gap:9px;margin-top:10px">
+        <div class="field"><label>Razão social</label><input type="text" id="jRazao"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="field"><label>CNPJ</label><input type="text" id="jCnpj"></div>
+          <div class="field"><label>Cidade / UF</label><input type="text" id="jCidadeUf"></div>
+        </div>
+        <div class="field"><label>Endereço</label><input type="text" id="jEndereco"></div>
+        <div class="field"><label>Observação do rodapé</label><textarea id="jObs" rows="2"></textarea></div>
+      </div>
+    </details>
+
+    <div class="mfoot">
+      <button class="btn ghost" data-action="fechar-modal">Cancelar</button>
+      <button class="btn primary" data-action="gerar-judicial">🖨 Gerar documento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL RECEBER CREDIÁRIO ══════════ -->
+<div class="overlay" id="ovReceber">
+  <div class="modal narrow">
+    <h2>💰 Receber crediário</h2>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:16px" id="receberInfo"></p>
+    <div style="display:grid;gap:9px">
+      <button class="btn" data-action="receber-com" data-comp="em_dia" style="justify-content:flex-start">✅ Pagou em dia</button>
+      <button class="btn" data-action="receber-com" data-comp="atrasado" style="justify-content:flex-start">⏰ Pagou com atraso</button>
+    </div>
+    <div class="mfoot"><button class="btn ghost" data-action="fechar-modal">Cancelar</button></div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL LÍQUIDO DO CARTÃO ══════════ -->
+<div class="overlay" id="ovLiq">
+  <div class="modal narrow">
+    <h2>💳 Receber no cartão</h2>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:14px" id="liqInfo"></p>
+    <div class="field"><label>Líquido recebido (R$)</label>
+      <input type="text" inputmode="decimal" id="liqValor" placeholder="deixe vazio p/ manter a estimativa">
+      <div class="hint" id="liqHint"></div></div>
+    <div class="mfoot">
+      <button class="btn ghost" data-action="fechar-modal">Cancelar</button>
+      <button class="btn primary" data-action="liq-confirmar">💰 Confirmar recebimento</button>
+    </div>
+  </div>
+</div>
+
+<div id="printArea"></div>
+<div id="toasts"></div>
+<script>
+(function(){
+'use strict';
+/* ═══════════════════════ ESTADO & PERSISTÊNCIA ═══════════════════════ */
+const KEY='orcafarma_v2';           // mesma chave: dados antigos entram direto
+const SNAPKEY='orcafarma_v2_snap';  // snapshot diário de segurança
+const DEFAULTS={
+  clientes:[], orcamentos:[],
+  config:{ pesos:{lucro:40,pagamento:35,esforco:15,recorrencia:10},
+    lucroRef:150, margemRef:40, metaMensal:0, tolerancia:30, privado:false, ultimoBackup:null,
+    diaVencimento:5, followupDias:3, taxaCartao:3.5 },
+  meta:{versao:3, seq:0, criadoEm:new Date().toISOString()}
+};
+let state=load();
+function load(){
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(!raw) return structuredClone(DEFAULTS);
+    const s=JSON.parse(raw);
+    // migração defensiva
+    s.clientes=s.clientes||[]; s.orcamentos=s.orcamentos||[];
+    s.config=Object.assign(structuredClone(DEFAULTS.config), s.config||{});
+    s.config.pesos=Object.assign({lucro:40,pagamento:35,esforco:15,recorrencia:10}, s.config.pesos||{});
+    s.meta=Object.assign({versao:3,seq:0}, s.meta||{}); s.meta.versao=3;
+    // Migração: número sequencial de orçamento (para impressão e referência com o cliente)
+    let seq=Math.max(s.meta.seq||0, ...s.orcamentos.map(o=>o.numero||0), 0);
+    s.orcamentos.filter(o=>!o.numero)
+      .sort((a,b)=>(a.criadoEm||a.data||'').localeCompare(b.criadoEm||b.data||''))
+      .forEach(o=>o.numero=++seq);
+    s.meta.seq=seq;
+    return s;
+  }catch(e){ console.error('Falha ao carregar',e); return structuredClone(DEFAULTS); }
+}
+function save(){ try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){ toast('Erro ao salvar no localStorage!',true); } }
+
+/* ═══════════════════════ HELPERS ═══════════════════════ */
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const BRL=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
+const fmt=v=>BRL.format(v||0);
+const fmtPct=v=>(v||0).toFixed(1).replace('.',',')+'%';
+function num(v){ v=String(v??'').trim(); if(!v)return 0;
+  if(v.includes(',')) v=v.replace(/\./g,'').replace(',','.');
+  else if(/^\d{1,3}(\.\d{3})+$/.test(v)) v=v.replace(/\./g,''); // "1.500" = mil e quinhentos, não 1,5
+  const n=parseFloat(v); return isFinite(n)?n:0; }
+function norm(s){ return String(s??'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function esc(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function hoje(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function fmtData(iso){ if(!iso)return '—'; const [a,m,d]=iso.split('-'); return `${d}/${m}/${a}`; }
+function mesKey(iso){ return iso?iso.slice(0,7):''; }
+function diasDesde(iso){ if(!iso)return 0; return Math.floor((new Date(hoje())-new Date(iso))/86400000); }
+/* ═══════ Copiar itens para cotação ═══════
+   O cotador aceita um item por linha, no formato "- Produto 2cx": ele tira o
+   traço da frente, lê o número colado em x/un/cx/caixa como quantidade e usa o
+   resto como nome do produto. Item repetido entra uma vez só com as quantidades
+   somadas — cotar o mesmo produto duas vezes é tempo perdido nas distribuidoras. */
+function qtdNumero(q){
+  const m = String(q == null ? '' : q).match(/\d+/);
+  const n = m ? parseInt(m[0], 10) : 1;
+  return n > 0 ? n : 1;
+}
+function textoCotacao(pares){
+  const mapa = new Map();
+  (pares || []).forEach(p => {
+    const nome = String(p && p.nome != null ? p.nome : '').trim();
+    if (!nome) return;
+    const k = nome.toLowerCase().replace(/\s+/g, ' ');
+    const at = mapa.get(k);
+    if (at) at.qtd += qtdNumero(p.qtd);
+    else mapa.set(k, { nome, qtd: qtdNumero(p.qtd) });
+  });
+  return [...mapa.values()].map(i => i.qtd > 1 ? `- ${i.nome} ${i.qtd}x` : `- ${i.nome}`).join('\n');
+}
+function copiarTexto(txt){
+  // textarea + execCommand funciona dentro do iframe do hub, onde a API nova
+  // de clipboard nem sempre tem permissão. A API fica como reserva.
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:-1000px;left:0;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, txt.length);
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (ok) return true;
+  } catch (e) { /* cai na API nova */ }
+  try { navigator.clipboard.writeText(txt); return true; } catch (e) { return false; }
+}
+function copiarCotacaoOrc(id){
+  const o = state.orcamentos.find(x => x.id === id);
+  if (!o) return;
+  const txt = textoCotacao((o.itens || []).map(i => ({ nome: i.produto, qtd: i.qtd })));
+  if (!txt) { toast('Este orçamento não tem itens.', true); return; }
+  const ok = copiarTexto(txt);
+  toast(ok ? `${txt.split('\n').length} item(ns) copiado(s) — cole no seu cotador ✔` : 'Não consegui copiar.', !ok);
+}
+// mesma coisa para o orçamento aberto na tela, antes mesmo de salvar
+function copiarCotacaoModal(){
+  const txt = textoCotacao(lerItens().map(i => ({ nome: i.produto, qtd: i.qtd })));
+  if (!txt) { toast('Preencha os produtos primeiro.', true); return; }
+  const ok = copiarTexto(txt);
+  toast(ok ? `${txt.split('\n').length} item(ns) copiado(s) — cole no seu cotador ✔` : 'Não consegui copiar.', !ok);
+}
+
+function toast(msg,err,acaoFn,acaoLb){ const t=document.createElement('div'); t.className='toast'+(err?' err':'');
+  t.textContent=msg;
+  if(acaoFn){ const u=document.createElement('span'); u.className='undo'; u.textContent=acaoLb||'Desfazer';
+    u.onclick=()=>{ acaoFn(); t.remove(); }; t.appendChild(u); }
+  $('#toasts').appendChild(t); setTimeout(()=>t.remove(),acaoFn?6500:3200); }
+function getCliente(id){ return state.clientes.find(c=>c.id===id); }
+function nomeCliente(id){ const c=getCliente(id); return c?c.nome:'(cliente removido)'; }
+
+const STATUS_LB={pendente:'Pendente',aprovado:'Aprovado',entregue:'Entregue',pago:'Pago',recusado:'Recusado',cancelado:'Cancelado'};
+const PAG_LB={avista:'À vista/PIX',cartao:'Cartão',crediario:'Crediário'};
+const DIF_LB={encomenda:'📦 Encomenda',fornecedor:'🚚 Fornecedor distante',controlado:'🔒 Controlado',cotacao:'🧪 Cotação/manipulado',urgencia:'⏱ Urgência',negociacao:'🗣 Negociação'};
+const COMP_LB={em_dia:'pagou em dia',atrasado:'pagou atrasado',nao_pagou:'não pagou'};
+
+/* ═══════════════════════ MOTOR DE SCORE ═══════════════════════ */
+const TIERS=[
+  {min:81,id:'diamante',nome:'Diamante'},
+  {min:61,id:'ouro',nome:'Ouro'},
+  {min:41,id:'prata',nome:'Prata'},
+  {min:21,id:'bronze',nome:'Bronze'},
+  {min:0, id:'madeira',nome:'Madeira'}
+];
+function tierDe(score){ return TIERS.find(t=>score>=t.min)||TIERS[4]; }
+function seloHtml(score,extra){ if(score==null) return `<span class="selo none ${extra||''}"><span class="gem"></span>Sem histórico</span>`;
+  const t=tierDe(score); return `<span class="selo ${t.id} ${extra||''}" title="Score ${score}"><span class="gem"></span>${t.nome} · ${score}</span>`; }
+
+function calcOrc(o){
+  let receita=0,custo=0;
+  (o.itens||[]).forEach(i=>{ receita+=num(i.venda)*num(i.qtd); custo+=num(i.custo)*num(i.qtd); });
+  // Taxa da maquininha: só existe no cartão.
+  // Se o valor líquido foi informado, a taxa é a diferença real. Senão, estima pela taxa padrão dos Ajustes.
+  let taxa=0, taxaEstimada=false;
+  if(o.pagamento==='cartao' && receita>0){
+    const liq=num(o.liquido);
+    if(liq>0){ taxa=Math.max(0,receita-liq); }
+    else { const p=num(state.config&&state.config.taxaCartao)||0; taxa=receita*p/100; taxaEstimada=p>0; }
+  }
+  const liquido=receita-taxa;
+  const lucroBruto=receita-custo;
+  const lucro=liquido-custo;
+  return {receita,custo,taxa,taxaEstimada,liquido,lucroBruto,lucro,
+    taxaPct:receita>0?taxa/receita*100:0,
+    margem:receita>0?lucro/receita*100:0};
+}
+function difNota(o){ return ((o.dificuldade||[]).length/6)*10; } // 0–10
+function pagNota(o){
+  if(o.pagamento==='crediario'){
+    if(o.comportamento==='em_dia') return 70;
+    if(o.comportamento==='atrasado') return 30;
+    if(o.comportamento==='nao_pagou') return 0;
+    return 55; // ainda em aberto
+  }
+  if(o.pagamento==='cartao') return 85;
+  return 100;
+}
+// Score individual do orçamento: margem 35% + lucro absoluto 25% + pagamento 25% + eficiência 15%
+function orcScore(o){
+  const c=calcOrc(o), dif=difNota(o), cfg=state.config;
+  const mMargem=Math.min(100,Math.max(0,c.margem)/(cfg.margemRef||40)*100);
+  const mLucro=Math.min(100,Math.max(0,c.lucro)/(cfg.lucroRef||150)*100);
+  const mPag=pagNota(o);
+  const mEff=Math.min(100,Math.max(0,(c.margem/(1+dif))*10));
+  return Math.round(mMargem*.35+mLucro*.25+mPag*.25+mEff*.15);
+}
+function clienteStats(cid){
+  const orcs=state.orcamentos.filter(o=>o.clienteId===cid);
+  const ativos=orcs.filter(o=>['aprovado','entregue','pago'].includes(o.status));
+  const decididos=orcs.filter(o=>o.status!=='pendente'&&o.status!=='cancelado');
+  const aprovados=decididos.filter(o=>o.status!=='recusado');
+  let lucroPond=0, lucroReal=0, receita=0, margens=[], difs=[], pagPts=0, pagPeso=0;
+  ativos.forEach(o=>{
+    const c=calcOrc(o);
+    lucroPond += c.lucro * (o.status==='pago'?1:.5);
+    if(o.status==='pago') lucroReal+=c.lucro;
+    receita+=c.receita;
+    if(c.receita>0) margens.push(c.margem);
+    difs.push(difNota(o));
+    const peso=Math.max(1,c.receita);
+    pagPts += pagNota(o)*peso; pagPeso += peso;
+  });
+  // calote conta mesmo sem ser "pago"
+  orcs.filter(o=>o.comportamento==='nao_pagou'&&o.status!=='pago').forEach(o=>{
+    const c=calcOrc(o); const peso=Math.max(1,c.receita); pagPts+=0*peso; pagPeso+=peso;
+  });
+  const margemMedia=margens.length?margens.reduce((a,b)=>a+b,0)/margens.length:0;
+  const difMedia=difs.length?difs.reduce((a,b)=>a+b,0)/difs.length:0;
+  const pagScore=pagPeso>0?pagPts/pagPeso:60;
+  return { total:orcs.length, ativos:ativos.length, decididos:decididos.length, aprovados:aprovados.length,
+    lucroPond, lucroReal, receita, margemMedia, difMedia, pagScore,
+    temCalote:orcs.some(o=>o.comportamento==='nao_pagou'),
+    temAtraso:orcs.some(o=>o.comportamento==='atrasado') };
+}
+function maxLucroPond(){
+  let mx=0; state.clientes.forEach(c=>{ const s=clienteStats(c.id); if(s.lucroPond>mx)mx=s.lucroPond; });
+  return mx;
+}
+function clienteScore(cid, mx){
+  const st=clienteStats(cid); const p=state.config.pesos; const cfg=state.config;
+  if(st.total===0) return {score:null, comp:null, stats:st};
+  if(mx===undefined) mx=maxLucroPond();
+  const rel = mx>0 ? Math.sqrt(Math.max(0,st.lucroPond)/mx)*100 : 0;
+  const mg  = Math.min(100, st.margemMedia/(cfg.margemRef||40)*100);
+  const cLucro = rel*.6 + mg*.4;
+  const cPag = st.pagScore;
+  const cEsf = Math.min(100, Math.max(0, (st.margemMedia/(1+st.difMedia))*8));
+  const taxa = st.decididos>0 ? st.aprovados/st.decididos : 0;
+  const cRec = Math.min(100, taxa*70 + Math.min(30, st.ativos*6));
+  const score = Math.round((cLucro*p.lucro + cPag*p.pagamento + cEsf*p.esforco + cRec*p.recorrencia)/100);
+  return {score:Math.max(0,Math.min(100,score)),
+    comp:{ 'Lucratividade':Math.round(cLucro),'Pagamento':Math.round(cPag),'Esforço ÷ retorno':Math.round(cEsf),'Recorrência':Math.round(cRec) },
+    stats:st};
+}
+
+/* ═══════════════════════ RADAR DE COBRANÇA ═══════════════════════ */
+function radarCobranca(){
+  const tol=state.config.tolerancia||30;
+  return state.orcamentos
+    .filter(o=>o.pagamento==='crediario'&&['aprovado','entregue'].includes(o.status))
+    .map(o=>{
+      const c=calcOrc(o);
+      const ref=o.vencimento||null;
+      const atraso = ref ? diasDesde(ref) : diasDesde(o.data)-tol;
+      return {o, valor:c.receita, venc:ref, atraso, calote:o.comportamento==='nao_pagou'};
+    })
+    .sort((a,b)=>b.atraso-a.atraso);
+}
+function waLink(tel,msg){
+  let d=String(tel||'').replace(/\D/g,'');
+  if(!d) return null;
+  if(d.length<=11) d='55'+d;
+  return 'https://wa.me/'+d+'?text='+encodeURIComponent(msg);
+}
+function msgCobranca(cliNome,valor,venc){
+  return `Olá, ${cliNome}! Aqui é da ${window.marcaNome()}. 😊 Passando para lembrar do seu crediário no valor de ${fmt(valor)}`+
+    (venc?` com vencimento em ${fmtData(venc)}`:'')+`. Qualquer coisa, estamos à disposição!`;
+}
+function msgFollowup(cliNome,valor){
+  return `Olá, ${cliNome}! Aqui é da ${window.marcaNome()}. 😊 Seu orçamento de ${fmt(valor)} continua reservado aqui. Posso separar para você?`;
+}
+function msgOrcamento(o){
+  const c=calcOrc(o);
+  const linhas=(o.itens||[]).filter(i=>i.produto).map(i=>{
+    const q=num(i.qtd)||1;
+    return `• ${i.produto}${q>1?' ×'+q:''} — ${fmt(num(i.venda)*q)}`;
+  }).join('\n');
+  return `*Orçamento — ${window.marcaNome()}*\n${fmtData(o.data)} · ${nomeCliente(o.clienteId)}\n\n${linhas}\n\n*Total: ${fmt(c.receita)}*`+
+    (o.pagamento==='crediario'?`\nPagamento: crediário${o.vencimento?' (vencimento '+fmtData(o.vencimento)+')':''}`:'')+
+    `\n\nQualquer dúvida, é só chamar! 😊`;
+}
+
+/* ═══════════════════════ MEMÓRIA DE PRODUTOS ═══════════════════════ */
+// Aprende do histórico — zero cadastro. Último custo/venda de cada produto digitado.
+function produtoMemoria(){
+  const map={};
+  [...state.orcamentos].sort((a,b)=>(a.data||'').localeCompare(b.data||'')||(a.criadoEm||'').localeCompare(b.criadoEm||''))
+    .forEach(o=>(o.itens||[]).forEach(i=>{
+      const k=norm((i.produto||'').trim()); if(!k)return;
+      map[k]={nome:(i.produto||'').trim(), custo:num(i.custo), venda:num(i.venda)};
+    }));
+  return map;
+}
+let memProdutos={};
+function popularDatalist(){
+  memProdutos=produtoMemoria();
+  $('#dlProdutos').innerHTML=Object.values(memProdutos)
+    .sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'))
+    .map(p=>`<option value="${esc(p.nome)}"${p.venda?` label="R$ ${p.venda.toFixed(2).replace('.',',')}"`:''}>`).join('');
+}
+function autoFillProduto(tr){
+  const p=memProdutos[norm(tr.querySelector('.i-prod').value.trim())];
+  if(!p) return;
+  const iC=tr.querySelector('.i-custo'), iV=tr.querySelector('.i-venda');
+  if(!num(iC.value)&&p.custo) iC.value=String(p.custo.toFixed(2)).replace('.',',');
+  if(!num(iV.value)&&p.venda) iV.value=String(p.venda.toFixed(2)).replace('.',',');
+}
+
+/* ═══════════════════════ FOLLOW-UP & VENCIMENTO PADRÃO ═══════════════════════ */
+function followups(){
+  const d=state.config.followupDias||3;
+  return state.orcamentos.filter(o=>o.status==='pendente'&&diasDesde(o.data)>=d)
+    .map(o=>({o,dias:diasDesde(o.data),valor:calcOrc(o).receita}))
+    .sort((a,b)=>b.dias-a.dias);
+}
+function proximoVencimento(){
+  const dia=state.config.diaVencimento||0; if(!dia) return '';
+  const now=new Date(); let a=now.getFullYear(), m=now.getMonth();
+  if(now.getDate()>=dia) m++;                 // já passou o dia N deste mês → próximo mês
+  if(m>11){ m=0; a++; }
+  return a+'-'+String(m+1).padStart(2,'0')+'-'+String(dia).padStart(2,'0');
+}
+
+/* ═══════════════════════ INSIGHTS ═══════════════════════ */
+function gerarInsights(){
+  const out=[];
+  const orcs=state.orcamentos;
+  if(!orcs.length) return out;
+  const mx=maxLucroPond();
+  const scored=state.clientes.map(c=>({c,r:clienteScore(c.id,mx)})).filter(x=>x.r.score!=null);
+
+  // 80/20: concentração de lucro
+  if(scored.length>=3){
+    const byLucro=[...scored].sort((a,b)=>b.r.stats.lucroPond-a.r.stats.lucroPond);
+    const total=byLucro.reduce((a,x)=>a+Math.max(0,x.r.stats.lucroPond),0);
+    if(total>0){
+      const topN=Math.max(1,Math.ceil(byLucro.length*.2));
+      const topLucro=byLucro.slice(0,topN).reduce((a,x)=>a+Math.max(0,x.r.stats.lucroPond),0);
+      out.push({ic:'🎯',html:`Os <b>${topN} clientes do topo</b> (${Math.round(topN/byLucro.length*100)}% da carteira) concentram <b>${Math.round(topLucro/total*100)}%</b> do seu lucro. Cuide bem deles.`});
+    }
+  }
+  // Melhor cliente
+  if(scored.length){
+    const best=[...scored].sort((a,b)=>b.r.stats.lucroPond-a.r.stats.lucroPond)[0];
+    out.push({ic:'👑',html:`<b>${esc(best.c.nome)}</b> é seu cliente mais lucrativo: ${fmt(best.r.stats.lucroPond)} ponderado, margem média ${fmtPct(best.r.stats.margemMedia)}.`});
+  }
+  // Margem mês vs mês anterior
+  const now=new Date(); const mAtual=hoje().slice(0,7);
+  const dAnt=new Date(now.getFullYear(),now.getMonth()-1,1);
+  const mAnt=dAnt.getFullYear()+'-'+String(dAnt.getMonth()+1).padStart(2,'0');
+  const mgDe=k=>{ const os=orcs.filter(o=>mesKey(o.data)===k&&['aprovado','entregue','pago'].includes(o.status));
+    if(!os.length)return null; let r=0,l=0; os.forEach(o=>{const c=calcOrc(o);r+=c.receita;l+=c.lucro;}); return r>0?l/r*100:null; };
+  const g1=mgDe(mAtual), g0=mgDe(mAnt);
+  if(g1!=null&&g0!=null){
+    const d=g1-g0;
+    out.push({ic:d>=0?'📈':'📉',html:`Margem média deste mês: <b>${fmtPct(g1)}</b> (${d>=0?'<b>+':'<span class="dangb">−'}${Math.abs(d).toFixed(1).replace('.',',')} p.p.${d>=0?'</b>':'</span>'} vs mês passado).`});
+  }
+  // Crediário em risco
+  const radar=radarCobranca(); const emAtraso=radar.filter(r=>r.atraso>0);
+  if(emAtraso.length){
+    const tot=emAtraso.reduce((a,r)=>a+r.valor,0);
+    out.push({ic:'🚨',html:`<span class="dangb">${emAtraso.length} crediário(s) atrasado(s)</span> somando <b>${fmt(tot)}</b>. O radar de cobrança está logo abaixo.`});
+  }
+  // Esforço que não compensa
+  const dificeis=orcs.filter(o=>['aprovado','entregue','pago'].includes(o.status)&&difNota(o)>=5);
+  if(dificeis.length>=2){
+    let r=0,l=0; dificeis.forEach(o=>{const c=calcOrc(o);r+=c.receita;l+=c.lucro;});
+    const mg=r>0?l/r*100:0;
+    if(mg < (state.config.margemRef||40)*.5)
+      out.push({ic:'⚖️',html:`Pedidos difíceis estão rendendo só <span class="warnb">${fmtPct(mg)}</span> de margem. Considere <b>cobrar mais pelo trabalho extra</b> (encomenda, cotação, urgência).`});
+    else
+      out.push({ic:'💪',html:`Seus pedidos difíceis mantêm margem de <b>${fmtPct(mg)}</b> — o esforço extra está sendo bem precificado.`});
+  }
+  // Produto mais lucrativo
+  const prodMap={};
+  orcs.filter(o=>['aprovado','entregue','pago'].includes(o.status)).forEach(o=>(o.itens||[]).forEach(i=>{
+    const k=(i.produto||'').trim().toLowerCase(); if(!k)return;
+    prodMap[k]=prodMap[k]||{nome:i.produto,lucro:0,qtd:0};
+    prodMap[k].lucro+=(num(i.venda)-num(i.custo))*num(i.qtd); prodMap[k].qtd+=num(i.qtd);
+  }));
+  const prods=Object.values(prodMap).sort((a,b)=>b.lucro-a.lucro);
+  if(prods.length>=3) out.push({ic:'💊',html:`Produto que mais deu lucro: <b>${esc(prods[0].nome)}</b> (${fmt(prods[0].lucro)} em ${prods[0].qtd} un.). Vale garantir estoque.`});
+  // Taxa de recusa
+  const decid=orcs.filter(o=>!['pendente','cancelado'].includes(o.status));
+  if(decid.length>=5){
+    const rec=decid.filter(o=>o.status==='recusado').length;
+    const tx=rec/decid.length*100;
+    if(tx>30) out.push({ic:'🤔',html:`<span class="warnb">${Math.round(tx)}% dos orçamentos são recusados.</span> Preço alto, prazo, ou perfil de cliente? Vale investigar.`});
+  }
+  // Quanto a maquininha comeu
+  const cart=orcs.filter(o=>o.pagamento==='cartao'&&['aprovado','entregue','pago'].includes(o.status));
+  if(cart.length>=3){
+    let tx=0,lb=0,semInfo=0;
+    cart.forEach(o=>{ const c=calcOrc(o); tx+=c.taxa; lb+=c.lucroBruto; if(c.taxaEstimada)semInfo++; });
+    if(tx>0) out.push({ic:'💳',html:`A taxa do cartão consumiu <b class="money">${fmt(tx)}</b> em ${cart.length} venda(s) — ${lb>0?Math.round(tx/lb*100):0}% do lucro bruto dessas vendas.${semInfo?` <span style="color:var(--dim)">(${semInfo} ainda com taxa estimada — informe o líquido recebido para o número real.)</span>`:''}`});
+  }
+  // Crediário vs à vista rentabilidade
+  const grp=p=>{ const os=orcs.filter(o=>o.pagamento===p&&['aprovado','entregue','pago'].includes(o.status));
+    let l=0; os.forEach(o=>l+=calcOrc(o).lucro); return {n:os.length,l}; };
+  const cred=grp('crediario'), av=grp('avista');
+  if(cred.n>=3&&av.n>=3&&cred.l>av.l)
+    out.push({ic:'📒',html:`O crediário já gera <b>mais lucro</b> que as vendas à vista (${fmt(cred.l)} vs ${fmt(av.l)}) — mas fique de olho na inadimplência.`});
+  // Prazo médio de recebimento do crediário (dinheiro parado na rua)
+  const recebidos=orcs.filter(o=>o.pagamento==='crediario'&&o.status==='pago'&&o.dataPagamento&&o.data);
+  if(recebidos.length>=3){
+    const prazos=recebidos.map(o=>Math.max(0,Math.floor((new Date(o.dataPagamento)-new Date(o.data))/86400000)));
+    const medio=Math.round(prazos.reduce((a,b)=>a+b,0)/prazos.length);
+    out.push({ic:'⏳',html:`O crediário demora em média <b>${medio} dia(s)</b> para virar dinheiro no caixa (${recebidos.length} recebimentos).`});
+  }
+  // Pendentes esfriando (conversão em risco)
+  const fups=followups();
+  if(fups.length){
+    const tot=fups.reduce((a,f)=>a+f.valor,0);
+    out.push({ic:'🔥',html:`<span class="warnb">${fups.length} orçamento(s) pendente(s) esfriando</span> — ${fmt(tot)} esperando um follow-up. Card no fim do dashboard.`});
+  }
+  return out.slice(0,7);
+}
+/* ═══════════════════════ RENDER: DASHBOARD ═══════════════════════ */
+function renderDashboard(){
+  const mAtual=hoje().slice(0,7);
+  const orcsMes=state.orcamentos.filter(o=>mesKey(o.data)===mAtual);
+  const ativosMes=orcsMes.filter(o=>['aprovado','entregue','pago'].includes(o.status));
+  const pagosMes=orcsMes.filter(o=>o.status==='pago');
+  let lucroReal=0,lucroAberto=0,receitaMes=0;
+  ativosMes.forEach(o=>{ const c=calcOrc(o); receitaMes+=c.receita;
+    if(o.status==='pago') lucroReal+=c.lucro; else lucroAberto+=c.lucro; });
+  const decidMes=orcsMes.filter(o=>!['pendente','cancelado'].includes(o.status));
+  const taxa=decidMes.length?Math.round(decidMes.filter(o=>o.status!=='recusado').length/decidMes.length*100):null;
+  const ticket=ativosMes.length?(lucroReal+lucroAberto)/ativosMes.length:0;
+
+  $('#dashKpis').innerHTML=`
+    <div class="kpi pos"><div class="lb">Lucro realizado (mês)</div><div class="vl money">${fmt(lucroReal)}</div>
+      <div class="sub"><b class="money">${fmt(lucroAberto)}</b> em aberto</div></div>
+    <div class="kpi"><div class="lb">Receita do mês</div><div class="vl money">${fmt(receitaMes)}</div>
+      <div class="sub">margem ${receitaMes>0?fmtPct((lucroReal+lucroAberto)/receitaMes*100):'—'}</div></div>
+    <div class="kpi"><div class="lb">Lucro médio / orçamento</div><div class="vl money">${fmt(ticket)}</div>
+      <div class="sub">${ativosMes.length} orçamento(s) ativo(s)</div></div>
+    <div class="kpi"><div class="lb">Taxa de aprovação</div><div class="vl">${taxa==null?'—':taxa+'%'}</div>
+      <div class="sub">${decidMes.length} decidido(s) no mês</div></div>`;
+
+  // Meta
+  const meta=state.config.metaMensal||0;
+  if(meta>0){
+    const pct=Math.min(100,(lucroReal/meta)*100);
+    const diaMes=new Date().getDate(), diasNoMes=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate();
+    const ritmo=lucroReal/diaMes*diasNoMes;
+    $('#dashMeta').innerHTML=`<h3>🎯 Meta de lucro do mês</h3>
+      <div class="track"><div class="fill" style="width:${pct}%"></div></div>
+      <div class="gl"><span class="money">${fmt(lucroReal)} de ${fmt(meta)} (${Math.round(pct)}%)</span>
+      <span>Ritmo projetado: <b class="money" style="color:${ritmo>=meta?'var(--accent)':'var(--warn)'}">${fmt(ritmo)}</b></span></div>`;
+    $('#dashMeta').style.display='';
+  } else $('#dashMeta').style.display='none';
+
+  // Tiers
+  const mx=maxLucroPond();
+  const cont={diamante:0,ouro:0,prata:0,bronze:0,madeira:0};
+  state.clientes.forEach(c=>{ const r=clienteScore(c.id,mx); if(r.score!=null) cont[tierDe(r.score).id]++; });
+  $('#dashTiers').innerHTML=TIERS.map(t=>`<div class="td"><div class="n">${cont[t.id]}</div>${seloHtml(t.min===0?10:t.min,'sm').replace(/·\s*\d+/,'').replace(/title="[^"]*"/,'')}</div>`).join('');
+
+  // Chart meses
+  $('#chartMeses').innerHTML=chartMeses();
+  $('#chartPagamento').innerHTML=chartPagamento();
+
+  // Insights
+  const ins=gerarInsights();
+  $('#dashInsights').innerHTML=ins.length?ins.map(i=>`<div class="insight"><span class="ic">${i.ic}</span><span>${i.html}</span></div>`).join('')
+    :'<div class="empty" style="padding:20px"><p>Registre orçamentos e a inteligência aparece aqui.</p></div>';
+
+  // Radar
+  const radar=radarCobranca();
+  $('#dashRadar').innerHTML=radar.length?radar.map(r=>{
+    const cli=getCliente(r.o.clienteId); const tel=cli&&cli.telefone;
+    const link=tel?waLink(cli.telefone,msgCobranca(cli.nome,r.valor,r.venc)):null;
+    return `<div class="radar-item ${r.atraso>0?'overdue':''}">
+      <div><div class="who">${esc(nomeCliente(r.o.clienteId))} ${r.calote?'<span class="chip alert">inadimplente</span>':''}</div>
+      <div class="det"><span class="money">${fmt(r.valor)}</span> · ${r.venc?'vence '+fmtData(r.venc):'orçado em '+fmtData(r.o.data)} ·
+      ${r.atraso>0?`<b style="color:var(--danger)">${r.atraso}d de atraso</b>`:`no prazo`}</div></div>
+      <div class="spc"></div>
+      ${link?`<a class="wa" href="${link}" target="_blank" rel="noopener">💬 Cobrar no WhatsApp</a>`:''}
+      <button class="btn sm" data-action="receber" data-id="${r.o.id}">💰 Receber</button>
+      ${!r.calote?`<button class="btn sm danger" data-action="calote" data-id="${r.o.id}">✖ Não pagou</button>`:''}
+    </div>`;}).join('')
+    :'<div class="empty" style="padding:18px"><p>Nenhum crediário em aberto. 🎉</p></div>';
+
+  // Aging do crediário: onde o dinheiro está envelhecendo
+  if(radar.length){
+    const b={ok:{n:0,v:0},a1:{n:0,v:0},a2:{n:0,v:0},a3:{n:0,v:0}};
+    radar.forEach(r=>{ const k=r.atraso<=0?'ok':r.atraso<=15?'a1':r.atraso<=30?'a2':'a3'; b[k].n++; b[k].v+=r.valor; });
+    $('#dashAging').innerHTML=`<div class="aging">
+      ${b.ok.n?`<span class="ag">No prazo <b class="money">${fmt(b.ok.v)}</b> (${b.ok.n})</span>`:''}
+      ${b.a1.n?`<span class="ag a1">1–15d <b class="money">${fmt(b.a1.v)}</b> (${b.a1.n})</span>`:''}
+      ${b.a2.n?`<span class="ag a2">16–30d <b class="money">${fmt(b.a2.v)}</b> (${b.a2.n})</span>`:''}
+      ${b.a3.n?`<span class="ag a3">+30d <b class="money">${fmt(b.a3.v)}</b> (${b.a3.n})</span>`:''}
+    </div>`;
+  } else $('#dashAging').innerHTML='';
+
+  // Follow-up: pendentes esfriando
+  const fups=followups();
+  $('#dashFollowup').innerHTML=fups.length?fups.map(f=>{
+    const cli=getCliente(f.o.clienteId);
+    const link=cli&&cli.telefone?waLink(cli.telefone,msgFollowup(cli.nome,f.valor)):null;
+    return `<div class="fup-item ${f.dias>=7?'cold':''}">
+      <div><div class="who">${esc(nomeCliente(f.o.clienteId))}</div>
+      <div class="det"><span class="money">${fmt(f.valor)}</span> · orçado em ${fmtData(f.o.data)} · <b style="color:${f.dias>=7?'var(--info)':'var(--warn)'}">${f.dias}d parado</b></div></div>
+      <div class="spc"></div>
+      ${link?`<a class="wa" href="${link}" target="_blank" rel="noopener">💬 Follow-up</a>`:''}
+      <button class="btn sm" data-action="mudar-status" data-id="${f.o.id}" data-st="aprovado">✅ Aprovar</button>
+      <button class="btn sm ghost" data-action="mudar-status" data-id="${f.o.id}" data-st="recusado">✖ Recusar</button>
+    </div>`;}).join('')
+    :`<div class="empty" style="padding:18px"><p>Nenhum orçamento pendente há mais de ${state.config.followupDias||3} dia(s). 👌</p></div>`;
+}
+
+function fmtK(v){ v=Math.round(v||0);
+  if(v>=1000){ const k=v/1000; return 'R$ '+(k>=10?Math.round(k):k.toFixed(1).replace('.',','))+'k'; }
+  return 'R$ '+v;
+}
+function chartMeses(){
+  const meses=[]; const now=new Date();
+  for(let i=5;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    meses.push({k:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),
+      lb:d.toLocaleDateString('pt-BR',{month:'short'}).replace('.','')}); }
+  const dados=meses.map(m=>{ let real=0,aberto=0;
+    state.orcamentos.filter(o=>mesKey(o.data)===m.k&&['aprovado','entregue','pago'].includes(o.status)).forEach(o=>{
+      const c=calcOrc(o); if(o.status==='pago')real+=c.lucro; else aberto+=c.lucro; });
+    return {...m,real,aberto,tot:Math.max(0,real)+Math.max(0,aberto)}; });
+  const mx=Math.max(1,...dados.map(d=>d.tot));
+  // niceMax: arredonda pra cima em passos "bonitos" pra grid
+  const pot=Math.pow(10,Math.floor(Math.log10(mx))); const norm=mx/pot;
+  const step=norm<=1?.25:norm<=2?.5:norm<=5?1:2;
+  const niceMax=Math.ceil(mx/(step*pot))*(step*pot);
+  const W=520,CH=200,topPad=34,botPad=32,leftPad=48,H=CH+topPad+botPad;
+  const plotW=W-leftPad, bw=plotW/6;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:360px;font-family:var(--mono)">`;
+  // Grid + eixo Y
+  for(let g=0;g<=4;g++){
+    const y=topPad+CH-(CH*g/4), val=niceMax*g/4;
+    svg+=`<line x1="${leftPad}" x2="${W-4}" y1="${y}" y2="${y}" stroke="var(--border)" stroke-width="1" opacity=".5"/>`;
+    svg+=`<text x="${leftPad-6}" y="${y+3}" text-anchor="end" font-size="9.5" fill="var(--dim)">${fmtK(val)}</text>`;
+  }
+  dados.forEach((d,i)=>{
+    const cx=leftPad+i*bw+bw*.5, w=bw*.62, x=cx-w/2;
+    const hR=(Math.max(0,d.real)/niceMax)*CH, hA=(Math.max(0,d.aberto)/niceMax)*CH;
+    const yTop=topPad+CH-hR-hA;
+    svg+=`<title>${d.lb}: pago ${fmt(d.real)} · aberto ${fmt(d.aberto)}</title>`;
+    if(hA>0) svg+=`<rect x="${x}" y="${yTop}" width="${w}" height="${hA}" rx="4" fill="var(--info)" opacity=".8"><title>${d.lb} aberto: ${fmt(d.aberto)}</title></rect>`;
+    if(hR>0) svg+=`<rect x="${x}" y="${topPad+CH-hR}" width="${w}" height="${hR}" rx="4" fill="var(--accent)"><title>${d.lb} pago: ${fmt(d.real)}</title></rect>`;
+    svg+=`<text x="${cx}" y="${topPad+CH+16}" text-anchor="middle" font-size="11.5" fill="var(--muted)" font-family="inherit" style="text-transform:capitalize">${d.lb}</text>`;
+    if(d.tot>0){
+      // label total sempre visível, com padding topPad garantido acima
+      svg+=`<text x="${cx}" y="${yTop-7}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--text)">${fmtK(d.tot)}</text>`;
+    }
+  });
+  return svg+'</svg>';
+}
+function chartPagamento(){
+  const grupos=['avista','cartao','crediario'].map(p=>{
+    let l=0,n=0; state.orcamentos.filter(o=>o.pagamento===p&&['aprovado','entregue','pago'].includes(o.status))
+      .forEach(o=>{l+=calcOrc(o).lucro;n++;});
+    return {p,l,n}; });
+  const mx=Math.max(1,...grupos.map(g=>Math.max(0,g.l)));
+  const cores={avista:'var(--accent)',cartao:'var(--info)',crediario:'var(--warn)'};
+  return grupos.map(g=>`<div class="sbar"><div class="sl"><span>${PAG_LB[g.p]} <span style="color:var(--dim)">(${g.n})</span></span><b class="money">${fmt(g.l)}</b></div>
+    <div class="track"><div class="fill" style="width:${Math.max(0,g.l)/mx*100}%;background:${cores[g.p]}"></div></div></div>`).join('');
+}
+
+/* ═══════════════════════ RENDER: ORÇAMENTOS ═══════════════════════ */
+function filtroPeriodo(o,val){
+  if(!val)return true;
+  const k=mesKey(o.data), now=new Date();
+  if(val==='mes') return k===hoje().slice(0,7);
+  if(val==='mespassado'){ const d=new Date(now.getFullYear(),now.getMonth()-1,1);
+    return k===d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+  if(val==='ano') return o.data&&o.data.slice(0,4)===String(now.getFullYear());
+  return diasDesde(o.data)<=parseInt(val,10);
+}
+function renderOrcamentos(){
+  const busca=norm($('#fBusca').value||'');
+  const fs=$('#fStatus').value, fp=$('#fPag').value, ft=$('#fTier').value, fper=$('#fPeriodo').value;
+  let lista=[...state.orcamentos].sort((a,b)=>(b.data||'').localeCompare(a.data||'')||(b.criadoEm||'').localeCompare(a.criadoEm||''));
+  lista=lista.filter(o=>{
+    if(fs&&o.status!==fs)return false;
+    if(fp&&o.pagamento!==fp)return false;
+    if(!filtroPeriodo(o,fper))return false;
+    if(ft&&tierDe(orcScore(o)).id!==ft)return false;
+    if(busca){
+      const alvo=norm(nomeCliente(o.clienteId)+' '+(o.itens||[]).map(i=>i.produto).join(' '));
+      if(!alvo.includes(busca))return false;
+    }
+    return true;
+  });
+  if(!lista.length){ $('#listaOrcamentos').innerHTML=`<div class="empty"><div class="big">🧾</div>
+    <p>${state.orcamentos.length?'Nenhum orçamento com esses filtros.':'Nenhum orçamento ainda.'}</p>
+    <button class="btn primary" data-action="novo-orc">＋ Criar o primeiro orçamento</button></div>`; return; }
+  // Resumo do que está filtrado (conferência rápida sem abrir relatório)
+  let sR=0,sL=0,sN=0;
+  lista.forEach(o=>{ if(['aprovado','entregue','pago'].includes(o.status)){ const c=calcOrc(o); sR+=c.receita; sL+=c.lucro; sN++; } });
+  const resumo=`<div class="hint" style="margin:0 0 10px">${lista.length} orçamento(s)${sN?` · ${sN} ativo(s): venda <b class="money" style="color:var(--text)">${fmt(sR)}</b> · lucro <b class="money" style="color:${sL>=0?'var(--accent)':'var(--danger)'}">${fmt(sL)}</b>`:''}</div>`;
+  $('#listaOrcamentos').innerHTML=resumo+lista.map(o=>{
+    const c=calcOrc(o), sc=orcScore(o);
+    const difs=(o.dificuldade||[]);
+    return `<div class="row">
+      <div class="head">
+        ${seloHtml(sc,'sm')}
+        <span class="title">${esc(nomeCliente(o.clienteId))}</span>
+        ${o.numero?`<span class="mono" style="color:var(--dim);font-size:12px">#${o.numero}</span>`:''}
+        <span class="chip st-${o.status}">${STATUS_LB[o.status]}</span>
+        <span class="chip pg">${PAG_LB[o.pagamento]}</span>
+        ${o.comportamento?`<span class="chip ${o.comportamento==='em_dia'?'okpay':'alert'}">${COMP_LB[o.comportamento]}</span>`:''}
+        <span style="flex:1"></span>
+        <span class="mono" style="color:var(--dim);font-size:12px">${fmtData(o.data)}</span>
+      </div>
+      <div class="meta">
+        <span>Venda <b class="money" style="color:var(--text)">${fmt(c.receita)}</b></span>
+        ${c.taxa>0?`<span title="${c.taxaEstimada?'Estimada pela taxa padrão dos Ajustes':'Valor líquido informado'}">Taxa <b class="money" style="color:var(--danger)">-${fmt(c.taxa)}</b>${c.taxaEstimada?' <span style="color:var(--dim)">est.</span>':''}</span>`:''}
+        <span>Lucro <b class="money" style="color:${c.lucro>=0?'var(--accent)':'var(--danger)'}">${fmt(c.lucro)}</b></span>
+        <span>Margem <b style="color:var(--text)">${fmtPct(c.margem)}</b></span>
+        <span>${(o.itens||[]).length} item(ns)</span>
+        ${difs.length?`<span title="${difs.map(d=>DIF_LB[d]).join(', ')}">Dificuldade ${difs.length}/6 ${difs.map(d=>DIF_LB[d].split(' ')[0]).join('')}</span>`:''}
+        ${o.vencimento?`<span>Vence ${fmtData(o.vencimento)}</span>`:''}
+      </div>
+      ${o.obs?`<div class="meta" style="margin-top:3px;font-style:italic;color:var(--dim)">${esc(o.obs)}</div>`:''}
+      <div class="acts">
+        ${o.status==='pendente'?`<button class="btn sm" data-action="mudar-status" data-id="${o.id}" data-st="aprovado">✅ Aprovar</button>
+          <button class="btn sm" data-action="mudar-status" data-id="${o.id}" data-st="recusado">✖ Recusar</button>`:''}
+        ${o.status==='aprovado'?`<button class="btn sm" data-action="mudar-status" data-id="${o.id}" data-st="entregue">📦 Entregar</button>
+          <button class="btn sm danger" data-action="mudar-status" data-id="${o.id}" data-st="cancelado">Cancelar</button>`:''}
+        ${['aprovado','entregue'].includes(o.status)?`<button class="btn sm" data-action="receber" data-id="${o.id}">💰 Receber</button>`:''}
+        ${['recusado','cancelado'].includes(o.status)?`<button class="btn sm" data-action="mudar-status" data-id="${o.id}" data-st="pendente">↩ Reabrir</button>`:''}
+        <button class="btn sm ghost" data-action="enviar-orc" data-id="${o.id}" title="Enviar orçamento ao cliente (só preços de venda)">💬 Enviar</button>
+        <button class="btn sm ghost" data-action="imprimir-orc" data-id="${o.id}" title="Imprimir orçamento">🖨</button>
+        <button class="btn sm ghost" data-action="judicial-orc" data-id="${o.id}" title="Gerar orçamento judicial (para processo)">⚖️ Judicial</button>
+        <button class="btn sm ghost" data-action="pedidos-orc" data-id="${o.id}" title="Mandar os itens para Pedidos">📦 Pedidos${o.enviadoPedidos?' ✓':''}</button>
+        <button class="btn sm ghost" data-action="copiar-cotacao" data-id="${o.id}" title="Copiar os itens no formato de lista para cotação">📋 Cotar</button>
+        <button class="btn sm ghost" data-action="editar-orc" data-id="${o.id}">✏️ Editar</button>
+        <button class="btn sm ghost" data-action="duplicar-orc" data-id="${o.id}">⧉ Duplicar</button>
+        <button class="btn sm ghost danger" data-action="excluir-orc" data-id="${o.id}">🗑</button>
+      </div>
+    </div>`;}).join('');
+}
+
+/* ═══════════════════════ RENDER: CLIENTES ═══════════════════════ */
+function renderClientes(){
+  const busca=norm($('#fBuscaCli').value||'');
+  const ft=$('#fTierCli').value, ord=$('#fOrdCli').value;
+  const mx=maxLucroPond();
+  let lista=state.clientes.map(c=>({c,r:clienteScore(c.id,mx)}));
+  lista=lista.filter(x=>{
+    if(busca&&!norm(x.c.nome).includes(busca))return false;
+    if(ft){ if(x.r.score==null)return false; if(tierDe(x.r.score).id!==ft)return false; }
+    return true;
+  });
+  const cmp={score:(a,b)=>(b.r.score??-1)-(a.r.score??-1),
+    lucro:(a,b)=>b.r.stats.lucroPond-a.r.stats.lucroPond,
+    nome:(a,b)=>a.c.nome.localeCompare(b.c.nome,'pt-BR'),
+    recente:(a,b)=>(b.c.criadoEm||'').localeCompare(a.c.criadoEm||'')};
+  lista.sort(cmp[ord]||cmp.score);
+  if(!lista.length){ $('#listaClientes').innerHTML=`<div class="empty"><div class="big">👥</div>
+    <p>${state.clientes.length?'Nenhum cliente com esses filtros.':'Nenhum cliente cadastrado.'}</p>
+    <button class="btn primary" data-action="novo-cliente">＋ Cadastrar cliente</button></div>`; return; }
+  $('#listaClientes').innerHTML=lista.map((x,i)=>{
+    const st=x.r.stats;
+    return `<div class="row" style="cursor:pointer" data-action="ver-cliente" data-id="${x.c.id}">
+      <div class="head">
+        <span class="mono" style="color:var(--dim);font-size:12px;width:26px">${i+1}º</span>
+        ${seloHtml(x.r.score)}
+        <span class="title">${esc(x.c.nome)}</span>
+        ${st.temCalote?'<span class="chip alert">calote</span>':st.temAtraso?'<span class="chip alert" style="color:var(--warn);border-color:rgba(240,180,41,.4);background:rgba(240,180,41,.08)">já atrasou</span>':''}
+        <span style="flex:1"></span>
+        ${x.c.telefone?`<span class="mono" style="color:var(--dim);font-size:12px">${esc(x.c.telefone)}</span>`:''}
+      </div>
+      <div class="meta">
+        <span>Lucro <b class="money" style="color:var(--accent)">${fmt(st.lucroPond)}</b></span>
+        <span>Margem média <b style="color:var(--text)">${fmtPct(st.margemMedia)}</b></span>
+        <span>${st.total} orçamento(s)</span>
+        <span>Dificuldade média ${st.difMedia.toFixed(1).replace('.',',')}/10</span>
+      </div>
+    </div>`;}).join('');
+}
+
+function renderDetCliente(id){
+  const c=getCliente(id); if(!c)return;
+  const r=clienteScore(id);
+  const orcs=state.orcamentos.filter(o=>o.clienteId===id).sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+  const link=c.telefone?waLink(c.telefone,`Olá, ${c.nome}! Aqui é da ${window.marcaNome()}. 😊`):null;
+  $('#detClienteBody').innerHTML=`
+    <h2>${seloHtml(r.score,'lg')} ${esc(c.nome)}</h2>
+    <div class="meta" style="display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:14px">
+      ${c.telefone?`<span>📱 ${esc(c.telefone)}</span>`:''}
+      ${c.obs?`<span style="font-style:italic">${esc(c.obs)}</span>`:''}
+    </div>
+    ${r.comp?`<div class="card" style="margin-bottom:14px"><h3>Composição do score</h3>
+      ${Object.entries(r.comp).map(([k,v])=>`<div class="sbar"><div class="sl"><span>${k} <span style="color:var(--dim)">(peso ${
+        {'Lucratividade':state.config.pesos.lucro,'Pagamento':state.config.pesos.pagamento,'Esforço ÷ retorno':state.config.pesos.esforco,'Recorrência':state.config.pesos.recorrencia}[k]}%)</span></span><b>${v}</b></div>
+        <div class="track"><div class="fill" style="width:${v}%"></div></div></div>`).join('')}
+    </div>`:'<p class="hint" style="margin-bottom:14px">Sem orçamentos ainda — o score aparece após o primeiro registro.</p>'}
+    <div class="card" style="margin-bottom:14px"><h3>Histórico (${orcs.length})</h3>
+      ${orcs.length?orcs.map(o=>{ const cc=calcOrc(o);
+        return `<div style="display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;flex-wrap:wrap">
+          <span class="mono" style="color:var(--dim)">${fmtData(o.data)}</span>
+          ${seloHtml(orcScore(o),'sm')}
+          <span class="chip st-${o.status}">${STATUS_LB[o.status]}</span>
+          <span class="chip pg">${PAG_LB[o.pagamento]}</span>
+          <span style="flex:1"></span>
+          <span class="money mono">${fmt(cc.receita)}</span>
+          <span class="money mono" style="color:${cc.lucro>=0?'var(--accent)':'var(--danger)'}">${cc.lucro>=0?'+':''}${fmt(cc.lucro)}</span>
+        </div>`;}).join(''):'<p class="hint">Nenhum orçamento.</p>'}
+    </div>
+    <div class="mfoot" style="justify-content:space-between">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${link?`<a class="wa" href="${link}" target="_blank" rel="noopener">💬 WhatsApp</a>`:''}
+        <button class="btn sm" data-action="editar-cliente" data-id="${c.id}">✏️ Editar</button>
+        <button class="btn sm danger" data-action="excluir-cliente" data-id="${c.id}">🗑 Excluir</button>
+      </div>
+      <button class="btn ghost" data-action="fechar-modal">Fechar</button>
+    </div>`;
+  abrirOv('#ovDetCliente');
+}
+
+/* ═══════════════════════ RENDER: RELATÓRIOS ═══════════════════════ */
+function filtroPeriodoAnterior(o,val){
+  if(!val)return false;
+  const k=mesKey(o.data), now=new Date();
+  const mkey=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  if(val==='mes') return k===mkey(new Date(now.getFullYear(),now.getMonth()-1,1));
+  if(val==='mespassado') return k===mkey(new Date(now.getFullYear(),now.getMonth()-2,1));
+  if(val==='ano') return o.data&&o.data.slice(0,4)===String(now.getFullYear()-1);
+  const n=parseInt(val,10); const dd=diasDesde(o.data);
+  return dd>n&&dd<=n*2;
+}
+function deltaHtml(atual,anterior,pct){
+  if(anterior==null||!isFinite(anterior)||anterior===0) return '';
+  const d=pct?(atual-anterior):((atual-anterior)/Math.abs(anterior)*100);
+  const cls=Math.abs(d)<0.05?'flat':d>0?'up':'down';
+  const seta=cls==='flat'?'→':d>0?'▲':'▼';
+  return `<span class="delta ${cls}">${seta} ${Math.abs(d).toFixed(1).replace('.',',')}${pct?' p.p.':'%'}</span>`;
+}
+function renderRelatorios(){
+  const per=$('#rPeriodo').value;
+  const orcs=state.orcamentos.filter(o=>filtroPeriodo(o,per));
+  const ativos=orcs.filter(o=>['aprovado','entregue','pago'].includes(o.status));
+  let receita=0,custo=0,lucro=0,lucroPago=0,taxaTotal=0;
+  ativos.forEach(o=>{ const c=calcOrc(o); receita+=c.receita;custo+=c.custo;lucro+=c.lucro;taxaTotal+=c.taxa;
+    if(o.status==='pago')lucroPago+=c.lucro; });
+  // período anterior equivalente (comparativo)
+  let antR=null,antL=null,antMg=null;
+  if(per){
+    const antAtivos=state.orcamentos.filter(o=>filtroPeriodoAnterior(o,per)&&['aprovado','entregue','pago'].includes(o.status));
+    if(antAtivos.length){ antR=0;antL=0;
+      antAtivos.forEach(o=>{const c=calcOrc(o);antR+=c.receita;antL+=c.lucro;});
+      antMg=antR>0?antL/antR*100:null; }
+  }
+  const porPag={avista:{n:0,l:0,r:0},cartao:{n:0,l:0,r:0},crediario:{n:0,l:0,r:0}};
+  ativos.forEach(o=>{ const c=calcOrc(o); porPag[o.pagamento].n++; porPag[o.pagamento].l+=c.lucro; porPag[o.pagamento].r+=c.receita; });
+  const porDif={};
+  ativos.forEach(o=>(o.dificuldade||[]).forEach(d=>{ porDif[d]=porDif[d]||{n:0,l:0}; porDif[d].n++; porDif[d].l+=calcOrc(o).lucro; }));
+  const porTier={};
+  ativos.forEach(o=>{ const t=tierDe(orcScore(o)).id; porTier[t]=porTier[t]||{n:0,l:0}; porTier[t].n++; porTier[t].l+=calcOrc(o).lucro; });
+  const prodMap={};
+  ativos.forEach(o=>(o.itens||[]).forEach(i=>{ const k=(i.produto||'').trim().toLowerCase(); if(!k)return;
+    prodMap[k]=prodMap[k]||{nome:i.produto,lucro:0,receita:0,qtd:0};
+    prodMap[k].lucro+=(num(i.venda)-num(i.custo))*num(i.qtd); prodMap[k].receita+=num(i.venda)*num(i.qtd); prodMap[k].qtd+=num(i.qtd); }));
+  const topProds=Object.values(prodMap).sort((a,b)=>b.lucro-a.lucro).slice(0,10);
+  const mxL=Math.max(1,...Object.values(porDif).map(x=>x.l),1);
+
+  $('#relatorioBody').innerHTML=`
+    <div class="grid g4">
+      <div class="kpi"><div class="lb">Receita</div><div class="vl money">${fmt(receita)}</div>
+        <div class="sub">${antR!=null?`vs anterior ${deltaHtml(receita,antR)}`:'&nbsp;'}</div></div>
+      <div class="kpi"><div class="lb">Custo</div><div class="vl money">${fmt(custo)}</div>
+        <div class="sub">${taxaTotal>0?`+ <b class="money" style="color:var(--danger)">${fmt(taxaTotal)}</b> de taxa de cartão`:'&nbsp;'}</div></div>
+      <div class="kpi pos"><div class="lb">Lucro</div><div class="vl money">${fmt(lucro)}</div>
+        <div class="sub"><b class="money">${fmt(lucroPago)}</b> já recebido ${antL!=null?deltaHtml(lucro,antL):''}</div></div>
+      <div class="kpi"><div class="lb">Margem</div><div class="vl">${receita>0?fmtPct(lucro/receita*100):'—'}</div>
+        <div class="sub">${ativos.length} orçamento(s) ${antMg!=null&&receita>0?deltaHtml(lucro/receita*100,antMg,true):''}</div></div>
+    </div>
+    <div class="grid g2" style="margin-top:14px;align-items:start">
+      <div class="card"><h3>💳 Por forma de pagamento</h3>
+        ${taxaTotal>0?`<p class="hint" style="margin:0 0 8px">A maquininha levou <b class="money" style="color:var(--danger)">${fmt(taxaTotal)}</b> no período — o lucro do cartão abaixo já está líquido.</p>`:''}
+        ${['avista','cartao','crediario'].map(p=>{const g=porPag[p];
+          return `<div class="sbar"><div class="sl"><span>${PAG_LB[p]} <span style="color:var(--dim)">(${g.n} · margem ${g.r>0?fmtPct(g.l/g.r*100):'—'})</span></span><b class="money">${fmt(g.l)}</b></div>
+          <div class="track"><div class="fill" style="width:${lucro>0?Math.max(0,g.l)/Math.max(1,lucro)*100:0}%"></div></div></div>`;}).join('')}
+      </div>
+      <div class="card"><h3>🏅 Por padrão do orçamento</h3>
+        ${TIERS.map(t=>{const g=porTier[t.id]||{n:0,l:0};
+          return `<div class="sbar"><div class="sl"><span>${t.nome} <span style="color:var(--dim)">(${g.n})</span></span><b class="money">${fmt(g.l)}</b></div>
+          <div class="track"><div class="fill" style="width:${lucro>0?Math.max(0,g.l)/Math.max(1,lucro)*100:0}%;background:linear-gradient(90deg,var(--${t.id==='diamante'?'dia':t.id}1),var(--${t.id==='diamante'?'dia':t.id}2))"></div></div></div>`;}).join('')}
+      </div>
+      <div class="card"><h3>⚙️ Lucro por tipo de dificuldade</h3>
+        ${Object.keys(porDif).length?Object.entries(porDif).sort((a,b)=>b[1].l-a[1].l).map(([d,g])=>
+          `<div class="sbar"><div class="sl"><span>${DIF_LB[d]} <span style="color:var(--dim)">(${g.n})</span></span><b class="money">${fmt(g.l)}</b></div>
+          <div class="track"><div class="fill" style="width:${Math.max(0,g.l)/mxL*100}%;background:var(--warn)"></div></div></div>`).join('')
+          :'<p class="hint">Nenhum pedido com marcadores de dificuldade no período.</p>'}
+      </div>
+      <div class="card"><h3>💊 Top produtos por lucro</h3>
+        ${topProds.length?topProds.map((p,i)=>`<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
+          <span class="mono" style="color:var(--dim);width:22px">${i+1}.</span>
+          <span style="flex:1">${esc(p.nome)} <span style="color:var(--dim)">×${p.qtd}</span></span>
+          <b class="money mono" style="color:var(--accent)">${fmt(p.lucro)}</b></div>`).join('')
+          :'<p class="hint">Sem produtos no período.</p>'}
+      </div>
+    </div>`;
+}
+/* ═══════════════════════ MODAL: ORÇAMENTO ═══════════════════════ */
+let editandoOrc=null, receberId=null, liqId=null, editandoCli=null, voltarParaOrc=false;
+
+let orcBaseline=null; // p/ detectar alterações não salvas
+function abrirOrc(orc){
+  editandoOrc=orc?orc.id:null;
+  $('#orcModalTitle').textContent=orc?'Editar orçamento':'Novo orçamento';
+  popularDatalist();
+  popularClientesSelect(orc?orc.clienteId:'');
+  $('#oData').value=orc?orc.data:hoje();
+  $('#oPag').value=orc?orc.pagamento:'avista';
+  $('#oVenc').value=orc?(orc.vencimento||''):'';
+  $('#oLiq').value=orc&&orc.liquido?String(num(orc.liquido).toFixed(2)).replace('.',','):'';
+  $('#oObs').value=orc?(orc.obs||''):'';
+  $$('#oDif input').forEach(ch=>{ ch.checked=orc?(orc.dificuldade||[]).includes(ch.value):false;
+    ch.closest('.difopt').classList.toggle('on',ch.checked); });
+  $('#oItens').innerHTML='';
+  (orc&&orc.itens&&orc.itens.length?orc.itens:[{}]).forEach(addItemRow);
+  toggleVenc(); atualizarPreview();
+  orcBaseline=JSON.stringify(orcDoForm());
+  abrirOv('#ovOrc');
+  setTimeout(()=>$('#oCliente').focus(),80);
+}
+function orcSujo(){ return $('#ovOrc').classList.contains('on') && orcBaseline!==null && JSON.stringify(orcDoForm())!==orcBaseline; }
+function popularClientesSelect(sel){
+  const opts=[...state.clientes].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'))
+    .map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${esc(c.nome)}</option>`).join('');
+  $('#oCliente').innerHTML=`<option value="">— selecione —</option>`+opts;
+}
+function addItemRow(item){
+  item=item||{};
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td><input type="text" class="i-prod" list="dlProdutos" placeholder="Produto" value="${esc(item.produto||'')}" autocomplete="off"></td>
+    <td class="n"><input type="text" inputmode="decimal" class="i-qtd" value="${item.qtd??1}"></td>
+    <td class="m"><input type="text" inputmode="decimal" class="i-custo" placeholder="0,00" value="${item.custo??''}"></td>
+    <td class="m"><input type="text" inputmode="decimal" class="i-venda" placeholder="0,00" value="${item.venda??''}"></td>
+    <td class="item-lucro">—</td>
+    <td class="del"><button type="button" data-action="del-item" title="Remover item">✕</button></td>`;
+  $('#oItens').appendChild(tr);
+}
+function lerItens(){
+  return [...$('#oItens').querySelectorAll('tr')].map(tr=>({
+    produto:tr.querySelector('.i-prod').value.trim(),
+    qtd:num(tr.querySelector('.i-qtd').value)||1,
+    custo:num(tr.querySelector('.i-custo').value),
+    venda:num(tr.querySelector('.i-venda').value)
+  })).filter(i=>i.produto||i.custo||i.venda);
+}
+function orcDoForm(){
+  return { clienteId:$('#oCliente').value, data:$('#oData').value||hoje(),
+    pagamento:$('#oPag').value, vencimento:$('#oPag').value==='crediario'?($('#oVenc').value||null):null,
+    liquido:$('#oPag').value==='cartao'?(num($('#oLiq').value)||null):null,
+    dificuldade:$$('#oDif input:checked').map(ch=>ch.value),
+    itens:lerItens(), obs:$('#oObs').value.trim() };
+}
+function toggleVenc(){
+  const cred=$('#oPag').value==='crediario';
+  $('#oLiqWrap').style.display=$('#oPag').value==='cartao'?'':'none';
+  $('#oVencWrap').style.display=cred?'':'none';
+  if(cred&&!$('#oVenc').value){ const v=proximoVencimento(); if(v)$('#oVenc').value=v; }
+}
+function sugerirPrecos(){
+  const mg=state.config.margemRef||40;
+  let n=0;
+  [...$('#oItens').querySelectorAll('tr')].forEach(tr=>{
+    const c=num(tr.querySelector('.i-custo').value), iV=tr.querySelector('.i-venda');
+    if(c>0&&!num(iV.value)){
+      let v=c/(1-mg/100);
+      v=Math.ceil(v*20)/20; // arredonda p/ cima em passos de R$0,05
+      iV.value=v.toFixed(2).replace('.',','); n++;
+    }
+  });
+  atualizarPreview();
+  toast(n?`${n} preço(s) sugerido(s) com margem ${mg}% ✔`:'Nenhum item com custo preenchido e venda vazia.',!n);
+}
+function atualizarPreview(){
+  // lucro por linha
+  [...$('#oItens').querySelectorAll('tr')].forEach(tr=>{
+    const l=(num(tr.querySelector('.i-venda').value)-num(tr.querySelector('.i-custo').value))*(num(tr.querySelector('.i-qtd').value)||1);
+    const cell=tr.querySelector('.item-lucro');
+    cell.textContent=l?fmt(l):'—';
+    cell.style.color=l<0?'var(--danger)':l>0?'var(--accent)':'var(--muted)';
+  });
+  const temp=orcDoForm(); temp.status='pendente';
+  const c=calcOrc(temp), sc=orcScore(temp), dif=(temp.dificuldade||[]).length;
+  let alerta='';
+  if(c.receita>0){
+    if(c.lucro<0) alerta=c.taxa>0&&c.lucroBruto>=0
+      ? `🔴 No papel dá lucro (${fmt(c.lucroBruto)}), mas a taxa do cartão (${fmt(c.taxa)}) leva o resultado para o prejuízo.`
+      : '🔴 Este orçamento dá prejuízo. Revise custo/venda.';
+    else if(dif>=3 && c.margem<(state.config.margemRef||40)*.5)
+      alerta=`⚠️ Pedido difícil (${dif}/6) com margem baixa (${fmtPct(c.margem)}). O esforço não está sendo pago — considere subir o preço.`;
+    else if(c.margem<10) alerta=`⚠️ Margem de só ${fmtPct(c.margem)}. Vale a pena?`;
+  }
+  if(temp.pagamento==='cartao'){
+    const tx=state.config.taxaCartao||0;
+    $('#oLiqHint').innerHTML = c.receita<=0
+      ? 'Quanto de fato caiu na conta depois da taxa da maquininha.'
+      : (c.taxa>0
+          ? `Taxa: <b class="money">-${fmt(c.taxa)}</b> (${fmtPct(c.taxaPct)})${c.taxaEstimada?` — <i>estimada pela taxa padrão de ${fmtPct(tx)}</i>. Informe o valor real para precisão.`:' — valor real informado ✔'}`
+          : `Sem taxa aplicada. Defina a taxa padrão nos Ajustes ou informe o líquido recebido.`);
+  }
+  $('#oPreview').innerHTML=`
+    <div class="pvb"><div class="pv">Venda</div><div class="pvv money">${fmt(c.receita)}</div></div>
+    ${c.taxa>0?`<div class="pvb"><div class="pv">Taxa cartão${c.taxaEstimada?' (est.)':''}</div><div class="pvv money" style="color:var(--danger)">-${fmt(c.taxa)}</div></div>
+    <div class="pvb"><div class="pv">Líquido recebido</div><div class="pvv money">${fmt(c.liquido)}</div></div>`:''}
+    <div class="pvb"><div class="pv">Custo</div><div class="pvv money" style="color:var(--muted)">${fmt(c.custo)}</div></div>
+    <div class="pvb"><div class="pv">Lucro</div><div class="pvv money" style="color:${c.lucro>=0?'var(--accent)':'var(--danger)'}">${fmt(c.lucro)}</div></div>
+    <div class="pvb"><div class="pv">Margem</div><div class="pvv">${fmtPct(c.margem)}</div></div>
+    <div class="pvb"><div class="pv">Selo projetado</div><div style="margin-top:2px">${seloHtml(sc,'sm')}</div></div>
+    <div class="alertbox ${alerta?'on':''}">${alerta}</div>`;
+}
+function salvarOrc(){
+  const d=orcDoForm();
+  if(!d.clienteId){ toast('Selecione o cliente.',true); return; }
+  if(!d.itens.length){ toast('Adicione pelo menos um item.',true); return; }
+  if(editandoOrc){
+    const o=state.orcamentos.find(x=>x.id===editandoOrc);
+    Object.assign(o,d);
+    toast('Orçamento atualizado ✔');
+  } else {
+    state.orcamentos.push(Object.assign({id:uid(),numero:++state.meta.seq,status:'pendente',comportamento:null,criadoEm:new Date().toISOString()},d));
+    toast('Orçamento criado ✔');
+  }
+  orcBaseline=null;
+  save(); fecharOverlay($('#ovOrc')); renderTudo();
+}
+
+/* ═══════════════════════ ENVIAR / IMPRIMIR ORÇAMENTO ═══════════════════════ */
+function enviarOrc(id){
+  const o=state.orcamentos.find(x=>x.id===id); if(!o)return;
+  const cli=getCliente(o.clienteId);
+  const msg=msgOrcamento(o);
+  const link=cli&&cli.telefone?waLink(cli.telefone,msg):null;
+  if(link){ window.open(link,'_blank','noopener'); }
+  else if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(msg).then(()=>toast('Cliente sem telefone — mensagem copiada para a área de transferência ✔'))
+      .catch(()=>toast('Não consegui copiar. Cadastre o telefone do cliente.',true));
+  } else toast('Cliente sem telefone cadastrado.',true);
+}
+function imprimirOrc(id){
+  const o=state.orcamentos.find(x=>x.id===id); if(!o)return;
+  const c=calcOrc(o);
+  $('#printArea').innerHTML=`
+    <div class="ph">
+      <div><h1>${window.marcaNome()}</h1><small>Orçamento${o.numero?' Nº '+o.numero:''} · ${fmtData(o.data)}</small></div>
+      <div style="text-align:right"><small>Cliente</small><br><b>${esc(nomeCliente(o.clienteId))}</b></div>
+    </div>
+    <table><thead><tr><th>Produto</th><th style="text-align:center">Qtd</th><th style="text-align:right">Un.</th><th style="text-align:right">Total</th></tr></thead>
+    <tbody>${(o.itens||[]).filter(i=>i.produto).map(i=>{ const q=num(i.qtd)||1, v=num(i.venda);
+      return `<tr><td>${esc(i.produto)}</td><td style="text-align:center">${q}</td>
+        <td style="text-align:right">${fmt(v)}</td><td style="text-align:right">${fmt(v*q)}</td></tr>`;}).join('')}</tbody></table>
+    <div class="tot">Total: ${fmt(c.receita)}</div>
+    ${o.pagamento==='crediario'?`<p style="font-size:13px;margin-top:6px">Pagamento: crediário${o.vencimento?' · vencimento '+fmtData(o.vencimento):''}</p>`:''}
+    <div class="foot">Orçamento sujeito a disponibilidade de estoque e alteração de preços. Válido por 7 dias.</div>`;
+  window.print();
+}
+
+/* ═══════════════════════ ENVIAR PARA PEDIDOS ═══════════════════════
+   Manda os itens do orçamento como pedido do dia. Só nome, quantidade e preço
+   de venda atravessam — custo e margem ficam aqui. */
+function enviarParaPedidos(id){
+  const o=state.orcamentos.find(x=>x.id===id); if(!o)return;
+  const itens=(o.itens||[]).filter(i=>i.produto);
+  if(!itens.length){ toast('Este orçamento não tem itens.',true); return; }
+  if(!window.api||!window.api.enviarParaPedidos){ toast('Integração indisponível fora do hub.',true); return; }
+
+  const cli=getCliente(o.clienteId);
+  const nome=cli?cli.nome:'';
+  const lista=itens.map(i=>`• ${num(i.qtd)||1}x ${i.produto}`).join('\n');
+  const jaFoi=o.enviadoPedidos?`\n\nATENÇÃO: este orçamento já foi enviado em ${fmtData(o.enviadoPedidos)}. Enviar de novo cria um segundo pedido.`:'';
+
+  if(!confirm(`Criar um pedido do dia em Pedidos para ${nome||'Estoque'}?\n\n${lista}${jaFoi}`))return;
+
+  const r=window.api.enviarParaPedidos({
+    cliente:nome,
+    telefone:cli?(cli.telefone||''):'',
+    obs:`Do orçamento${o.numero?' nº '+o.numero:''} de ${fmtData(o.data)}`,
+    itens:itens.map(i=>({ nome:i.produto, qtd:num(i.qtd)||1, preco:num(i.venda)||0 }))
+  });
+
+  if(!r||!r.ok){ toast('Não consegui enviar: '+((r&&r.erro)||'erro desconhecido'),true); return; }
+
+  o.enviadoPedidos=hoje();
+  save(); renderTudo();
+  // avisa o hub para recarregar Pedidos com o pedido novo
+  try{ parent.postMessage({tipo:'recarregar-app',app:'farmapedidos'},'*'); }catch(e){}
+  toast(`✔ ${r.itens} item(ns) enviados para Pedidos`);
+}
+
+/* ═══════════════════════ ORÇAMENTO JUDICIAL ═══════════════════════
+   Documento formal para processo: só nome, CPF, itens e valor de venda.
+   Custo, margem e forma de pagamento nunca entram aqui. */
+const JUD_PADRAO={
+  razao:'',
+  cnpj:'',
+  endereco:'',
+  cidadeUf:'',
+  cidade:'',
+  obs:'MEDICAÇÕES SUJEITAS A ALTERAÇÃO DE ESTOQUE. ORÇAMENTO VÁLIDO POR 30 DIAS'
+};
+const MESES_EXT=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+function dataExtenso(iso){
+  if(!iso)return'';
+  const [a,m,d]=iso.split('-');
+  return `${parseInt(d,10)} de ${MESES_EXT[parseInt(m,10)-1]} de ${a}`;
+}
+// valores do documento vão sem "R$" na tabela, com ponto de milhar — igual ao modelo
+function numJud(v){ return (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function judCfg(){ return Object.assign({},JUD_PADRAO,state.config.judicial||{}); }
+
+let judicialOrcId=null;
+function abrirJudicial(id){
+  const o=state.orcamentos.find(x=>x.id===id); if(!o)return;
+  judicialOrcId=id;
+  const cli=getCliente(o.clienteId), cfg=judCfg();
+
+  $('#jNome').value=cli?cli.nome:'';
+  $('#jCpf').value=cli?(cli.cpf||''):'';
+  $('#jData').value=o.data||hoje();
+  $('#jCidade').value=cfg.cidade;
+  $('#jRazao').value=cfg.razao;
+  $('#jCnpj').value=cfg.cnpj;
+  $('#jCidadeUf').value=cfg.cidadeUf;
+  $('#jEndereco').value=cfg.endereco;
+  $('#jObs').value=cfg.obs;
+
+  const itens=(o.itens||[]).filter(i=>i.produto);
+  $('#jItens').innerHTML=itens.map(i=>`
+    <tr>
+      <td style="padding:3px"><input type="number" class="j-qtd" min="1" step="1" value="${num(i.qtd)||1}" style="width:100%"></td>
+      <td style="padding:3px"><input type="text" class="j-un" value="UN (caixas)" style="width:100%"></td>
+      <td style="padding:3px"><input type="text" class="j-prod" value="${esc(i.produto)}" style="width:100%"></td>
+      <td style="padding:3px"><input type="number" class="j-val" min="0" step="0.01" value="${num(i.venda)||''}" style="width:100%;text-align:right"></td>
+    </tr>`).join('');
+
+  abrirOv('#ovJudicial');
+  setTimeout(()=>$('#jNome').focus(),60);
+}
+
+function gerarJudicial(){
+  const nome=$('#jNome').value.trim();
+  if(!nome){ toast('Informe o nome do cliente.',true); return; }
+
+  const linhas=[...$('#jItens').querySelectorAll('tr')].map(tr=>({
+    qtd:num(tr.querySelector('.j-qtd').value)||1,
+    un:tr.querySelector('.j-un').value.trim(),
+    produto:tr.querySelector('.j-prod').value.trim(),
+    valor:num(tr.querySelector('.j-val').value)
+  })).filter(l=>l.produto);
+  if(!linhas.length){ toast('Nenhum item para o documento.',true); return; }
+
+  // guarda os dados do negócio para o próximo documento
+  state.config.judicial={
+    razao:$('#jRazao').value.trim(), cnpj:$('#jCnpj').value.trim(),
+    endereco:$('#jEndereco').value.trim(), cidadeUf:$('#jCidadeUf').value.trim(),
+    cidade:$('#jCidade').value.trim(), obs:$('#jObs').value.trim()
+  };
+  // CPF digitado aqui volta para o cadastro, para não redigitar depois
+  const o=state.orcamentos.find(x=>x.id===judicialOrcId);
+  const cli=o?getCliente(o.clienteId):null;
+  const cpf=$('#jCpf').value.trim();
+  if(cli&&cpf&&cli.cpf!==cpf) cli.cpf=cpf;
+  save();
+
+  const cfg=state.config.judicial;
+  const total=linhas.reduce((a,l)=>a+l.valor*l.qtd,0);
+
+  $('#printArea').className='judicial';
+  $('#printArea').innerHTML=`
+    <div class="jcab">
+      ${esc(cfg.razao)}<br>
+      CNPJ: ${esc(cfg.cnpj)}<br>
+      ${esc(cfg.endereco)}<br>
+      ${esc(cfg.cidadeUf)}
+    </div>
+    <div class="jcli">
+      Nome: ${esc(nome)}<br>
+      ${cpf?'CPF: '+esc(cpf):''}
+    </div>
+    <div class="jtit">ORÇAMENTO</div>
+    <table>
+      <thead><tr>
+        <th style="width:16%">QTD</th><th style="width:44%">PRODUTO</th>
+        <th style="width:20%">VALOR UNIT. c/ desconto</th><th style="width:20%">VALOR TOTAL</th>
+      </tr></thead>
+      <tbody>${linhas.map(l=>`<tr>
+        <td class="jqtd">${l.qtd}${l.un?' '+esc(l.un):''}</td>
+        <td class="jprod">${esc(l.produto)}</td>
+        <td>${numJud(l.valor)}</td>
+        <td>${numJud(l.valor*l.qtd)}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+    <div class="jtotal">TOTAL: ${numJud(total)} R$</div>
+    <div class="jass">${esc(cfg.cidade)}, ${dataExtenso($('#jData').value||hoje())}</div>
+    <div class="jobs">OBS: ${esc(cfg.obs)}</div>`;
+
+  fecharOverlay($('#ovJudicial'));
+  setTimeout(()=>{ window.print(); $('#printArea').className=''; },80);
+}
+
+/* ═══════════════════════ EXPORTAR CSV ═══════════════════════ */
+function exportarCsv(){
+  const linhas=[['Data','Cliente','Status','Pagamento','Vencimento','Produto','Qtd','Custo un.','Venda un.','Lucro item','Taxa cartão','Líquido recebido','Dificuldade','Obs']];
+  // respeita os filtros ativos da aba
+  const busca=norm($('#fBusca').value||'');
+  const fs=$('#fStatus').value, fp=$('#fPag').value, ft=$('#fTier').value, fper=$('#fPeriodo').value;
+  const sel=state.orcamentos.filter(o=>{
+    if(fs&&o.status!==fs)return false;
+    if(fp&&o.pagamento!==fp)return false;
+    if(!filtroPeriodo(o,fper))return false;
+    if(ft&&tierDe(orcScore(o)).id!==ft)return false;
+    if(busca){ const alvo=norm(nomeCliente(o.clienteId)+' '+(o.itens||[]).map(i=>i.produto).join(' '));
+      if(!alvo.includes(busca))return false; }
+    return true;
+  }).sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+  if(!sel.length){ toast('Nada para exportar com esses filtros.',true); return; }
+  const dec=v=>String(num(v).toFixed(2)).replace('.',',');
+  sel.forEach(o=>{ const co=calcOrc(o);
+    (o.itens||[]).forEach((i,idx)=>{
+    const q=num(i.qtd)||1;
+    linhas.push([fmtData(o.data),nomeCliente(o.clienteId),STATUS_LB[o.status],PAG_LB[o.pagamento],
+      o.vencimento?fmtData(o.vencimento):'',i.produto||'',q,
+      dec(i.custo),dec(i.venda),
+      String(((num(i.venda)-num(i.custo))*q).toFixed(2)).replace('.',','),
+      idx===0&&co.taxa>0?dec(co.taxa):'', idx===0&&co.taxa>0?dec(co.liquido):'',
+      (o.dificuldade||[]).map(d=>DIF_LB[d].replace(/^\S+\s/,'')).join(' + '),(o.obs||'').replace(/\s+/g,' ')]);
+  });});
+  const csv='\uFEFF'+linhas.map(l=>l.map(v=>{ v=String(v??''); return /[";\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }).join(';')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`orcafarma_${hoje()}.csv`; a.click(); URL.revokeObjectURL(a.href);
+  toast(`CSV exportado: ${sel.length} orçamento(s) ✔`);
+}
+
+/* ═══════════════════════ MODAL: CLIENTE ═══════════════════════ */
+function abrirCliente(cli,voltarOrc){
+  editandoCli=cli?cli.id:null; voltarParaOrc=!!voltarOrc;
+  $('#cliModalTitle').textContent=cli?'Editar cliente':'Novo cliente';
+  $('#cNome').value=cli?cli.nome:''; $('#cTel').value=cli?(cli.telefone||''):'';
+  $('#cCpf').value=cli?(cli.cpf||''):''; $('#cObs').value=cli?(cli.obs||''):'';
+  abrirOv('#ovCliente');
+  setTimeout(()=>$('#cNome').focus(),60);
+}
+function salvarCliente(){
+  const nome=$('#cNome').value.trim();
+  if(!nome){ toast('Informe o nome.',true); return; }
+  let id;
+  if(editandoCli){
+    const c=getCliente(editandoCli);
+    c.nome=nome; c.telefone=$('#cTel').value.trim(); c.cpf=$('#cCpf').value.trim(); c.obs=$('#cObs').value.trim();
+    id=c.id; toast('Cliente atualizado ✔');
+  } else {
+    id=uid();
+    state.clientes.push({id,nome,telefone:$('#cTel').value.trim(),cpf:$('#cCpf').value.trim(),obs:$('#cObs').value.trim(),criadoEm:new Date().toISOString()});
+    toast('Cliente cadastrado ✔');
+  }
+  const reabrirDet=editandoCli&&!voltarParaOrc&&$('#ovDetCliente').classList.contains('on');
+  save();
+  fecharOverlay($('#ovCliente'));
+  if(!reabrirDet) fecharOverlay($('#ovDetCliente'));
+  if(voltarParaOrc){ popularClientesSelect(id); atualizarPreview(); voltarParaOrc=false; }
+  renderTudo();
+  if(reabrirDet) renderDetCliente(id);
+}
+
+/* ═══════════════════════ RECEBER / STATUS ═══════════════════════ */
+function receber(id){
+  const o=state.orcamentos.find(x=>x.id===id); if(!o)return;
+  const c=calcOrc(o);
+  if(o.pagamento==='crediario'){
+    receberId=id;
+    $('#receberInfo').innerHTML=`${esc(nomeCliente(o.clienteId))} · <b class="money">${fmt(c.receita)}</b>${o.vencimento?' · vencia '+fmtData(o.vencimento):''}. Como foi o pagamento?`;
+    abrirOv('#ovReceber');
+  } else if(o.pagamento==='cartao'){
+    // Hora de trocar estimativa por número real: pergunta o líquido que caiu na conta.
+    liqId=id;
+    $('#liqInfo').innerHTML=`${esc(nomeCliente(o.clienteId))} · venda <b class="money">${fmt(c.receita)}</b>. Informe o valor que caiu na conta para registrar a <b>taxa real</b> da maquininha.`;
+    const sug=num(o.liquido)||(c.taxa>0?c.liquido:0);
+    $('#liqValor').value=sug?sug.toFixed(2).replace('.',','):'';
+    atualizarLiqHint();
+    abrirOv('#ovLiq');
+  } else {
+    o.status='pago'; o.dataPagamento=hoje(); save(); renderTudo(); toast('Recebido ✔');
+  }
+}
+function atualizarLiqHint(){
+  const o=state.orcamentos.find(x=>x.id===liqId); if(!o)return;
+  let receita=0; (o.itens||[]).forEach(i=>receita+=num(i.venda)*num(i.qtd));
+  const v=num($('#liqValor').value);
+  if(!v){ $('#liqHint').textContent='Vazio: mantém a estimativa pela taxa padrão dos Ajustes.'; return; }
+  if(v>receita+0.005){ $('#liqHint').innerHTML='<span style="color:var(--warn)">⚠️ Maior que o valor da venda — confere?</span>'; return; }
+  const tx=receita-v;
+  $('#liqHint').innerHTML=`Taxa real: <b class="money" style="color:var(--danger)">-${fmt(tx)}</b> (${fmtPct(receita>0?tx/receita*100:0)})`;
+}
+function confirmarLiq(){
+  const o=state.orcamentos.find(x=>x.id===liqId); if(!o)return;
+  const v=num($('#liqValor').value);
+  o.liquido=v>0?v:null;
+  o.status='pago'; o.dataPagamento=hoje();
+  save(); fecharOverlay($('#ovLiq')); renderTudo();
+  toast(v>0?'Recebido — taxa real da maquininha registrada ✔':'Recebido (taxa estimada) ✔');
+}
+function confirmarReceber(comp){
+  const o=state.orcamentos.find(x=>x.id===receberId); if(!o)return;
+  o.status='pago'; o.comportamento=comp; o.dataPagamento=hoje();
+  save(); fecharOverlay($('#ovReceber')); renderTudo(); toast(comp==='em_dia'?'Recebido em dia ✔':'Recebido com atraso registrado');
+}
+
+/* ═══════════════════════ CONFIG / BACKUP ═══════════════════════ */
+function renderConfig(){
+  const c=state.config;
+  $('#cfgPesoLucro').value=c.pesos.lucro; $('#cfgPesoPag').value=c.pesos.pagamento;
+  $('#cfgPesoEsf').value=c.pesos.esforco; $('#cfgPesoRec').value=c.pesos.recorrencia;
+  $('#cfgLucroRef').value=String(c.lucroRef).replace('.',','); $('#cfgMargemRef').value=String(c.margemRef).replace('.',',');
+  $('#cfgMeta').value=c.metaMensal?String(c.metaMensal).replace('.',','):''; $('#cfgTolerancia').value=c.tolerancia;
+  $('#cfgDiaVenc').value=c.diaVencimento??5; $('#cfgFollowup').value=c.followupDias??3;
+  $('#cfgTaxaCartao').value=String(c.taxaCartao??0).replace('.',',');
+  const snap=lerSnapshot();
+  $('#btnSnap').style.display=snap?'':'none';
+  if(snap)$('#btnSnap').textContent=`🛟 Restaurar snapshot (${fmtData(snap.date)})`;
+  atualizarSomaPesos();
+  $('#backupInfo').textContent=c.ultimoBackup
+    ?`Último backup exportado: ${new Date(c.ultimoBackup).toLocaleString('pt-BR')} · ${state.orcamentos.length} orçamentos, ${state.clientes.length} clientes.`
+    :`Nenhum backup exportado ainda · ${state.orcamentos.length} orçamentos, ${state.clientes.length} clientes.`;
+}
+function atualizarSomaPesos(){
+  const soma=['#cfgPesoLucro','#cfgPesoPag','#cfgPesoEsf','#cfgPesoRec'].reduce((a,s)=>a+(parseInt($(s).value,10)||0),0);
+  $('#cfgPesoSoma').innerHTML=soma===100?`Soma: <b style="color:var(--accent)">100 ✔</b>`
+    :`Soma: <b style="color:var(--danger)">${soma}</b> — precisa fechar em 100 para salvar.`;
+  return soma;
+}
+function salvarConfig(){
+  if(atualizarSomaPesos()!==100){ toast('Os pesos precisam somar 100.',true); return; }
+  const c=state.config;
+  c.pesos={lucro:parseInt($('#cfgPesoLucro').value,10)||0, pagamento:parseInt($('#cfgPesoPag').value,10)||0,
+    esforco:parseInt($('#cfgPesoEsf').value,10)||0, recorrencia:parseInt($('#cfgPesoRec').value,10)||0};
+  c.lucroRef=num($('#cfgLucroRef').value)||150;
+  c.margemRef=num($('#cfgMargemRef').value)||40;
+  c.metaMensal=num($('#cfgMeta').value)||0;
+  c.tolerancia=parseInt($('#cfgTolerancia').value,10)||30;
+  c.diaVencimento=Math.min(28,Math.max(0,parseInt($('#cfgDiaVenc').value,10)||0));
+  c.followupDias=Math.max(1,parseInt($('#cfgFollowup').value,10)||3);
+  c.taxaCartao=Math.min(30,Math.max(0,num($('#cfgTaxaCartao').value)));
+  save(); renderTudo(); toast('Ajustes salvos ✔');
+}
+function exportar(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`orcafarma_backup_${hoje()}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+  state.config.ultimoBackup=new Date().toISOString(); save(); renderConfig();
+  toast('Backup exportado ✔');
+}
+function importar(file){
+  const r=new FileReader();
+  r.onload=()=>{ try{
+      const s=JSON.parse(r.result);
+      if(!s||!Array.isArray(s.orcamentos)||!Array.isArray(s.clientes)) throw new Error('formato');
+      if(!confirm(`Importar ${s.orcamentos.length} orçamentos e ${s.clientes.length} clientes? Isso substitui os dados atuais.`)) return;
+      localStorage.setItem(KEY,JSON.stringify(s)); state=load(); renderTudo(); renderConfig();
+      toast('Backup importado ✔');
+    }catch(e){ toast('Arquivo inválido — não é um backup de Orçamentos.',true); } };
+  r.readAsText(file);
+}
+
+/* ═══════════════════════ SNAPSHOT DIÁRIO (rede de segurança) ═══════════════════════ */
+function lerSnapshot(){
+  try{ const s=JSON.parse(localStorage.getItem(SNAPKEY)); return s&&s.date&&s.data?s:null; }catch(e){ return null; }
+}
+function gravarSnapshotDiario(){
+  try{
+    const snap=lerSnapshot();
+    if(snap&&snap.date===hoje()) return;                    // já tem o de hoje
+    if(!state.orcamentos.length&&!state.clientes.length) return;
+    localStorage.setItem(SNAPKEY,JSON.stringify({date:hoje(),data:state}));
+  }catch(e){ /* quota cheia: snapshot é best-effort */ }
+}
+function restaurarSnapshot(){
+  const snap=lerSnapshot(); if(!snap){ toast('Nenhum snapshot disponível.',true); return; }
+  if(!confirm(`Restaurar o snapshot de ${fmtData(snap.date)} (${(snap.data.orcamentos||[]).length} orçamentos, ${(snap.data.clientes||[]).length} clientes)? Os dados atuais serão substituídos.`)) return;
+  localStorage.setItem(KEY,JSON.stringify(snap.data));
+  state=load(); renderTudo(); renderConfig();
+  toast('Snapshot restaurado ✔');
+}
+
+/* ═══════════════════════ NAVEGAÇÃO & EVENTOS ═══════════════════════ */
+// Overlays empilháveis: cada abertura ganha z-index maior; Esc/Cancelar fecham só o do topo.
+let ovZ=100, buscaTimer=null;
+function abrirOv(sel){ const el=$(sel); el.style.zIndex=++ovZ; el.classList.add('on'); }
+function fecharOverlay(ov){
+  if(!ov||!ov.classList.contains('on')) return true;
+  if(ov.id==='ovOrc'){
+    if(orcSujo()&&!confirm('Há alterações não salvas no orçamento. Descartar?')) return false;
+    orcBaseline=null;
+  }
+  if(ov.id==='ovReceber') receberId=null;
+  if(ov.id==='ovLiq') liqId=null;
+  ov.classList.remove('on');
+  return true;
+}
+function fecharTopo(){
+  const abertos=$$('.overlay.on'); if(!abertos.length) return;
+  const topo=abertos.reduce((a,b)=>(+b.style.zIndex||100)>=(+a.style.zIndex||100)?b:a);
+  fecharOverlay(topo);
+}
+function fecharModais(){
+  const abertos=$$('.overlay.on').sort((a,b)=>(+b.style.zIndex||0)-(+a.style.zIndex||0));
+  for(const ov of abertos){ if(!fecharOverlay(ov)) return; }
+}
+function irTab(tab){
+  $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===tab));
+  $$('.page').forEach(p=>p.classList.toggle('on',p.id==='page-'+tab));
+  if(tab==='dashboard')renderDashboard();
+  if(tab==='orcamentos')renderOrcamentos();
+  if(tab==='clientes')renderClientes();
+  if(tab==='relatorios')renderRelatorios();
+  if(tab==='config')renderConfig();
+}
+function renderTudo(){
+  const on=$('.page.on'); const tab=on?on.id.replace('page-',''):'dashboard';
+  irTab(tab);
+}
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-action]');
+  // clique fora NÃO fecha mais o overlay — evita perda de dados no orçamento.
+  // Fechar só com Esc, botão X ou Cancelar.
+  if(!el) return;
+  const a=el.dataset.action, id=el.dataset.id;
+  switch(a){
+    case 'tab': irTab(el.dataset.tab); break;
+    case 'novo-orc': abrirOrc(null); break;
+    case 'editar-orc': abrirOrc(state.orcamentos.find(o=>o.id===id)); break;
+    case 'duplicar-orc': { const o=state.orcamentos.find(x=>x.id===id); if(!o)break;
+      const cp=structuredClone(o); cp.id=uid(); cp.status='pendente'; cp.comportamento=null; cp.dataPagamento=null;
+      cp.data=hoje(); cp.criadoEm=new Date().toISOString();
+      cp.numero=++state.meta.seq;      // número próprio
+      cp.liquido=null;                 // líquido é da venda antiga, não desta
+      cp.vencimento=cp.pagamento==='crediario'?(proximoVencimento()||null):null; // não herda vencimento velho
+      state.orcamentos.push(cp); save(); renderTudo(); toast('Orçamento duplicado ✔'); break; }
+    case 'excluir-orc': { const o=state.orcamentos.find(x=>x.id===id); if(!o)break;
+      const bak=structuredClone(o);
+      state.orcamentos=state.orcamentos.filter(x=>x.id!==id); save(); renderTudo();
+      toast('Orçamento excluído',false,()=>{ state.orcamentos.push(bak); save(); renderTudo(); toast('Restaurado ✔'); });
+      break; }
+    case 'enviar-orc': enviarOrc(id); break;
+    case 'imprimir-orc': imprimirOrc(id); break;
+    case 'judicial-orc': abrirJudicial(id); break;
+    case 'pedidos-orc': enviarParaPedidos(id); break;
+    case 'copiar-cotacao': copiarCotacaoOrc(id); break;
+    case 'copiar-cotacao-modal': copiarCotacaoModal(); break;
+    case 'gerar-judicial': gerarJudicial(); break;
+    case 'exportar-csv': exportarCsv(); break;
+    case 'sugerir-precos': sugerirPrecos(); break;
+    case 'restaurar-snap': restaurarSnapshot(); break;
+    case 'mudar-status': { const o=state.orcamentos.find(x=>x.id===id); if(!o)break;
+      o.status=el.dataset.st;
+      if(o.status==='pendente'){ o.comportamento=null; o.dataPagamento=null; }
+      save(); renderTudo(); toast('Status: '+STATUS_LB[o.status]); break; }
+    case 'receber': receber(id); break;
+    case 'receber-com': confirmarReceber(el.dataset.comp); break;
+    case 'liq-confirmar': confirmarLiq(); break;
+    case 'calote': { const o=state.orcamentos.find(x=>x.id===id); if(!o)break;
+      if(confirm('Marcar como inadimplente (não pagou)? Isso derruba o score do cliente. Se pagar depois, use "Receber".')){
+        o.comportamento='nao_pagou'; save(); renderTudo(); toast('Inadimplência registrada'); } break; }
+    case 'novo-cliente': abrirCliente(null,false); break;
+    case 'quick-cliente': abrirCliente(null,true); break;
+    case 'editar-cliente': abrirCliente(getCliente(id),false); break;
+    case 'excluir-cliente': { const n=state.orcamentos.filter(o=>o.clienteId===id).length;
+      if(confirm(`Excluir este cliente${n?` e seus ${n} orçamento(s)`:''}?`)){
+        const bakC=structuredClone(getCliente(id));
+        const bakO=structuredClone(state.orcamentos.filter(o=>o.clienteId===id));
+        state.clientes=state.clientes.filter(c=>c.id!==id);
+        state.orcamentos=state.orcamentos.filter(o=>o.clienteId!==id);
+        save(); fecharModais(); renderTudo();
+        toast('Cliente excluído',false,()=>{ state.clientes.push(bakC); state.orcamentos.push(...bakO);
+          save(); renderTudo(); toast('Restaurado ✔'); }); } break; }
+    case 'ver-cliente': if(!e.target.closest('button')) renderDetCliente(id); break;
+    case 'salvar-orc': salvarOrc(); break;
+    case 'salvar-cliente': salvarCliente(); break;
+    case 'add-item': addItemRow(); atualizarPreview(); break;
+    case 'del-item': { const tb=$('#oItens'); el.closest('tr').remove();
+      if(!tb.children.length) addItemRow(); atualizarPreview(); break; }
+    case 'fechar-modal': fecharOverlay(el.closest('.overlay')); break;
+    case 'toggle-privado': state.config.privado=!state.config.privado; save(); aplicarPrivado(); break;
+    case 'exportar': exportar(); break;
+    case 'importar': $('#fileImport').click(); break;
+    case 'zerar': if(confirm('Apagar TODOS os dados (clientes, orçamentos, ajustes)?')&&confirm('Certeza absoluta? Última chance.')){
+      localStorage.removeItem(KEY); state=load(); renderTudo(); renderConfig(); toast('Dados zerados'); } break;
+    case 'salvar-config': salvarConfig(); break;
+  }
+});
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.closest('#ovOrc')){
+    if(t.closest('#oDif')) t.closest('.difopt').classList.toggle('on',t.checked);
+    if(t.id==='oPag') toggleVenc();
+    atualizarPreview();
+  }
+  if(['fStatus','fPag','fTier','fPeriodo'].includes(t.id)) renderOrcamentos();
+  if(['fTierCli','fOrdCli'].includes(t.id)) renderClientes();
+  if(t.id==='fBusca'||t.id==='fBuscaCli'){ clearTimeout(buscaTimer);
+    buscaTimer=setTimeout(()=>t.id==='fBusca'?renderOrcamentos():renderClientes(),140); }
+  if(t.id==='liqValor') atualizarLiqHint();
+  if(t.id==='rPeriodo') renderRelatorios();
+  if(t.id.startsWith('cfgPeso')) atualizarSomaPesos();
+});
+$('#fileImport').addEventListener('change',e=>{ if(e.target.files[0]) importar(e.target.files[0]); e.target.value=''; });
+
+// Autofill custo/venda quando o produto digitado já existe no histórico
+document.addEventListener('change',e=>{
+  if(e.target.classList&&e.target.classList.contains('i-prod')){
+    autoFillProduto(e.target.closest('tr')); atualizarPreview();
+  }
+});
+
+// Atalhos: Esc fecha · N novo orçamento · / foca a busca da aba
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){ fecharTopo(); return; }
+  const digitando=/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName||'');
+  const modalAberto=!!$('.overlay.on');
+  if(digitando||modalAberto||e.ctrlKey||e.metaKey||e.altKey) return;
+  if(e.key==='n'||e.key==='N'){ e.preventDefault(); abrirOrc(null); }
+  if(e.key==='/'){ e.preventDefault();
+    const alvo=$('.page.on #fBusca')||$('.page.on #fBuscaCli'); if(alvo)alvo.focus(); }
+});
+
+window.addEventListener('beforeunload',e=>{ if(orcSujo()){ e.preventDefault(); e.returnValue=''; } });
+
+function aplicarPrivado(){
+  document.body.classList.toggle('privado',!!state.config.privado);
+  $('#btnPrivado').classList.toggle('on',!!state.config.privado);
+}
+
+/* ═══════════════════════ INIT ═══════════════════════ */
+aplicarPrivado();
+gravarSnapshotDiario();
+renderDashboard();
+// Lembrete de backup: mais de 7 dias sem exportar com dados relevantes
+if(state.orcamentos.length>=5){
+  const ult=state.config.ultimoBackup?new Date(state.config.ultimoBackup):null;
+  if(!ult||(Date.now()-ult.getTime())>7*86400000)
+    setTimeout(()=>toast('💾 Faz tempo que você não exporta um backup.',false,()=>{irTab('config');},'Abrir Ajustes'),1200);
+}
+})();
+</script>
+</body>
+</html>

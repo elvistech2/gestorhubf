@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="../shared/marca.js"></script>
+<script src="../shared/db-storage.js" data-app="avisos"></script>
+<title>Avisos na Bobina · {marca}</title>
+<style>
+  :root{
+    --ink:#16211c;
+    --ink-soft:#4a5a52;
+    --paper:#f6f4ec;
+    --paper-line:#d9d4c4;
+    --bg:#e8ebe6;
+    --panel:#ffffff;
+    --line:#d5ddd6;
+    --green:#0f7a4d;
+    --green-deep:#0b5a39;
+    --amber:#b7791f;
+    --amber-bg:#fbf1dd;
+    --danger:#b23b3b;
+    --radius:14px;
+    --mono: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:var(--sans);
+    background:
+      radial-gradient(1200px 600px at 100% -10%, #f0f3ee 0%, transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+
+  /* ---------- Top bar ---------- */
+  header.top{
+    display:flex;align-items:center;gap:14px;
+    padding:16px 22px;
+    background:linear-gradient(180deg,#0f7a4d,#0b5a39);
+    color:#eafaf1;
+    position:sticky;top:0;z-index:20;
+    box-shadow:0 2px 14px rgba(11,90,57,.28);
+  }
+  header.top .logo{
+    width:40px;height:40px;flex:0 0 40px;border-radius:11px;
+    background:#eafaf1;color:var(--green-deep);
+    display:grid;place-items:center;font-weight:800;font-size:20px;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.5);
+  }
+  header.top h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.2px;}
+  header.top p{margin:2px 0 0;font-size:12.5px;opacity:.82;font-weight:500;}
+  header.top .spacer{flex:1;}
+  .toolbtn{
+    background:rgba(255,255,255,.14);color:#eafaf1;border:1px solid rgba(255,255,255,.28);
+    padding:8px 13px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;transition:.15s;
+  }
+  .toolbtn:hover{background:rgba(255,255,255,.24);}
+
+  /* ---------- Layout ---------- */
+  .wrap{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);gap:22px;padding:22px;max-width:1180px;margin:0 auto;align-items:start;}
+  @media (max-width:880px){ .wrap{grid-template-columns:1fr;} .rightcol{order:-1;} }
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 1px 3px rgba(22,33,28,.05);}
+  .card .hd{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;}
+  .card .hd h2{margin:0;font-size:14px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--ink-soft);}
+
+  /* ---------- Library ---------- */
+  .searchrow{display:flex;gap:10px;padding:14px 18px 4px;flex-wrap:wrap;}
+  .searchrow input[type=text]{
+    flex:1;min-width:180px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px;font-family:var(--sans);
+  }
+  .searchrow input:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green);}
+  .tabs{display:flex;gap:6px;padding:10px 18px 6px;flex-wrap:wrap;}
+  .tab{
+    padding:6px 12px;border-radius:20px;border:1px solid var(--line);background:#fff;
+    font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:.15s;
+  }
+  .tab.active{background:var(--green);color:#fff;border-color:var(--green);}
+  .tab:hover:not(.active){background:#f2f6f3;}
+
+  .msglist{padding:10px 14px 16px;display:flex;flex-direction:column;gap:9px;max-height:64vh;overflow:auto;}
+  .msg{
+    border:1px solid var(--line);border-radius:11px;padding:12px 13px;cursor:pointer;
+    transition:.15s;background:#fff;position:relative;
+  }
+  .msg:hover{border-color:var(--green);box-shadow:0 2px 10px rgba(15,122,77,.1);}
+  .msg.sel{border-color:var(--green);box-shadow:0 0 0 2px rgba(15,122,77,.25);background:#f7fcf9;}
+  .msg .mt{font-weight:700;font-size:14px;margin:0 0 3px;color:var(--ink);display:flex;align-items:center;gap:7px;}
+  .msg .mb{font-size:12.5px;color:var(--ink-soft);line-height:1.35;white-space:pre-wrap;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .pill{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 7px;border-radius:20px;flex:0 0 auto;}
+  .pill.avisos{background:#fdeaea;color:#b23b3b;}
+  .pill.crediario{background:#eef3ff;color:#345bb5;}
+  .pill.servicos{background:#e9f7ef;color:#0f7a4d;}
+  .pill.institucional{background:#f3eefb;color:#7048a8;}
+  .msg .del{position:absolute;top:9px;right:9px;border:none;background:none;color:#c0857f;font-size:16px;cursor:pointer;line-height:1;opacity:.6;}
+  .msg .del:hover{opacity:1;color:var(--danger);}
+
+  .addrow{padding:12px 18px 16px;border-top:1px dashed var(--line);}
+  .addrow button{width:100%;padding:11px;border:1px dashed var(--green);background:#f4fbf7;color:var(--green-deep);
+    border-radius:10px;font-weight:700;font-size:13.5px;cursor:pointer;transition:.15s;}
+  .addrow button:hover{background:#e8f6ef;}
+
+  /* ---------- Right column / editor ---------- */
+  .rightcol{display:flex;flex-direction:column;gap:18px;position:sticky;top:88px;}
+  .editor{padding:16px 18px;display:flex;flex-direction:column;gap:12px;}
+  .editor label.lbl{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-soft);}
+  .editor input[type=text], .editor textarea{
+    width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px;font-family:var(--sans);resize:vertical;
+  }
+  .editor textarea{min-height:120px;line-height:1.45;}
+  .editor input:focus,.editor textarea:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green);}
+  .fields{display:flex;flex-direction:column;gap:9px;}
+  .fields .fld{display:flex;flex-direction:column;gap:3px;}
+  .fields .fld small{font-size:11px;color:var(--amber);font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
+  .barra-txt{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;flex-wrap:wrap;}
+  .barra-txt .grupo{display:flex;align-items:center;gap:5px;}
+  .barra-txt .mini{border:1px solid var(--line);background:#fff;color:var(--ink-soft);border-radius:7px;
+                   padding:3px 9px;font-size:12.5px;font-weight:700;cursor:pointer;line-height:1.5;}
+  .barra-txt .mini:hover{border-color:var(--green);color:var(--green-deep);background:#f4fbf7;}
+  .barra-txt .sep{width:1px;height:18px;background:var(--line);margin:0 3px;}
+  .barra-txt .tam{font-size:11.5px;color:var(--ink-soft);font-weight:600;min-width:66px;text-align:center;}
+  .dica-txt{font-size:11.5px;color:var(--ink-soft);margin-top:4px;}
+  .toggles{display:flex;flex-wrap:wrap;gap:14px;padding-top:4px;}
+  .toggles label{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);font-weight:600;cursor:pointer;}
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;padding-top:4px;}
+  .btn{padding:11px 16px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:1px solid transparent;transition:.15s;flex:1;min-width:120px;}
+  .btn.print{background:var(--green);color:#fff;}
+  .btn.print:hover{background:var(--green-deep);}
+  .btn.save{background:#fff;border-color:var(--line);color:var(--ink-soft);}
+  .btn.save:hover{border-color:var(--green);color:var(--green-deep);}
+  .empty{padding:40px 20px;text-align:center;color:var(--ink-soft);font-size:14px;}
+  .empty b{display:block;font-size:15px;color:var(--ink);margin-bottom:6px;}
+
+  /* ---------- Thermal preview (on screen) ---------- */
+  .previewwrap{padding:18px;display:flex;flex-direction:column;align-items:center;background:linear-gradient(180deg,#eef1ec,#e4e8e2);border-radius:0 0 var(--radius) var(--radius);}
+  .previewwrap .cap{font-size:11px;color:var(--ink-soft);font-weight:600;letter-spacing:.4px;text-transform:uppercase;margin-bottom:12px;}
+  .paper{
+    width:280px;background:var(--paper);color:#111;
+    box-shadow:0 6px 18px rgba(22,33,28,.18);
+    padding:14px 14px 4px;position:relative;
+    background-image:repeating-linear-gradient(180deg,transparent,transparent 27px,rgba(0,0,0,.02) 27px,rgba(0,0,0,.02) 28px);
+  }
+  .paper .tear{height:10px;margin:0 -14px;background:
+    linear-gradient(-45deg,var(--paper) 7px,transparent 0) 0 5px,
+    linear-gradient( 45deg,var(--paper) 7px,transparent 0) 0 5px;
+    background-size:14px 14px;background-repeat:repeat-x;}
+  .paper .tear.top{transform:rotate(180deg);margin-bottom:8px;}
+  .paper .tear.bot{margin-top:6px;}
+  .rc{font-family:var(--mono);color:#111;--esc:1;}
+  .rc .r-name{text-align:center;font-weight:800;font-size:calc(15px * var(--esc));letter-spacing:.5px;line-height:1.2;}
+  .rc .r-sub{text-align:center;font-size:calc(11px * var(--esc));line-height:1.35;margin-top:2px;}
+  .rc .r-div{border:none;border-top:1.5px dashed #555;margin:9px 0;}
+  .rc .r-title{text-align:center;font-weight:800;font-size:calc(13.5px * var(--esc));letter-spacing:.8px;line-height:1.25;text-transform:uppercase;}
+  .rc .r-body{font-size:calc(12.5px * var(--esc));line-height:1.5;white-space:pre-wrap;margin-top:7px;}
+  .rc .r-foot{text-align:center;font-size:calc(11px * var(--esc));line-height:1.35;margin-top:2px;}
+  .rc .r-when{text-align:center;font-size:calc(10.5px * var(--esc));color:#444;margin-top:6px;}
+  .rc strong,.rc b{font-weight:800;}
+  .rc .ph{background:#fff3d6;padding:0 3px;border-radius:3px;}
+
+  /* ---------- Modal ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(20,33,28,.5);display:none;place-items:center;z-index:50;padding:18px;}
+  .overlay.on{display:grid;}
+  .modal{background:#fff;border-radius:16px;max-width:520px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+  .modal .mhd{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;}
+  .modal .mhd h3{margin:0;font-size:16px;}
+  .modal .mhd .x{margin-left:auto;border:none;background:none;font-size:22px;cursor:pointer;color:var(--ink-soft);line-height:1;}
+  .modal .mbd{padding:18px 20px;display:flex;flex-direction:column;gap:12px;}
+  .modal label.lbl{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-soft);}
+  .modal input[type=text],.modal textarea,.modal select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px;font-family:var(--sans);}
+  .modal textarea{min-height:110px;line-height:1.45;resize:vertical;}
+  .modal .mft{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;}
+  .modal .mft .btn{flex:0 0 auto;min-width:0;}
+  .hint{font-size:12px;color:var(--ink-soft);background:var(--amber-bg);border:1px solid #f0e0bd;border-radius:9px;padding:10px 12px;line-height:1.5;}
+  .hint b{color:var(--amber);}
+  .setup ol{margin:8px 0 0;padding-left:20px;line-height:1.65;font-size:13.5px;color:var(--ink);}
+  .setup ol b{color:var(--green-deep);}
+  .kbd{font-family:var(--mono);background:#eef1ec;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12px;}
+
+  .foot-note{max-width:1180px;margin:0 auto 30px;padding:0 22px;color:var(--ink-soft);font-size:12px;line-height:1.6;}
+
+  /* ---------- PRINT ---------- */
+  #printArea{display:none;}
+  @media print{
+    @page{ size:80mm auto; margin:0; }
+    html,body{margin:0;padding:0;background:#fff;}
+    body>*{display:none !important;}
+    #printArea{display:block !important;width:72mm;margin:0;padding:0 1.5mm;color:#000;}
+    #printArea .p-name{text-align:center;font-family:var(--mono);font-weight:800;font-size:calc(4.6mm * var(--esc,1));line-height:1.15;letter-spacing:.2mm;}
+    #printArea .p-sub{text-align:center;font-family:var(--mono);font-size:calc(2.8mm * var(--esc,1));line-height:1.3;margin-top:.5mm;}
+    #printArea .p-div{border:none;border-top:.4mm dashed #000;margin:2.6mm 0;}
+    #printArea .p-title{text-align:center;font-family:var(--mono);font-weight:800;font-size:calc(3.7mm * var(--esc,1));line-height:1.2;letter-spacing:.4mm;text-transform:uppercase;}
+    #printArea .p-body{font-family:var(--mono);font-size:calc(3.2mm * var(--esc,1));line-height:1.5;white-space:pre-wrap;margin-top:2mm;}
+    #printArea .p-foot{text-align:center;font-family:var(--mono);font-size:calc(2.9mm * var(--esc,1));line-height:1.3;}
+    #printArea .p-when{text-align:center;font-family:var(--mono);font-size:calc(2.6mm * var(--esc,1));margin-top:1.5mm;}
+    #printArea strong,#printArea b{font-weight:800;}
+    #printArea .p-feed{height:8mm;}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="logo">✚</div>
+  <div>
+    <h1 id="topName">Avisos na Bobina</h1>
+    <p id="topSub">Impressão de mensagens · Epson TM-T20X (80mm)</p>
+  </div>
+  <div class="spacer"></div>
+  <button class="toolbtn" onclick="openSetup()" title="Como configurar a impressão">⚙ Configurar</button>
+  <button class="toolbtn" onclick="openHeaderCfg()" title="Cabeçalho do cupom">🏥 Cabeçalho</button>
+  <button class="toolbtn" onclick="doBackup()" title="Salvar backup">⭳ Backup</button>
+  <button class="toolbtn" onclick="fileInput.click()" title="Restaurar backup">⭱ Restaurar</button>
+</header>
+
+<div class="wrap">
+  <!-- LEFT: library -->
+  <div class="card">
+    <div class="hd"><h2>Biblioteca de mensagens</h2></div>
+    <div class="searchrow">
+      <input type="text" id="search" placeholder="Buscar mensagem…" oninput="render()">
+    </div>
+    <div class="tabs" id="tabs"></div>
+    <div class="msglist" id="msglist"></div>
+    <div class="addrow"><button onclick="openEdit()">➕ Nova mensagem personalizada</button></div>
+  </div>
+
+  <!-- RIGHT: editor + preview -->
+  <div class="rightcol">
+    <div class="card">
+      <div class="hd"><h2>Preparar impressão</h2></div>
+      <div id="editorHost">
+        <div class="empty"><b>Selecione uma mensagem</b>Escolha um aviso na biblioteca ao lado para editar e imprimir.</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="previewwrap">
+        <div class="cap">Prévia (80mm) — como sai no papel</div>
+        <div class="paper">
+          <div class="tear top"></div>
+          <div class="rc" id="preview"></div>
+          <div class="tear bot"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="foot-note">
+  Feito para a <b>Epson TM-T20X</b> (papel 80mm · área de impressão ~72mm · 203 dpi). Tudo roda 100% offline no navegador —
+  suas mensagens ficam salvas neste dispositivo. Clique em <b>⚙ Configurar</b> na primeira vez para ajustar o driver da impressora.
+</p>
+
+<!-- Print target -->
+<div id="printArea"></div>
+
+<!-- ===== Modals ===== -->
+<div class="overlay" id="ovEdit">
+  <div class="modal">
+    <div class="mhd"><h3 id="editTitle">Nova mensagem</h3><button class="x" onclick="closeOverlay('ovEdit')">×</button></div>
+    <div class="mbd">
+      <div><label class="lbl">Categoria</label>
+        <select id="edCat">
+          <option value="avisos">Avisos & Políticas</option>
+          <option value="crediario">Crediário</option>
+          <option value="servicos">Serviços & Saúde</option>
+          <option value="institucional">Institucional</option>
+        </select>
+      </div>
+      <div><label class="lbl">Título (aparece em destaque)</label>
+        <input type="text" id="edTitle" placeholder="Ex.: CONFIRA ANTES DE SAIR" maxlength="60"></div>
+      <div><label class="lbl">Texto da mensagem</label>
+        <textarea id="edBody" placeholder="Escreva a mensagem…&#10;&#10;Dica: use {nome}, {valor}, {vencimento} para criar campos preenchíveis na hora de imprimir."></textarea></div>
+      <div class="hint">Use chaves para criar <b>campos preenchíveis</b>: escreva algo como <span class="kbd">{nome}</span> ou <span class="kbd">{valor}</span> e um campo aparecerá antes de imprimir.<br>
+        Para destacar no papel, escreva entre asteriscos duplos: <span class="kbd">**pague até dia 05**</span> sai em <b>negrito</b>.</div>
+    </div>
+    <div class="mft">
+      <button class="btn save" onclick="closeOverlay('ovEdit')">Cancelar</button>
+      <button class="btn print" style="flex:0 0 auto" onclick="saveEdit()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ovHeader">
+  <div class="modal">
+    <div class="mhd"><h3>Cabeçalho do cupom</h3><button class="x" onclick="closeOverlay('ovHeader')">×</button></div>
+    <div class="mbd">
+      <div><label class="lbl">Nome do negócio</label><input type="text" id="cfgName" maxlength="40"></div>
+      <div><label class="lbl">Linha de endereço / cidade (opcional)</label><input type="text" id="cfgSub" maxlength="60"></div>
+      <div><label class="lbl">Chave PIX (usada em {chave_pix})</label><input type="text" id="cfgPix" maxlength="60" placeholder="ex.: CNPJ, telefone ou e-mail"></div>
+      <div><label class="lbl">Rodapé padrão (opcional)</label><input type="text" id="cfgFoot" maxlength="60" placeholder="ex.: Cuidando de você e da sua família"></div>
+    </div>
+    <div class="mft">
+      <button class="btn save" onclick="closeOverlay('ovHeader')">Cancelar</button>
+      <button class="btn print" style="flex:0 0 auto" onclick="saveHeader()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ovSetup">
+  <div class="modal">
+    <div class="mhd"><h3>Configurar a impressão (uma vez só)</h3><button class="x" onclick="closeOverlay('ovSetup')">×</button></div>
+    <div class="mbd setup">
+      <div class="hint" style="background:#e9f7ef;border-color:#bfe6cf;color:#0b5a39">
+        Instale o driver <b>EPSON TM-T20X</b> (Advanced Printer Driver) e deixe a impressora como padrão. Depois ajuste o diálogo de impressão assim:
+      </div>
+      <div>
+        <b>No Google Chrome / Edge:</b>
+        <ol>
+          <li>Ao clicar em <b>Imprimir</b>, em <b>Destino</b> escolha a <b>EPSON TM-T20X Receipt</b>.</li>
+          <li><b>Margens</b> → <span class="kbd">Nenhuma</span>.</li>
+          <li>Desmarque <span class="kbd">Cabeçalhos e rodapés</span>.</li>
+          <li>Marque <span class="kbd">Gráficos de plano de fundo</span> apenas se quiser (não é necessário).</li>
+          <li>Em <b>Mais configurações → Tamanho do papel</b>, escolha <b>Roll Paper 80 x 297</b> (ou 80mm) se aparecer.</li>
+          <li>Escala: <span class="kbd">Padrão</span> (100%).</li>
+        </ol>
+      </div>
+      <div class="hint">
+        <b>Dica de corte:</b> no utilitário da impressora (TM-T20X Utility) deixe o <b>corte automático</b> ativado para o papel ser cortado sozinho ao fim de cada aviso.
+      </div>
+    </div>
+    <div class="mft"><button class="btn print" style="flex:0 0 auto" onclick="closeOverlay('ovSetup')">Entendi</button></div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="application/json" style="display:none">
+
+<script>
+/* ============ Data ============ */
+const CATS = {avisos:"Avisos & Políticas", crediario:"Crediário", servicos:"Serviços & Saúde", institucional:"Institucional"};
+const STORAGE_KEY = "avisosImpressora_v1";
+
+const PRESETS = [
+  {id:"p1", cat:"avisos", title:"CONFIRA ANTES DE SAIR",
+   body:"Por questões sanitárias e de segurança, NÃO trocamos nem devolvemos produtos após a venda.\n\nConfira o item, a quantidade e a validade ainda no caixa."},
+  {id:"p2", cat:"avisos", title:"GUARDE SEU COMPROVANTE",
+   body:"Guarde o seu comprovante.\n\nEle pode ser pedido em uma troca ou garantia."},
+  {id:"p3", cat:"avisos", title:"CONFIRA SEU TROCO",
+   body:"Confira o troco e os produtos ainda no caixa.\n\nSua atenção evita transtornos. Obrigado!"},
+
+  {id:"p4", cat:"crediario", title:"AVISO DE CREDIÁRIO",
+   body:"Prezado(a) {nome},\n\nConsta um débito em aberto no valor de R$ {valor}, vencido em {vencimento}.\n\nPedimos a gentileza de regularizar para manter seu crediário ativo. Em caso de dúvida, procure o balcão."},
+  {id:"p5", cat:"crediario", title:"SEU CREDIÁRIO",
+   body:"Fechamento: todo dia 20\nVencimento: todo dia 05\n\nFique em dia e evite juros.\nDúvidas? Fale com a gente!"},
+  {id:"p6", cat:"crediario", title:"CREDIÁRIO LIBERADO",
+   body:"Seu crediário está ativo!\n\nLimite inicial: R$ {limite}\nFechamento dia 20 · Vencimento dia 05\n\nCompre com tranquilidade e pague com facilidade."},
+
+  {id:"p7", cat:"servicos", title:"SERVIÇOS NA FARMÁCIA",
+   body:"Pergunte pelos nossos serviços.\n\nConsulte disponibilidade e valores no caixa."},
+  {id:"p8", cat:"servicos", title:"ECONOMIZE COM GENÉRICOS",
+   body:"Pergunte pelas opções mais em conta.\n\nQuase sempre existe uma alternativa parecida por menos."},
+  {id:"p9", cat:"servicos", title:"DESCARTE CORRETO",
+   body:"Descarte com consciência.\n\nPilhas, eletrônicos e embalagens têm ponto de coleta. Não jogue no lixo comum."},
+
+  {id:"p10", cat:"institucional", title:"OBRIGADO!",
+   body:"Obrigado pela preferência!\n\nVolte sempre."},
+  {id:"p11", cat:"institucional", title:"HORÁRIO DE FUNCIONAMENTO",
+   body:"Segunda a Sexta: 08h às 19h\nSábado: 08h às 12h\nDomingo e feriados: fechado"},
+  {id:"p12", cat:"institucional", title:"FORMAS DE PAGAMENTO",
+   body:"Dinheiro · Cartão · PIX · Crediário\n\nPIX (chave): {chave_pix}\nPeça o QR Code no balcão."},
+  {id:"p13", cat:"institucional", title:"JÁ TEM CADASTRO?",
+   body:"Cadastre-se e aproveite:\n• Crediário próprio\n• Descontos e ofertas\n\nÉ rápido — peça no balcão!"}
+];
+
+let state = {
+  custom: [],
+  cfg: {name:(window.marcaNome?window.marcaNome():"Minha Empresa"), sub:(window.marcaSub?window.marcaSub():""), pix:"", foot:"Obrigado pela preferência!",
+        escala:1, negritoCampos:true},
+  ui: {cat:"todos", selId:null, fieldVals:{}, showHeader:true, showWhen:true, showFoot:false, liveBody:"", liveTitle:""}
+};
+
+/* ============ Persistence ============ */
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){ const d = JSON.parse(raw);
+      state.custom = d.custom||[];
+      state.cfg = Object.assign(state.cfg, d.cfg||{});
+    }
+  }catch(e){ console.warn("load falhou", e); }
+}
+function save(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({custom:state.custom, cfg:state.cfg})); }
+  catch(e){ alert("Não consegui salvar neste navegador."); }
+}
+function allMsgs(){ return [...PRESETS, ...state.custom]; }
+function getMsg(id){ return allMsgs().find(m=>m.id===id); }
+
+/* ============ Render ============ */
+function render(){
+  // top bar name
+  topName.textContent = state.cfg.name || "Avisos na Bobina";
+  // tabs
+  const tabsHost = document.getElementById("tabs");
+  const cats = ["todos", ...Object.keys(CATS)];
+  tabsHost.innerHTML = cats.map(c=>{
+    const label = c==="todos" ? "Todos" : CATS[c];
+    return `<button class="tab ${state.ui.cat===c?'active':''}" onclick="setCat('${c}')">${label}</button>`;
+  }).join("");
+  // list
+  const q = (document.getElementById("search").value||"").toLowerCase().trim();
+  const list = allMsgs().filter(m=>{
+    const catOk = state.ui.cat==="todos" || m.cat===state.ui.cat;
+    const qOk = !q || (m.title.toLowerCase().includes(q) || m.body.toLowerCase().includes(q));
+    return catOk && qOk;
+  });
+  const host = document.getElementById("msglist");
+  if(!list.length){ host.innerHTML = `<div class="empty">Nenhuma mensagem encontrada.</div>`; }
+  else host.innerHTML = list.map(m=>{
+    const custom = m.id.startsWith("c");
+    return `<div class="msg ${state.ui.selId===m.id?'sel':''}" onclick="selectMsg('${m.id}')">
+      <div class="mt"><span class="pill ${m.cat}">${CATS[m.cat].split(' ')[0]}</span>${esc(m.title)}</div>
+      <div class="mb">${esc(m.body)}</div>
+      ${custom?`<button class="del" title="Excluir" onclick="event.stopPropagation();delMsg('${m.id}')">🗑</button>`:''}
+    </div>`;
+  }).join("");
+  renderEditor();
+  renderPreview();
+}
+
+function renderEditor(){
+  const host = document.getElementById("editorHost");
+  const m = getMsg(state.ui.selId);
+  if(!m){ host.innerHTML = `<div class="empty"><b>Selecione uma mensagem</b>Escolha um aviso na biblioteca ao lado para editar e imprimir.</div>`; return; }
+  const body = state.ui.liveBody;
+  const placeholders = [...new Set((body.match(/\{([a-z_0-9]+)\}/gi)||[]).map(s=>s.slice(1,-1)))];
+  const fieldsHtml = placeholders.length ? `<div class="fields">${placeholders.map(p=>{
+    const val = state.ui.fieldVals[p] ?? prefillField(p);
+    return `<div class="fld"><small>${prettyField(p)}</small>
+      <input type="text" value="${escAttr(val)}" oninput="setField('${p}', this.value)" placeholder="${prettyField(p)}…"></div>`;
+  }).join("")}</div>` : "";
+
+  host.innerHTML = `
+    <div class="editor">
+      <div><label class="lbl">Título</label>
+        <input type="text" value="${escAttr(state.ui.liveTitle)}" oninput="state.ui.liveTitle=this.value;renderPreview()"></div>
+      <div>
+        <div class="barra-txt">
+          <label class="lbl" style="margin:0">Texto (edite à vontade antes de imprimir)</label>
+          <div class="grupo">
+            <button type="button" class="mini" title="Negrito no trecho selecionado (Ctrl+B)"
+              onclick="negritoSelecao(this.closest('.editor').querySelector('textarea'))"><b>N</b></button>
+            <span class="sep"></span>
+            <button type="button" class="mini" title="Diminuir a letra da impressão" onclick="mudarEscala(-1)">A−</button>
+            <span class="tam" title="Tamanho da letra na impressão">${ESCALA_LB[escalaAtual()]}</span>
+            <button type="button" class="mini" title="Aumentar a letra da impressão" onclick="mudarEscala(1)">A+</button>
+          </div>
+        </div>
+        <textarea onkeydown="if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='b'){event.preventDefault();negritoSelecao(this);}"
+          oninput="state.ui.liveBody=this.value;renderEditor();renderPreview()">${esc(body)}</textarea>
+        <div class="dica-txt">Escreva <span class="kbd">**assim**</span> para sair em <b>negrito</b> no papel.</div>
+      </div>
+      ${fieldsHtml}
+      <div class="toggles">
+        <label><input type="checkbox" ${state.cfg.negritoCampos?'checked':''} onchange="state.cfg.negritoCampos=this.checked;save();renderPreview()"> Campos preenchidos em negrito</label>
+        <label><input type="checkbox" ${state.ui.showHeader?'checked':''} onchange="state.ui.showHeader=this.checked;renderPreview()"> Cabeçalho</label>
+        <label><input type="checkbox" ${state.ui.showFoot?'checked':''} onchange="state.ui.showFoot=this.checked;renderPreview()"> Rodapé</label>
+        <label><input type="checkbox" ${state.ui.showWhen?'checked':''} onchange="state.ui.showWhen=this.checked;renderPreview()"> Data/hora</label>
+      </div>
+      <div class="btnrow">
+        <button class="btn print" onclick="doPrint()">🖨 Imprimir</button>
+        ${m.id.startsWith('c')?`<button class="btn save" onclick="saveLive()">💾 Salvar alterações</button>`:''}
+      </div>
+    </div>`;
+}
+
+function buildReceipt(forPrint){
+  const cfg = state.cfg;
+  // Ordem importa: escapa o texto do usuário primeiro e só depois liga a marcação.
+  // Assim < e > digitados viram texto, e o negrito continua sendo HTML de verdade.
+  const title = marcar(esc(state.ui.liveTitle||""));
+  let body = esc(state.ui.liveBody||"");
+  body = body.replace(/\{([a-z_0-9]+)\}/gi, (mm,p)=>{
+    const v = (state.ui.fieldVals[p] ?? prefillField(p) ?? "").trim();
+    if(v){ const ev = esc(v); return state.cfg.negritoCampos ? `<b>${ev}</b>` : ev; }
+    return forPrint ? "________" : `<span class="ph">{${p}}</span>`;
+  });
+  body = marcar(body);
+  const P = forPrint ? {name:"p-name",sub:"p-sub",div:"p-div",title:"p-title",body:"p-body",foot:"p-foot",when:"p-when"}
+                     : {name:"r-name",sub:"r-sub",div:"r-div",title:"r-title",body:"r-body",foot:"r-foot",when:"r-when"};
+  let html = "";
+  if(state.ui.showHeader && (cfg.name||cfg.sub)){
+    if(cfg.name) html += `<div class="${P.name}">${esc(cfg.name)}</div>`;
+    if(cfg.sub)  html += `<div class="${P.sub}">${esc(cfg.sub)}</div>`;
+    html += `<hr class="${P.div}">`;
+  }
+  if(title) html += `<div class="${P.title}">${title}</div>`;
+  html += `<div class="${P.body}">${body}</div>`;
+  if(state.ui.showFoot && cfg.foot){
+    html += `<hr class="${P.div}"><div class="${P.foot}">${esc(cfg.foot)}</div>`;
+  }
+  if(state.ui.showWhen){
+    html += `<div class="${P.when}">${nowStr()}</div>`;
+  }
+  if(forPrint) html += `<div class="p-feed"></div>`;
+  return html;
+}
+/* **texto** vira negrito. Só isso — nada de markdown completo, que numa bobina
+   térmica não faz diferença nenhuma além de negrito. */
+function marcar(txtJaEscapado){
+  return txtJaEscapado.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+}
+
+const ESCALAS = [0.8, 0.9, 1, 1.15, 1.3, 1.5, 1.75];
+const ESCALA_LB = {0.8:"Miúda", 0.9:"Pequena", 1:"Normal", 1.15:"Média", 1.3:"Grande", 1.5:"Bem grande", 1.75:"Gigante"};
+function escalaAtual(){ const e = Number(state.cfg.escala); return ESCALAS.includes(e) ? e : 1; }
+function mudarEscala(passo){
+  const i = ESCALAS.indexOf(escalaAtual());
+  const novo = ESCALAS[Math.max(0, Math.min(ESCALAS.length-1, i+passo))];
+  if(novo === escalaAtual()) return;
+  state.cfg.escala = novo; save(); renderEditor(); renderPreview();
+}
+function aplicarEscala(el){ el.style.setProperty('--esc', escalaAtual()); }
+
+/* Envolve o trecho selecionado do textarea em ** **. Sem seleção, insere o par
+   e deixa o cursor no meio, para o usuário já sair digitando. */
+function negritoSelecao(ta){
+  const ini = ta.selectionStart, fim = ta.selectionEnd;
+  const txt = ta.value;
+  const sel = txt.slice(ini, fim);
+  if(sel){
+    const limpo = sel.replace(/^\*\*|\*\*$/g, '');
+    const jaTinha = limpo !== sel;
+    ta.value = txt.slice(0, ini) + (jaTinha ? limpo : '**'+sel+'**') + txt.slice(fim);
+    ta.setSelectionRange(ini, ini + (jaTinha ? limpo.length : sel.length + 4));
+  }else{
+    ta.value = txt.slice(0, ini) + '****' + txt.slice(fim);
+    ta.setSelectionRange(ini + 2, ini + 2);
+  }
+  state.ui.liveBody = ta.value;
+  ta.focus();
+  renderPreview();
+}
+
+function renderPreview(){
+  const m = getMsg(state.ui.selId);
+  const pv = document.getElementById("preview");
+  aplicarEscala(pv);
+  if(!m){ pv.innerHTML = `<div style="text-align:center;color:#999;font-size:12px;padding:20px 0">— sem mensagem —</div>`; return; }
+  pv.innerHTML = buildReceipt(false);
+}
+
+/* ============ Actions ============ */
+function setCat(c){ state.ui.cat=c; render(); }
+function selectMsg(id){
+  const m = getMsg(id); if(!m) return;
+  state.ui.selId = id;
+  state.ui.liveTitle = m.title;
+  state.ui.liveBody = m.body;
+  state.ui.fieldVals = {};
+  render();
+}
+function setField(p,v){ state.ui.fieldVals[p]=v; renderPreview(); }
+function prefillField(p){
+  if(p==="chave_pix") return state.cfg.pix||"";
+  return "";
+}
+function prettyField(p){
+  const map = {nome:"Nome do cliente", valor:"Valor (R$)", vencimento:"Data de vencimento", limite:"Limite (R$)", chave_pix:"Chave PIX"};
+  return map[p] || p.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase());
+}
+
+function doPrint(){
+  const m = getMsg(state.ui.selId);
+  if(!m){ alert("Selecione uma mensagem primeiro."); return; }
+  const area = document.getElementById("printArea");
+  aplicarEscala(area);
+  area.innerHTML = buildReceipt(true);
+  const old = document.title;
+  document.title = "Aviso"; // nome do job de impressão
+  window.print();
+  setTimeout(()=>document.title=old, 500);
+}
+
+/* ---- edit / create custom ---- */
+let editingId = null;
+function openEdit(id){
+  editingId = id||null;
+  const m = id?getMsg(id):null;
+  document.getElementById("editTitle").textContent = m ? "Editar mensagem" : "Nova mensagem";
+  document.getElementById("edCat").value = m?m.cat:"avisos";
+  document.getElementById("edTitle").value = m?m.title:"";
+  document.getElementById("edBody").value = m?m.body:"";
+  openOverlay("ovEdit");
+}
+function saveEdit(){
+  const cat = document.getElementById("edCat").value;
+  const title = document.getElementById("edTitle").value.trim();
+  const body = document.getElementById("edBody").value.trim();
+  if(!title && !body){ alert("Escreva ao menos um título ou texto."); return; }
+  if(editingId){
+    const m = state.custom.find(x=>x.id===editingId);
+    if(m){ m.cat=cat; m.title=title; m.body=body; }
+  }else{
+    const id = "c"+Date.now();
+    state.custom.push({id, cat, title, body});
+    state.ui.selId = id;
+  }
+  save(); closeOverlay("ovEdit");
+  if(!editingId) selectMsg(state.ui.selId); else render();
+}
+function saveLive(){
+  const m = state.custom.find(x=>x.id===state.ui.selId);
+  if(!m){ alert("Só é possível salvar alterações em mensagens personalizadas. Crie uma nova a partir desta."); return; }
+  m.title = state.ui.liveTitle; m.body = state.ui.liveBody;
+  save(); render();
+  flash("Alterações salvas ✓");
+}
+function delMsg(id){
+  const m = getMsg(id); if(!m) return;
+  if(!confirm(`Excluir "${m.title}"?`)) return;
+  state.custom = state.custom.filter(x=>x.id!==id);
+  if(state.ui.selId===id) state.ui.selId=null;
+  save(); render();
+}
+
+/* ---- header cfg ---- */
+function openHeaderCfg(){
+  cfgName.value=state.cfg.name||""; cfgSub.value=state.cfg.sub||"";
+  cfgPix.value=state.cfg.pix||""; cfgFoot.value=state.cfg.foot||"";
+  openOverlay("ovHeader");
+}
+function saveHeader(){
+  state.cfg.name=cfgName.value.trim(); state.cfg.sub=cfgSub.value.trim();
+  state.cfg.pix=cfgPix.value.trim(); state.cfg.foot=cfgFoot.value.trim();
+  save(); closeOverlay("ovHeader"); render();
+}
+function openSetup(){ openOverlay("ovSetup"); }
+
+/* ---- backup / restore ---- */
+function doBackup(){
+  const data = JSON.stringify({v:1, exportedAt:new Date().toISOString(), custom:state.custom, cfg:state.cfg}, null, 2);
+  const blob = new Blob([data], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "avisos-backup.json";
+  a.click();
+}
+document.getElementById("fileInput").addEventListener("change", ev=>{
+  const f = ev.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = e=>{
+    try{
+      const d = JSON.parse(e.target.result);
+      if(d.custom) state.custom = d.custom;
+      if(d.cfg) state.cfg = Object.assign(state.cfg, d.cfg);
+      save(); render(); flash("Backup restaurado ✓");
+    }catch(err){ alert("Arquivo inválido."); }
+  };
+  r.readAsText(f);
+  ev.target.value="";
+});
+
+/* ---- overlays + utils ---- */
+function openOverlay(id){ document.getElementById(id).classList.add("on"); }
+function closeOverlay(id){ document.getElementById(id).classList.remove("on"); }
+document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{ if(e.target===o) o.classList.remove("on"); }));
+
+function nowStr(){
+  const d = new Date();
+  const p = n=>String(n).padStart(2,"0");
+  return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function esc(s){ return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+function escAttr(s){ return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function flash(msg){
+  const el = document.createElement("div");
+  el.textContent = msg;
+  el.style.cssText="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0b5a39;color:#fff;padding:10px 18px;border-radius:10px;font-weight:600;font-size:14px;z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.25)";
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 1800);
+}
+
+/* Double-click a custom message to edit it */
+document.getElementById("msglist").addEventListener("dblclick", e=>{
+  const card = e.target.closest(".msg"); if(!card) return;
+  const id = card.getAttribute("onclick").match(/'([^']+)'/)[1];
+  if(id.startsWith("c")) openEdit(id);
+});
+
+/* ============ Init ============ */
+load(); render();
+</script>
+</body>
+</html>

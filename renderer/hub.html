@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Super Gestor</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060a14;--s1:#0c1220;--s2:#111827;--s3:#17213a;
+  --border:#1e2d44;--border2:#263550;
+  --text:#e2eaff;--muted:#4a5e82;--muted2:#6a7fa8;
+  --teal:#00d4a0;--teal-d:#009e78;--teal-glow:rgba(0,212,160,.15);
+  --red:#ff4f6a;--yellow:#f5c842;--orange:#ff9a44;--blue:#4db8ff;
+}
+html,body{height:100%}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow:hidden}
+.layout{display:flex;height:100vh}
+
+/* ── Barra do hub: grafite neutro, deliberadamente diferente do azul-marinho
+   dos aplicativos, para ler como "o sistema" e não como mais um app. A cor
+   de destaque não é fixa: cada aplicativo tem a sua. ───────────────────── */
+.sidebar{
+  width:224px;flex-shrink:0;display:flex;flex-direction:column;position:relative;
+  background:linear-gradient(180deg,#13131c 0%,#0b0b12 100%);
+  border-right:1px solid rgba(255,255,255,.07);
+  transition:width .22s cubic-bezier(.4,0,.2,1);
+}
+.sidebar::after{content:'';position:absolute;top:0;right:0;width:1px;height:100%;background:linear-gradient(180deg,rgba(255,255,255,.09),transparent 60%)}
+.sidebar.recolhida{width:64px}
+
+.logo{padding:15px 14px 13px;display:flex;align-items:center;gap:11px;border-bottom:1px solid rgba(255,255,255,.06);min-height:62px}
+.logo-mark{
+  width:34px;height:34px;border-radius:10px;flex-shrink:0;
+  background:linear-gradient(135deg,#00d4a0,#4db8ff 55%,#8b72f0);
+  display:flex;align-items:center;justify-content:center;font-size:17px;
+  box-shadow:0 3px 12px rgba(0,180,200,.28)
+}
+.logo-txt{min-width:0;overflow:hidden;white-space:nowrap}
+.logo-txt h2{font-size:14px;font-weight:700;line-height:1.2;letter-spacing:-.2px}
+.logo-txt p{font-size:10.5px;color:#6b7280;margin-top:1px}
+
+.nav{padding:9px 9px;flex:1;overflow-y:auto;overflow-x:hidden}
+.nav-sec{font-size:9px;font-weight:700;letter-spacing:1px;color:#4b5563;text-transform:uppercase;padding:11px 8px 6px;white-space:nowrap}
+.nav-item{
+  display:flex;align-items:center;gap:11px;padding:8px;margin-bottom:2px;border-radius:9px;
+  cursor:pointer;color:#9aa3b2;font-size:13px;user-select:none;position:relative;
+  transition:background .15s,color .15s;white-space:nowrap
+}
+.nav-item:hover{background:rgba(255,255,255,.05);color:#e8ecf3}
+/* o "azulejo" do ícone recebe a cor do app — é o que dá identidade a cada um */
+.nav-item .ni{
+  width:30px;height:30px;border-radius:8px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:15px;
+  background:rgba(255,255,255,.06);transition:.18s
+}
+.nav-item:hover .ni{background:var(--cor-app,rgba(255,255,255,.12));box-shadow:0 0 0 1px rgba(255,255,255,.06)}
+.nav-item.active{background:rgba(255,255,255,.055);color:#fff;font-weight:600}
+.nav-item.active .ni{background:var(--cor-app,#555);box-shadow:0 3px 10px var(--cor-glow,transparent)}
+.nav-item.active::before{
+  content:'';position:absolute;left:-9px;top:50%;transform:translateY(-50%);
+  width:3px;height:20px;border-radius:0 3px 3px 0;background:var(--cor-app,#888)
+}
+.nav-rotulo{overflow:hidden;text-overflow:ellipsis;flex:1}
+
+/* contador de aviso — some quando não há nada pendente */
+.nav-badge{
+  flex-shrink:0;min-width:19px;height:19px;padding:0 6px;border-radius:10px;
+  font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;
+  background:var(--orange,#ff9a44);color:#1a1005;line-height:1
+}
+.nav-badge.urgente{background:#ff4f6a;color:#fff}
+/* recolhida: vira bolinha no canto do ícone */
+.sidebar.recolhida .nav-badge{
+  position:absolute;top:3px;right:8px;min-width:9px;height:9px;padding:0;
+  font-size:0;border-radius:50%;box-shadow:0 0 0 2px #0e0e16
+}
+
+/* recolhida: só os ícones, com dica ao passar o mouse */
+.sidebar.recolhida .logo{justify-content:center;padding-left:0;padding-right:0}
+.sidebar.recolhida .logo-txt,
+.sidebar.recolhida .nav-rotulo,
+.sidebar.recolhida .nav-sec,
+.sidebar.recolhida .foot-txt{display:none}
+.sidebar.recolhida .nav-item{justify-content:center;padding:8px 0}
+.sidebar.recolhida .nav-item.active::before{left:-9px}
+.sidebar.recolhida .nav-item::after{
+  content:attr(data-nome);position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);
+  background:#1c1c26;color:#e8ecf3;border:1px solid rgba(255,255,255,.1);
+  padding:5px 10px;border-radius:7px;font-size:12px;font-weight:500;
+  white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .13s;z-index:50;
+  box-shadow:0 6px 18px rgba(0,0,0,.45)
+}
+.sidebar.recolhida .nav-item:hover::after{opacity:1}
+
+.btn-recolher{
+  position:absolute;top:22px;right:-11px;width:22px;height:22px;border-radius:50%;
+  background:#1c1c26;border:1px solid rgba(255,255,255,.12);color:#9aa3b2;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;
+  z-index:20;transition:.15s;padding:0;line-height:1
+}
+.btn-recolher:hover{background:#262631;color:#fff;border-color:rgba(255,255,255,.22)}
+
+.sidebar-foot{padding:10px 12px;border-top:1px solid rgba(255,255,255,.06);font-size:10.5px;color:#5b6270;line-height:1.5;display:flex;align-items:center;gap:8px}
+.foot-dot{width:7px;height:7px;border-radius:50%;background:#00d4a0;flex-shrink:0;box-shadow:0 0 7px rgba(0,212,160,.65)}
+.sidebar.recolhida .sidebar-foot{justify-content:center;padding:12px 0}
+
+.main{flex:1;position:relative;background:var(--bg);overflow:hidden}
+/* transparente: cada app pinta o próprio fundo. Branco aqui vazava
+   na calha da barra de rolagem dos apps escuros. */
+.frame{position:absolute;inset:0;width:100%;height:100%;border:none;display:none;background:transparent}
+.frame.active{display:block}
+.loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--muted2);font-size:13px}
+.spinner{width:22px;height:22px;border:2px solid var(--border2);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* página de dados/importação (dentro do próprio hub) */
+.page{position:absolute;inset:0;overflow-y:auto;padding:22px 26px;display:none}
+.page.active{display:block}
+.page-title{font-size:20px;font-weight:700;letter-spacing:-.3px;margin-bottom:5px}
+.page-sub{font-size:12.5px;color:var(--muted2);line-height:1.6;margin-bottom:20px;max-width:760px}
+.card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:17px 19px;margin-bottom:13px}
+.card h3{font-size:13.5px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.card p{font-size:12px;color:var(--muted2);line-height:1.6}
+.imp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
+.imp-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:11px;padding-top:11px;border-top:1px solid var(--border)}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:700}
+.b-ok{background:rgba(0,212,160,.12);color:var(--teal)}
+.b-pend{background:rgba(255,154,68,.12);color:var(--orange)}
+.b-off{background:rgba(255,79,106,.14);color:var(--red)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:8px;border:none;cursor:pointer;font-size:12.5px;font-weight:600;transition:.15s;font-family:inherit}
+.btn-t{background:linear-gradient(135deg,var(--teal),var(--teal-d));color:#020e0a}
+.btn-t:hover{filter:brightness(1.1)}
+.btn-g{background:var(--s2);border:1px solid var(--border2);color:var(--muted2)}
+.btn-g:hover{background:var(--s3);color:var(--text)}
+.info-line{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
+.info-line:last-child{border-bottom:none}
+.info-line .l{color:var(--muted2)}
+.info-line .v{font-weight:600;text-align:right;word-break:break-all}
+.warn{display:flex;gap:9px;align-items:flex-start;background:rgba(245,200,66,.07);border:1px solid rgba(245,200,66,.28);border-radius:10px;padding:11px 14px;font-size:12.5px;line-height:1.6;margin-bottom:13px}
+.warn strong{color:var(--yellow)}
+/* ── dashboard inicial ───────────────────────────────── */
+.dash-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.dash-saud{font-size:22px;font-weight:700;letter-spacing:-.4px}
+.dash-data{font-size:12.5px;color:var(--muted2);margin-top:3px;text-transform:capitalize}
+
+.dash-cols{display:grid;grid-template-columns:1.45fr 1fr;gap:14px;align-items:start}
+@media(max-width:1150px){.dash-cols{grid-template-columns:1fr}}
+
+.bloco{background:var(--s1);border:1px solid var(--border);border-radius:13px;padding:16px 18px;margin-bottom:14px}
+.bloco-ttl{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted2);
+  display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}
+.bloco-ttl .nota{font-weight:500;letter-spacing:0;text-transform:none;font-size:10.5px;color:var(--muted)}
+
+/* dinheiro */
+.grana{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px}
+.gr{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;border-left-width:3px}
+.gr .l{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted2);font-weight:700;margin-bottom:5px}
+.gr .v{font-size:19px;font-weight:800;letter-spacing:-.5px;font-variant-numeric:tabular-nums;line-height:1}
+.gr .c{font-size:10.5px;color:var(--muted);margin-top:4px}
+.gr.cg{border-left-color:var(--teal)} .gr.cg .v{color:var(--teal)}
+.gr.cg.neg{border-left-color:var(--red)} .gr.cg.neg .v{color:var(--red)}
+.gr.ent{border-left-color:var(--teal)} .gr.ent .v{color:var(--teal)}
+.gr.sai{border-left-color:var(--red)} .gr.sai .v{color:var(--red)}
+.gr.rua{border-left-color:var(--yellow)} .gr.rua .v{color:var(--yellow)}
+.gr.fia{border-left-color:var(--orange)} .gr.fia .v{color:var(--orange)}
+
+/* pendências */
+.pend{display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:10px;cursor:pointer;
+  background:var(--s2);border:1px solid var(--border);border-left:3px solid var(--cor,#888);
+  transition:.15s;margin-bottom:8px}
+.pend:hover{background:var(--s3);transform:translateX(2px)}
+.pend:last-child{margin-bottom:0}
+.pend .ic{font-size:17px;flex-shrink:0}
+.pend .txt{flex:1;min-width:0;font-size:13px;line-height:1.45}
+.pend .txt b{color:var(--cor,#fff)}
+.pend .txt .sub{display:block;font-size:11px;color:var(--muted2);margin-top:1px}
+.pend .seta{color:var(--muted);font-size:15px;flex-shrink:0}
+.tudo-ok{display:flex;align-items:center;gap:11px;background:rgba(0,212,160,.07);border:1px solid rgba(0,212,160,.24);
+  border-radius:11px;padding:14px 16px;font-size:13.5px}
+.tudo-ok b{color:var(--teal)}
+
+/* movimento */
+.mov{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+.mov:last-child{border-bottom:none}
+.mov .r{color:var(--muted2);display:flex;align-items:center;gap:8px}
+.mov .n{font-weight:700;font-variant-numeric:tabular-nums}
+
+/* comparação */
+.cmp{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.cmp:last-child{border-bottom:none}
+.cmp .r{font-size:12px;color:var(--muted2)}
+.cmp .v{font-size:14.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.delta{font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.delta.up{background:rgba(0,212,160,.13);color:var(--teal)}
+.delta.down{background:rgba(255,79,106,.13);color:var(--red)}
+.delta.flat{background:rgba(255,255,255,.06);color:var(--muted2)}
+
+/* recados */
+#recados{width:100%;min-height:150px;resize:vertical;background:var(--s2);border:1px solid var(--border2);
+  color:var(--text);border-radius:10px;padding:12px 14px;font-size:13px;font-family:inherit;line-height:1.6;outline:none}
+#recados:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,212,160,.1)}
+#recados::placeholder{color:var(--muted)}
+.rec-status{font-size:10.5px;color:var(--muted);margin-top:7px;height:14px}
+
+.fab{position:fixed;bottom:20px;right:20px;z-index:190;display:flex;align-items:center;gap:8px;
+     background:#f5c842;color:#1a1f24;border:none;border-radius:26px;padding:12px 18px;
+     font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.45);
+     transition:transform .15s,box-shadow .15s,filter .15s}
+.fab:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.5);filter:brightness(1.06)}
+.fab:active{transform:translateY(0)}
+.fab .fab-mais{font-size:17px;line-height:1;font-weight:800}
+@media(max-width:700px){.fab .fab-txt{display:none}.fab{padding:14px;border-radius:50%}}
+.toast{position:fixed;bottom:88px;right:20px;background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:11px 17px;font-size:13px;z-index:200;opacity:0;transform:translateY(8px);transition:.25s;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.toast.show{opacity:1;transform:translateY(0)}
+::-webkit-scrollbar{width:7px;height:7px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+</style>
+<script src="shared/marca.js"></script>
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <button class="btn-recolher" id="btn-recolher" title="Recolher menu (Ctrl+B)">‹</button>
+    <div class="logo">
+      <div class="logo-mark">💊</div>
+      <div class="logo-txt">
+        <h2>Super Gestor</h2>
+        <p data-marca-nome>Minha Empresa</p>
+      </div>
+    </div>
+    <div class="nav" id="nav"></div>
+    <div class="sidebar-foot">
+      <span class="foot-dot"></span>
+      <span class="foot-txt">Banco local · backup diário</span>
+    </div>
+  </nav>
+  <main class="main" id="main">
+    <div class="loading" id="loading"><div class="spinner"></div><span>Abrindo...</span></div>
+    <div class="page" id="page-inicio"></div>
+    <div class="page" id="page-dados"></div>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+<button class="fab" id="fab-pedido" title="Novo pedido do dia — funciona de qualquer tela (Ctrl+N)">
+  <span class="fab-mais">+</span><span class="fab-txt">Pedido do dia</span>
+</button>
+
+<script>
+// cada app tem sua cor — é o que faz o hub parecer um painel de vários
+// programas, e não uma continuação do Financeiro
+const APPS = [
+  { id:'prolabore',    nome:'Financeiro',    icone:'📊', cor:'#00d4a0', arquivo:'apps/prolabore.html',    desc:'Capital de giro, lançamentos e radar de caixa' },
+  { id:'orcafarma',    nome:'Orçamentos',    icone:'📋', cor:'#4db8ff', arquivo:'apps/orcafarma.html',    desc:'Clientes e orçamentos' },
+  { id:'farmapedidos', nome:'Pedidos',       icone:'📦', cor:'#f5c842', arquivo:'apps/farmapedidos.html', desc:'Pedidos do dia e lista de desejos' },
+  { id:'fiados',       nome:'Fiados',        icone:'🧾', cor:'#ff6b8a', arquivo:'apps/fiados.html',       desc:'Fichas de clientes, compras e pagamentos' },
+  { id:'validades',    nome:'Validades',     icone:'⏳', cor:'#ff9a44', arquivo:'apps/validades.html',    desc:'Produtos perto de vencer' },
+  { id:'emprestimos',  nome:'Empréstimos',   icone:'🤝', cor:'#a3e635', arquivo:'apps/emprestimos.html',  desc:'O que emprestou e pegou de parceiros' },
+  { id:'entregas',     nome:'Entregas',      icone:'🛵', cor:'#e879f9', arquivo:'apps/entregas.html',     desc:'Entregas na casa do cliente' },
+  { id:'caixa',        nome:'Caixa',         icone:'💵', cor:'#e0b13a', arquivo:'apps/caixa.html',        desc:'Contagem de notas, sangrias e fechamento' },
+  { id:'ambiente',     nome:'Temp. & Limpeza', icone:'🌡️', cor:'#5eead4', arquivo:'apps/ambiente.html',   desc:'Registro diário de temperatura, umidade e limpeza' },
+  { id:'avisos',       nome:'Avisos',        icone:'🖨️', cor:'#ff6b3d', arquivo:'apps/avisos.html',       desc:'Mensagens impressas na bobina para entregar ao cliente' }
+];
+const COR_SISTEMA = '#7c8798';
+
+// chave principal de cada app (a que indica "tem dado importado")
+const CHAVE_PRINCIPAL = {
+  orcafarma:'orcafarma_v2',
+  farmapedidos:'farma_v5',
+  fiados:'simpleCustomerRecords_v2',
+  validades:'validades_v1',
+  emprestimos:'emprestimos_v1',
+  entregas:'entregas_v1',
+  caixa:'caixa_v1',
+  ambiente:'ambiente_v1',
+  avisos:'avisosImpressora_v1'
+};
+// apps nascidos dentro do hub — não existem no navegador, então não têm importação
+const APPS_NATIVOS = ['validades', 'emprestimos', 'entregas', 'caixa', 'ambiente', 'avisos'];
+
+let atual = null;
+const frames = {};
+
+function itemMenu(id, nome, icone, cor){
+  return `<div class="nav-item" data-alvo="${id}" data-nome="${nome}"
+    style="--cor-app:${cor};--cor-glow:${cor}55">
+    <span class="ni">${icone}</span><span class="nav-rotulo">${nome}</span>
+    <span class="nav-badge" data-badge="${id}" style="display:none"></span></div>`;
+}
+
+// ── Contadores de aviso ────────────────────────────────────────────────
+// Lê direto do banco, então funciona mesmo com o app fechado.
+function lerApp(id){
+  try {
+    const bruto = window.api.appGet(id, CHAVE_PRINCIPAL[id]);
+    return bruto ? JSON.parse(bruto) : null;
+  } catch (e) { return null; }
+}
+
+function avisoValidades(){
+  const d = lerApp('validades');
+  if (!d || !Array.isArray(d.itens)) return null;
+  const hoje = new Date(new Date().toISOString().split('T')[0] + 'T12:00:00');
+  let vencidos = 0, trintaDias = 0;
+  d.itens.forEach(i => {
+    if (i.status !== 'ativo') return;
+    const dias = Math.round((new Date(i.validade + 'T12:00:00') - hoje) / 86400000);
+    if (dias < 0) vencidos++;
+    else if (dias <= 30) trintaDias++;
+  });
+  const total = vencidos + trintaDias;
+  return total ? { n: total, urgente: vencidos > 0 } : null;
+}
+
+function avisoEmprestimos(){
+  const d = lerApp('emprestimos');
+  if (!d || !Array.isArray(d.movimentos)) return null;
+  const hoje = new Date(new Date().toISOString().split('T')[0] + 'T12:00:00');
+  let atrasados = 0;
+  d.movimentos.forEach(m => {
+    const falta = Math.max(0, m.qtd - (m.qtdDevolvida || 0));
+    if (falta <= 0) return;
+    if (Math.round((hoje - new Date(m.data + 'T12:00:00')) / 86400000) > 15) atrasados++;
+  });
+  return atrasados ? { n: atrasados, urgente: false } : null;
+}
+
+// entregas de hoje que ainda não chegaram no cliente
+function avisoEntregas(){
+  const d = lerApp('entregas');
+  if (!d || !Array.isArray(d.entregas)) return null;
+  // pendente = aguardando ou na rua, de qualquer dia — nunca some do quadro até resolver
+  let aguardando = 0, naRua = 0;
+  d.entregas.forEach(e => {
+    if (e.status === 'aguardando') aguardando++;
+    else if (e.status === 'rota') naRua++;
+  });
+  const total = aguardando + naRua;
+  return total ? { n: total, urgente: aguardando > 0 } : null;
+}
+
+// aplicações atrasadas ou marcadas para hoje
+
+// registro de temperatura/umidade que falta hoje
+function avisoAmbiente(){
+  const d = lerApp('ambiente');
+  if (!d) return null;
+  const turnos = (d.config && d.config.turnos) || ['Manhã','Tarde'];
+  const hoje = new Date().toISOString().split('T')[0];
+  const reg = (d.registros || {})[hoje] || {};
+  const faltam = turnos.filter(t => !(reg[t] && reg[t].t !== undefined)).length;
+  const fora = Object.values(reg).some(x => {
+    const c = d.config || {};
+    return x.t < c.tMin || x.t > c.tMax || x.u < c.uMin || x.u > c.uMax;
+  });
+  if (!faltam && !fora) return null;
+  return { n: faltam || 1, urgente: fora };
+}
+
+function atualizarAvisos(){
+  const avisos = { validades: avisoValidades(), emprestimos: avisoEmprestimos(),
+                   entregas: avisoEntregas(), ambiente: avisoAmbiente() };
+  Object.entries(avisos).forEach(([id, a]) => {
+    const el = document.querySelector(`[data-badge="${id}"]`);
+    if (!el) return;
+    if (!a) { el.style.display = 'none'; return; }
+    el.style.display = 'flex';
+    el.textContent = a.n > 99 ? '99+' : a.n;
+    el.classList.toggle('urgente', a.urgente);
+    el.title = id === 'validades' ? `${a.n} produto(s) vencido(s) ou vencendo em 30 dias`
+      : id === 'entregas' ? `${a.n} entrega(s) pendente(s)`
+      : id === 'ambiente' ? (a.urgente ? 'Leitura fora da faixa hoje' : `${a.n} leitura(s) de hoje ainda não registrada(s)`)
+      : `${a.n} pendência(s) há mais de 15 dias`;
+  });
+}
+
+function montarMenu(){
+  const nav = document.getElementById('nav');
+  let html = '<div class="nav-sec">Visão geral</div>';
+  html += itemMenu('inicio', 'Início', '🏠', '#00d4a0');
+  html += '<div class="nav-sec">Aplicativos</div>';
+  APPS.forEach(a => { html += itemMenu(a.id, a.nome, a.icone, a.cor); });
+  html += '<div class="nav-sec">Sistema</div>';
+  html += itemMenu('dados', 'Dados &amp; Backup', '💾', COR_SISTEMA);
+  nav.innerHTML = html;
+  nav.querySelectorAll('.nav-item').forEach(el => {
+    el.addEventListener('click', () => abrir(el.dataset.alvo));
+  });
+}
+
+// ── Recolher / expandir ────────────────────────────────────────────────
+// O estado fica no banco, junto com o resto — abre do mesmo jeito amanhã.
+function aplicarRecolhida(recolhida){
+  document.getElementById('sidebar').classList.toggle('recolhida', recolhida);
+  const b = document.getElementById('btn-recolher');
+  b.textContent = recolhida ? '›' : '‹';
+  b.title = (recolhida ? 'Expandir' : 'Recolher') + ' menu (Ctrl+B)';
+}
+
+function alternarSidebar(){
+  const recolhida = !document.getElementById('sidebar').classList.contains('recolhida');
+  aplicarRecolhida(recolhida);
+  try { window.api.appSet('hub', 'sidebar', recolhida ? 'recolhida' : 'aberta'); } catch (e) {}
+}
+
+function restaurarSidebar(){
+  let v = null;
+  try { v = window.api.appGet('hub', 'sidebar'); } catch (e) {}
+  aplicarRecolhida(v === 'recolhida');
+}
+
+// A ponte com o banco é injetada pelo Electron em cada iframe. Criar vários
+// iframes ao mesmo tempo pode fazer o app carregar antes da ponte subir — nesse
+// caso ele não conseguiria gravar. Por isso: uma carga por vez (fila) e
+// conferência depois de carregar, recriando o frame se a ponte não estiver de pé.
+let carregando = false;
+const fila = [];
+
+function pontePronta(f, appId){
+  try {
+    if (appId === 'prolabore') return f.contentWindow.eval("typeof window.api") === 'object';
+    return f.contentWindow.eval("String(window.__dbStorageActive)") === appId;
+  } catch (e) { return false; }
+}
+
+function criarFrame(app, tentativa){
+  tentativa = tentativa || 1;
+  carregando = true;
+  document.getElementById('loading').style.display = 'flex';
+
+  const f = document.createElement('iframe');
+  f.className = 'frame';
+  f.addEventListener('load', () => {
+    if (!pontePronta(f, app.id)) {
+      f.remove();
+      delete frames[app.id];
+      if (tentativa < 4) {
+        console.warn('[hub] ponte com o banco não subiu em ' + app.id + ' — recriando (tentativa ' + (tentativa + 1) + ')');
+        setTimeout(() => criarFrame(app, tentativa + 1), 250 * tentativa);
+        return;
+      }
+      carregando = false;
+      document.getElementById('loading').style.display = 'none';
+      mostrarFalha(app);
+      proximoDaFila();
+      return;
+    }
+    carregando = false;
+    document.getElementById('loading').style.display = 'none';
+    if (atual === app.id) f.classList.add('active');
+    proximoDaFila();
+  });
+  f.src = app.arquivo;
+  document.getElementById('main').appendChild(f);
+  frames[app.id] = f;
+}
+
+function proximoDaFila(){
+  if (carregando || fila.length === 0) return;
+  criarFrame(fila.shift());
+}
+
+function mostrarFalha(app){
+  const d = document.getElementById('page-dados');
+  d.innerHTML = `<div class="page-title">Não foi possível abrir ${app.nome}</div>
+    <div class="warn" style="margin-top:14px"><span>⚠️</span><div>
+      A conexão com o banco de dados não subiu para este aplicativo, então ele foi bloqueado
+      <strong>de propósito</strong>: assim nenhum dado é gravado num lugar errado.
+      Feche e abra o programa novamente. Se continuar, me avise.
+    </div></div>`;
+  d.classList.add('active');
+}
+
+function abrir(alvo){
+  atual = alvo;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.alvo === alvo));
+  Object.values(frames).forEach(f => f.classList.remove('active'));
+  document.getElementById('page-dados').classList.remove('active');
+  document.getElementById('loading').style.display = 'none';
+
+  atualizarAvisos();
+  document.getElementById('page-inicio').classList.remove('active');
+
+  if (alvo === 'inicio') { renderInicio(); document.getElementById('page-inicio').classList.add('active'); return; }
+  if (alvo === 'dados') { renderDados(); document.getElementById('page-dados').classList.add('active'); return; }
+
+  const app = APPS.find(a => a.id === alvo);
+  if (!app) return;
+
+  if (frames[alvo]) { frames[alvo].classList.add('active'); return; }
+
+  if (carregando) { if (!fila.includes(app)) fila.push(app); return; }
+  criarFrame(app);
+}
+
+// Tamanho legível para gente, não para máquina.
+function fmtBytes(n){
+  if (n == null || isNaN(n)) return '—';
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+  return (n / 1024 / 1024).toFixed(n < 10 * 1024 * 1024 ? 1 : 0) + ' MB';
+}
+function dataCurta(ms){
+  try { return new Date(ms).toLocaleDateString('pt-BR'); } catch (e) { return ''; }
+}
+
+/* Botão flutuante: abre Pedidos e já solta o formulário de pedido novo.
+   O iframe pode não existir ainda (ou estar na fila de criação), então espera a
+   função do app aparecer antes de chamar — sem nunca travar a interface. */
+function novoPedidoRapido(){
+  abrir('farmapedidos');
+  esperarApp('farmapedidos', 'openDailyModal', w => w.openDailyModal(),
+             'O Pedidos está demorando a abrir — tente de novo em instantes.');
+}
+function esperarApp(id, fn, acao, erro, tentativa){
+  tentativa = tentativa || 0;
+  let w = null;
+  try {
+    const f = frames[id];
+    if (f && f.contentWindow && typeof f.contentWindow[fn] === 'function') w = f.contentWindow;
+  } catch (e) { /* frame ainda carregando */ }
+  if (w) { try { acao(w); } catch (e) { toast('Não consegui abrir o formulário.'); } return; }
+  if (tentativa > 50) { toast(erro); return; }
+  setTimeout(() => esperarApp(id, fn, acao, erro, tentativa + 1), 150);
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window._tt);
+  window._tt = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+function statusApp(id){
+  if (id === 'prolabore') {
+    try { return (window.api.loadState().lancamentos || []).length > 0; } catch { return false; }
+  }
+  try { return !!window.api.appGet(id, CHAVE_PRINCIPAL[id]); } catch { return false; }
+}
+
+function renderDados(){
+  const bi = window.api.backupInfo();
+  const hist = window.api.historyInfo() || [];
+  const totalVersoes = hist.reduce((a, h) => a + h.versoes, 0);
+  let linhas = '';
+  APPS.forEach(a => {
+    const tem = statusApp(a.id);
+    linhas += `
+      <div class="imp-row">
+        <div style="min-width:0">
+          <div style="font-weight:600;font-size:12.5px">${a.icone} ${a.nome}</div>
+          <div style="font-size:11px;color:var(--muted)">${a.desc}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px;flex-shrink:0">
+          <span class="badge ${tem?'b-ok':'b-pend'}">${tem?'com dados':'vazio'}</span>
+          ${a.id==='prolabore'
+            ? '<span style="font-size:11px;color:var(--muted)">importar dentro do app</span>'
+            : APPS_NATIVOS.includes(a.id)
+              ? '<span style="font-size:11px;color:var(--muted)">criado aqui no hub</span>'
+              : `<button class="btn btn-g" data-imp="${a.id}">Importar JSON</button>`}
+        </div>
+      </div>`;
+  });
+
+  document.getElementById('page-dados').innerHTML = `
+    <div class="page-title">Dados &amp; Backup</div>
+    <div class="page-sub">Todos os aplicativos gravam no mesmo banco de dados local, com cópia de segurança automática. Diferente do navegador, aqui o dado não some se você limpar o cache.</div>
+
+    <div class="warn">
+      <span>📥</span>
+      <div><strong>Trazendo os dados do navegador:</strong> abra o app no navegador como sempre, clique no botão de <em>Exportar / Backup</em> que ele já tem, e escolha o arquivo aqui embaixo. Antes de substituir, o hub guarda uma cópia do que já estava aqui — dá para voltar atrás.</div>
+    </div>
+
+    <div class="card">
+      <h3>📦 Aplicativos</h3>
+      <p>Situação atual de cada um dentro do hub.</p>
+      ${linhas}
+    </div>
+
+    <div class="card">
+      <h3>🗄️ Banco de dados</h3>
+      <div style="margin-top:9px">
+        <div class="info-line"><span class="l">Arquivo do banco</span><span class="v">${bi.dbPath}</span></div>
+        <div class="info-line"><span class="l">Tamanho do banco</span><span class="v">${fmtBytes(bi.dbBytes)}</span></div>
+        <div class="info-line"><span class="l">Cópias de segurança</span><span class="v">${bi.count} arquivo(s) · ${fmtBytes(bi.backupsBytes)}</span></div>
+        ${bi.maisAntigo ? `<div class="info-line"><span class="l">Cópia mais antiga</span><span class="v">${bi.maisAntigo.nome} · ${dataCurta(bi.maisAntigo.quando)}</span></div>` : ''}
+        <div class="info-line"><span class="l">Espaço total em disco</span><span class="v">${fmtBytes((bi.dbBytes||0) + (bi.backupsBytes||0))}</span></div>
+        <div class="info-line"><span class="l">Versões guardadas no histórico</span><span class="v">${totalVersoes}</span></div>
+        <div class="info-line"><span class="l">Pasta das cópias</span><span class="v">${bi.folder}</span></div>
+      </div>
+      <p style="margin-top:10px;font-size:11.5px">Além da cópia diária do banco, cada app guarda as últimas 20 versões do seu estado — proteção contra uma importação errada ou dado apagado sem querer.</p>
+      <div style="margin-top:13px"><button class="btn btn-g" id="btn-pasta">Abrir pasta de backups</button></div>
+    </div>
+
+    <div class="card">
+      <h3>🏪 Identidade</h3>
+      <p>Nome que aparece no topo do hub e nos cupons impressos pelos aplicativos.</p>
+      <div style="margin-top:11px;display:flex;flex-direction:column;gap:9px;max-width:420px">
+        <label style="font-size:11.5px;color:var(--muted)">Nome do negócio
+          <input id="marca-nome" type="text" value="${(window.MARCA&&window.MARCA.nome||'').replace(/"/g,'&quot;')}" placeholder="Minha Empresa"
+                 style="width:100%;margin-top:4px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--txt);font-size:13px">
+        </label>
+        <label style="font-size:11.5px;color:var(--muted)">Linha de baixo (cidade, telefone, o que quiser)
+          <input id="marca-sub" type="text" value="${(window.MARCA&&window.MARCA.sub||'').replace(/"/g,'&quot;')}" placeholder="opcional"
+                 style="width:100%;margin-top:4px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--txt);font-size:13px">
+        </label>
+        <div><button class="btn btn-g" id="btn-marca">Salvar identidade</button>
+          <span id="marca-ok" style="font-size:11.5px;color:var(--muted);margin-left:8px"></span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>⬆️ Atualizações</h3>
+      <div class="info-line"><span class="l">Versão instalada</span><span class="v" id="versao-atual">—</span></div>
+      <div class="info-line"><span class="l">Situação</span><span class="v" id="upd-status">—</span></div>
+      <p style="margin-top:10px;font-size:11.5px">O programa também procura atualizações sozinho ao abrir. Nada é instalado sem você mandar.</p>
+      <div style="margin-top:13px;display:flex;gap:9px;flex-wrap:wrap">
+        <button class="btn btn-g" id="btn-upd">Procurar atualização</button>
+        <button class="btn btn-g" id="btn-upd-baixar" style="display:none">Baixar agora</button>
+        <button class="btn btn-g" id="btn-upd-instalar" style="display:none">Reiniciar e instalar</button>
+      </div>
+    </div>
+
+    <input type="file" id="file-imp" accept=".json" style="display:none">
+  `;
+
+  document.getElementById('btn-pasta').addEventListener('click', () => window.api.openBackupFolder());
+
+  document.getElementById('btn-marca').addEventListener('click', () => {
+    const nome = document.getElementById('marca-nome').value.trim();
+    const sub = document.getElementById('marca-sub').value.trim();
+    window.salvarMarca({ nome, sub });
+    document.getElementById('marca-ok').textContent = '✓ salvo — reabra os apps para valer neles';
+  });
+
+  document.getElementById('versao-atual').textContent = window.api.versao ? window.api.versao() : '—';
+  document.getElementById('btn-upd').addEventListener('click', () => {
+    mostrarUpdate({ estado: 'procurando' });
+    window.api.procurarAtualizacao();
+  });
+  document.getElementById('btn-upd-baixar').addEventListener('click', () => {
+    mostrarUpdate({ estado: 'baixando' });
+    window.api.baixarAtualizacao();
+  });
+  document.getElementById('btn-upd-instalar').addEventListener('click', () => window.api.instalarAtualizacao());
+  if (ultimoUpdate) mostrarUpdate(ultimoUpdate);
+  document.querySelectorAll('[data-imp]').forEach(b => {
+    b.addEventListener('click', () => pedirArquivo(b.dataset.imp));
+  });
+}
+
+/* ══════════════ ATUALIZAÇÕES ══════════════
+   O main manda o que o electron-updater descobriu; aqui só traduz para
+   português claro e liga os botões. Nada baixa ou instala sozinho. */
+let ultimoUpdate = null;
+const TEXTO_UPDATE = {
+  parado: 'ainda não verificado',
+  procurando: 'procurando…',
+  atual: 'você já está na versão mais nova',
+  disponivel: 'tem versão nova',
+  baixando: 'baixando…',
+  pronto: 'baixada — falta reiniciar',
+  erro: 'não deu para verificar agora',
+  'sem-suporte': 'atualização automática só na versão instalada'
+};
+function mostrarUpdate(info){
+  ultimoUpdate = info;
+  const st = document.getElementById('upd-status');
+  if (!st) return;
+  const base = TEXTO_UPDATE[info.estado] || info.estado;
+  st.textContent = info.versao && (info.estado === 'disponivel' || info.estado === 'pronto')
+    ? base + ' (' + info.versao + ')'
+    : info.detalhe ? base + ' — ' + info.detalhe : base;
+  const bx = document.getElementById('btn-upd-baixar');
+  const ins = document.getElementById('btn-upd-instalar');
+  if (bx) bx.style.display = info.estado === 'disponivel' ? '' : 'none';
+  if (ins) ins.style.display = info.estado === 'pronto' ? '' : 'none';
+}
+if (window.api && window.api.aoAtualizar) window.api.aoAtualizar(info => mostrarUpdate(info));
+
+/* ══════════════ DASHBOARD INICIAL ══════════════
+   Lê o banco de cada app direto, igual as bolinhas de aviso — funciona
+   com todos os apps fechados. Só soma e conta: os cortes (30 dias de
+   validade, 15 de empréstimo, 1h de entrega) são os mesmos que cada app
+   usa, para os números nunca discordarem da tela de origem. */
+const MS_DIA = 86400000;
+function hojeISO(){ return new Date().toISOString().split('T')[0]; }
+function brl(v){ return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0); }
+function diasEntre(iso, base){ return Math.round((new Date(base+'T12:00:00') - new Date(iso+'T12:00:00')) / MS_DIA); }
+
+// ── Financeiro (tabelas próprias, não passa por app_state) ──
+function dadosFinanceiro(){
+  let S;
+  try { S = window.api.loadState(); } catch (e) { return null; }
+  const ls = S.lancamentos || [];
+  const liq = ls.filter(l => l.status === 'liquidado');
+  const soma = (arr, t) => arr.filter(l => l.tipo === t).reduce((a,l) => a + (l.valor||0), 0);
+  const cg = (S.cgBase||0) + soma(liq,'recebimento') - soma(liq,'pagamento') - soma(liq,'prolabore');
+
+  const doDia = d => liq.filter(l => (l.dataLiq || l.data) === d);
+  const hoje = hojeISO();
+  const entrouHoje = soma(doDia(hoje),'recebimento');
+  const saiuHoje = soma(doDia(hoje),'pagamento') + soma(doDia(hoje),'prolabore');
+
+  const vencidos = ls.filter(l => l.status === 'pendente' && l.data < hoje);
+  return { cg, entrouHoje, saiuHoje, vencidos: vencidos.length,
+           valorVencido: vencidos.reduce((a,l) => a + (l.valor||0), 0), lancamentos: ls, cgBase: S.cgBase||0 };
+}
+
+// receita liquidada de um período, para as comparações
+function receitaPeriodo(lancamentos, de, ate){
+  return (lancamentos||[]).filter(l =>
+    l.status === 'liquidado' && l.tipo === 'recebimento' &&
+    (l.dataLiq || l.data) >= de && (l.dataLiq || l.data) <= ate
+  ).reduce((a,l) => a + (l.valor||0), 0);
+}
+
+// ── demais setores ──
+function dadosFiados(){
+  const arr = lerApp('fiados');
+  if (!Array.isArray(arr)) return null;
+  let aberto = 0, devedores = 0, atrasados = 0;
+  arr.forEach(c => {
+    const compras = (c.purchases||[]).reduce((a,p) => a + (p.value||0), 0);
+    const pagos = (c.payments||[]).reduce((a,p) => a + (p.amount||0), 0);
+    const saldo = compras - pagos;
+    if (saldo > 0) {
+      aberto += saldo; devedores++;
+      // mesma régua do app: 30 dias desde a compra em aberto mais antiga
+      const datas = (c.purchases||[]).map(p => p.date).filter(Boolean).sort();
+      if (datas.length && diasEntre(datas[0], hojeISO()) >= 30) atrasados++;
+    }
+  });
+  return { aberto, devedores, atrasados, clientes: arr.length };
+}
+
+function dadosEntregas(){
+  const d = lerApp('entregas');
+  if (!d || !Array.isArray(d.entregas)) return null;
+  const hoje = hojeISO();
+  const pend = d.entregas.filter(e => e.status === 'aguardando' || e.status === 'rota');
+  const paradas = pend.filter(e => {
+    const ref = e.status === 'rota' ? e.saiuEm : e.criadoEm;
+    return ref && (Date.now() - new Date(ref).getTime()) / 60000 > 60;
+  });
+  return {
+    aguardando: pend.filter(e => e.status === 'aguardando').length,
+    naRua: pend.filter(e => e.status === 'rota').length,
+    entreguesHoje: d.entregas.filter(e => e.data === hoje && e.status === 'entregue').length,
+    paradas: paradas.length,
+    aReceber: pend.filter(e => ['dinheiro','pix','cartao'].includes(e.pgto)).reduce((a,e) => a + (e.valor||0), 0)
+  };
+}
+
+function dadosValidades(){
+  const d = lerApp('validades');
+  if (!d || !Array.isArray(d.itens)) return null;
+  const hoje = hojeISO();
+  let vencidos = 0, em30 = 0, risco = 0;
+  d.itens.forEach(i => {
+    if (i.status !== 'ativo') return;
+    const dias = -diasEntre(i.validade, hoje);
+    const valor = (i.custo||0) * (i.qtd||0);
+    if (dias < 0) { vencidos++; risco += valor; }
+    else if (dias <= 30) { em30++; risco += valor; }
+  });
+  return { vencidos, em30, risco };
+}
+
+function dadosEmprestimos(){
+  const d = lerApp('emprestimos');
+  if (!d || !Array.isArray(d.movimentos)) return null;
+  const hoje = hojeISO();
+  const abertos = d.movimentos.filter(m => Math.max(0,(m.qtd||0)-(m.qtdDevolvida||0)) > 0);
+  return {
+    atrasados: abertos.filter(m => diasEntre(m.data, hoje) > 15).length,
+    devo: abertos.filter(m => m.direcao === 'peguei').reduce((a,m) => a + (m.qtd - (m.qtdDevolvida||0)), 0),
+    devem: abertos.filter(m => m.direcao === 'emprestei').reduce((a,m) => a + (m.qtd - (m.qtdDevolvida||0)), 0)
+  };
+}
+
+function dadosPedidos(){
+  const d = lerApp('farmapedidos');
+  if (!d || !Array.isArray(d.dailyOrders)) return null;
+  const hoje = hojeISO();
+  return {
+    hoje: d.dailyOrders.filter(o => o.date === hoje).length,
+    aguardando: d.dailyOrders.filter(o => o.status === 'pending').length
+  };
+}
+
+
+function dadosAmbiente(){
+  const d = lerApp('ambiente');
+  if (!d) return null;
+  const c = d.config || {};
+  const turnos = c.turnos || ['Manhã','Tarde'];
+  const reg = (d.registros || {})[hojeISO()] || {};
+  const feitos = turnos.filter(t => reg[t] && reg[t].t !== undefined).length;
+  const fora = Object.values(reg).some(x => x.t < c.tMin || x.t > c.tMax || x.u < c.uMin || x.u > c.uMax);
+  const tarefasDiarias = (d.tarefas || []).filter(t => t.freq === 'diaria');
+  const feitasHoje = (d.limpeza || {})[hojeISO()] || [];
+  return {
+    turnos: turnos.length, feitos, faltam: turnos.length - feitos, fora,
+    limpezaFeita: tarefasDiarias.filter(t => feitasHoje.includes(t.id)).length,
+    limpezaTotal: tarefasDiarias.length
+  };
+}
+
+function dadosCaixa(){
+  const d = lerApp('caixa');
+  if (!d || !Array.isArray(d.dias)) return null;
+  const dia = d.dias.find(x => x.data === hojeISO());
+  if (!dia) return { aberto:false };
+  const somaMov = t => (dia.movimentos||[]).filter(m => m.tipo === t).reduce((a,m) => a + (m.valor||0), 0);
+  return {
+    aberto: true,
+    fechado: !!dia.fechadoEm,
+    entradas: somaMov('entrada'),
+    sangrias: somaMov('sangria'),
+    dif: dia.difFechamento
+  };
+}
+
+function dadosOrcamentos(){
+  const d = lerApp('orcafarma');
+  if (!d || !Array.isArray(d.orcamentos)) return null;
+  const pend = d.orcamentos.filter(o => o.status === 'pendente');
+  const valor = pend.reduce((a,o) =>
+    a + (o.itens||[]).reduce((s,i) => s + (Number(i.venda)||0) * (Number(i.qtd)||1), 0), 0);
+  return { pendentes: pend.length, valor };
+}
+
+function comparacao(fin){
+  if (!fin) return null;
+  const hoje = new Date(hojeISO() + 'T12:00:00');
+  const iso = d => d.toISOString().split('T')[0];
+  const semanaPassada = new Date(hoje.getTime() - 7 * MS_DIA);
+
+  const hojeV = receitaPeriodo(fin.lancamentos, iso(hoje), iso(hoje));
+  const semanaV = receitaPeriodo(fin.lancamentos, iso(semanaPassada), iso(semanaPassada));
+
+  const ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  const mesAtual = receitaPeriodo(fin.lancamentos, iso(ini), iso(hoje));
+  // mesmo trecho do mês anterior, para comparar laranja com laranja
+  const iniAnt = new Date(hoje.getFullYear(), hoje.getMonth()-1, 1);
+  const fimAnt = new Date(hoje.getFullYear(), hoje.getMonth()-1, hoje.getDate());
+  const mesAnterior = receitaPeriodo(fin.lancamentos, iso(iniAnt), iso(fimAnt));
+
+  return { hojeV, semanaV, mesAtual, mesAnterior, diaSemana: hoje.toLocaleDateString('pt-BR',{weekday:'long'}) };
+}
+
+function selo(atual, anterior){
+  if (!anterior) return atual > 0
+    ? '<span class="delta up">novo</span>'
+    : '<span class="delta flat">sem base</span>';
+  const p = ((atual - anterior) / anterior) * 100;
+  if (Math.abs(p) < 1) return '<span class="delta flat">igual</span>';
+  const cls = p > 0 ? 'up' : 'down';
+  return `<span class="delta ${cls}">${p > 0 ? '▲' : '▼'} ${Math.abs(p).toFixed(0)}%</span>`;
+}
+
+let recadosTimer = null;
+function renderInicio(){
+  const fin = dadosFinanceiro(), fia = dadosFiados(), ent = dadosEntregas();
+  const val = dadosValidades(), emp = dadosEmprestimos(), ped = dadosPedidos(), orc = dadosOrcamentos();
+  const cx = dadosCaixa(), amb = dadosAmbiente();
+  const cmp = comparacao(fin);
+
+  const h = new Date().getHours();
+  const saud = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const dataLonga = new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
+
+  // ── pendências: só entra o que existe ──
+  const pend = [];
+  if (val && val.vencidos > 0) pend.push({ cor:'#ff4f6a', ic:'⚠️', app:'validades',
+    txt:`<b>${val.vencidos} produto(s) vencido(s)</b>`, sub:'Retire da prateleira hoje' });
+  if (ent && ent.paradas > 0) pend.push({ cor:'#ff4f6a', ic:'🛵', app:'entregas',
+    txt:`<b>${ent.paradas} entrega(s) paradas há mais de 1h</b>`, sub:'Aguardando ou na rua sem baixa' });
+  if (amb && amb.fora) pend.push({ cor:'#ff4f6a', ic:'🌡️', app:'ambiente',
+    txt:'<b>Temperatura ou umidade fora da faixa hoje</b>', sub:'Verifique o ambiente e registre a providência' });
+  if (amb && amb.faltam > 0) pend.push({ cor:'#5eead4', ic:'🌡️', app:'ambiente',
+    txt:`<b>${amb.faltam} leitura(s) de hoje não registrada(s)</b>`, sub:'Temperatura e umidade do local' });
+  if (fin && fin.vencidos > 0) pend.push({ cor:'#ff9a44', ic:'📅', app:'prolabore',
+    txt:`<b>${fin.vencidos} lançamento(s) vencido(s)</b>`, sub:`${brl(fin.valorVencido)} na Agenda` });
+  if (fia && fia.atrasados > 0) pend.push({ cor:'#ff9a44', ic:'🧾', app:'fiados',
+    txt:`<b>${fia.atrasados} fiado(s) atrasado(s)</b>`, sub:`${brl(fia.aberto)} em aberto no total` });
+  if (val && val.em30 > 0) pend.push({ cor:'#f5c842', ic:'⏳', app:'validades',
+    txt:`<b>${val.em30} vencendo em 30 dias</b>`, sub: val.risco > 0 ? `${brl(val.risco)} em risco` : 'Dá tempo de girar' });
+  if (emp && emp.atrasados > 0) pend.push({ cor:'#a3e635', ic:'🤝', app:'emprestimos',
+    txt:`<b>${emp.atrasados} empréstimo(s) sem acerto há +15 dias</b>`, sub:'Cobrança já vem pronta' });
+  if (orc && orc.pendentes > 0) pend.push({ cor:'#4db8ff', ic:'📋', app:'orcafarma',
+    txt:`<b>${orc.pendentes} orçamento(s) aguardando resposta</b>`, sub:`${brl(orc.valor)} em jogo` });
+
+  const cgNeg = fin && fin.cg < 0;
+  const grana = fin ? `
+    <div class="gr cg ${cgNeg?'neg':''}"><div class="l">Capital de giro</div><div class="v">${brl(fin.cg)}</div><div class="c">só o que já liquidou</div></div>
+    <div class="gr ent"><div class="l">Entrou hoje</div><div class="v">${brl(fin.entrouHoje)}</div><div class="c">recebimentos do dia</div></div>
+    <div class="gr sai"><div class="l">Saiu hoje</div><div class="v">${brl(fin.saiuHoje)}</div><div class="c">pagamentos e pró-labore</div></div>
+    ${ent ? `<div class="gr rua"><div class="l">A receber na rua</div><div class="v">${brl(ent.aReceber)}</div><div class="c">entregas pendentes</div></div>` : ''}
+    ${fia ? `<div class="gr fia"><div class="l">Em aberto no fiado</div><div class="v">${brl(fia.aberto)}</div><div class="c">${fia.devedores} cliente(s)</div></div>` : ''}
+  ` : '<div style="font-size:12.5px;color:var(--muted)">Financeiro sem dados ainda.</div>';
+
+  const movimento = [
+    cx ? `<div class="mov"><span class="r">💵 Caixa de hoje</span><span class="n">${
+      !cx.aberto ? 'não aberto' : cx.fechado
+        ? `fechado${cx.dif === 0 ? ' · bateu' : cx.dif !== undefined ? ' · ' + (cx.dif > 0 ? 'sobrou ' : 'faltou ') + brl(Math.abs(cx.dif)) : ''}`
+        : `aberto · ${brl(cx.entradas)} de entrada`}</span></div>` : '',
+    amb ? `<div class="mov"><span class="r">🌡️ Temperatura e limpeza</span><span class="n">${amb.feitos}/${amb.turnos} leitura(s) · ${amb.limpezaFeita}/${amb.limpezaTotal} rotina(s)</span></div>` : '',
+    ent ? `<div class="mov"><span class="r">🛵 Entregas de hoje</span><span class="n">${ent.entreguesHoje} entregue(s) · ${ent.aguardando + ent.naRua} pendente(s)</span></div>` : '',
+    ped ? `<div class="mov"><span class="r">📦 Pedidos</span><span class="n">${ped.hoje} hoje · ${ped.aguardando} aguardando</span></div>` : '',
+    orc ? `<div class="mov"><span class="r">📋 Orçamentos pendentes</span><span class="n">${orc.pendentes}</span></div>` : '',
+    emp ? `<div class="mov"><span class="r">🤝 Empréstimos em aberto</span><span class="n">deve ${emp.devo} · a receber ${emp.devem}</span></div>` : ''
+  ].filter(Boolean).join('') || '<div style="font-size:12.5px;color:var(--muted)">Sem movimento registrado ainda.</div>';
+
+  const comp = cmp ? `
+    <div class="cmp"><div><div class="r">Hoje vs ${cmp.diaSemana} passada</div>
+      <div class="v">${brl(cmp.hojeV)}</div></div>
+      <div style="text-align:right"><div class="r">era ${brl(cmp.semanaV)}</div>${selo(cmp.hojeV, cmp.semanaV)}</div></div>
+    <div class="cmp"><div><div class="r">Mês até hoje vs mesmo trecho do mês passado</div>
+      <div class="v">${brl(cmp.mesAtual)}</div></div>
+      <div style="text-align:right"><div class="r">era ${brl(cmp.mesAnterior)}</div>${selo(cmp.mesAtual, cmp.mesAnterior)}</div></div>
+  ` : '';
+
+  let recados = '';
+  try { recados = window.api.appGet('hub','recados') || ''; } catch (e) {}
+
+  document.getElementById('page-inicio').innerHTML = `
+    <div class="dash-topo">
+      <div><div class="dash-saud">${saud}</div><div class="dash-data">${dataLonga}</div></div>
+    </div>
+
+    <div class="bloco">
+      <div class="bloco-ttl">Precisa de você agora <span class="nota">clique para ir direto ao app</span></div>
+      ${pend.length
+        ? pend.map(p => `<div class="pend" data-ir="${p.app}" style="--cor:${p.cor}">
+            <span class="ic">${p.ic}</span>
+            <span class="txt">${p.txt}<span class="sub">${p.sub}</span></span>
+            <span class="seta">›</span></div>`).join('')
+        : `<div class="tudo-ok">✓ <div><b>Tudo em dia por aqui.</b> Nenhum vencimento, atraso ou entrega parada.</div></div>`}
+    </div>
+
+    <div class="dash-cols">
+      <div>
+        <div class="bloco">
+          <div class="bloco-ttl">Dinheiro</div>
+          <div class="grana">${grana}</div>
+        </div>
+        ${comp ? `<div class="bloco"><div class="bloco-ttl">Comparação <span class="nota">só recebimentos liquidados</span></div>${comp}</div>` : ''}
+      </div>
+      <div>
+        <div class="bloco">
+          <div class="bloco-ttl">Movimento do dia</div>
+          ${movimento}
+        </div>
+        <div class="bloco">
+          <div class="bloco-ttl">📌 Recados <span class="nota">salva sozinho</span></div>
+          <textarea id="recados" placeholder="Anote aqui o que não pode esquecer...">${escaparTexto(recados)}</textarea>
+          <div class="rec-status" id="rec-status"></div>
+        </div>
+      </div>
+    </div>`;
+
+  document.querySelectorAll('[data-ir]').forEach(el =>
+    el.addEventListener('click', () => abrir(el.dataset.ir)));
+
+  const ta = document.getElementById('recados');
+  ta.addEventListener('input', () => {
+    document.getElementById('rec-status').textContent = 'digitando...';
+    clearTimeout(recadosTimer);
+    recadosTimer = setTimeout(() => {
+      try { window.api.appSet('hub','recados', ta.value); document.getElementById('rec-status').textContent = '✓ salvo'; }
+      catch (e) { document.getElementById('rec-status').textContent = '⚠️ não consegui salvar'; }
+      setTimeout(() => { const s = document.getElementById('rec-status'); if (s) s.textContent = ''; }, 2500);
+    }, 700);
+  });
+}
+
+function escaparTexto(s){
+  return String(s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+}
+
+let impAlvo = null;
+function pedirArquivo(appId){
+  impAlvo = appId;
+  const inp = document.getElementById('file-imp');
+  inp.value = '';
+  inp.onchange = () => importarArquivo(inp.files[0]);
+  inp.click();
+}
+
+// Valida o formato antes de gravar — cada app exporta um formato diferente.
+function validar(appId, dados){
+  if (appId === 'fiados') {
+    if (!Array.isArray(dados)) return 'Esperado um backup de fichas (lista de clientes).';
+    const ok = dados.every(c => c && c.id && c.name && Array.isArray(c.purchases) && Array.isArray(c.payments));
+    return ok ? null : 'O arquivo não tem a estrutura de fichas de clientes.';
+  }
+  if (appId === 'orcafarma') {
+    if (!dados || typeof dados !== 'object') return 'Arquivo inválido.';
+    if (!Array.isArray(dados.clientes) || !Array.isArray(dados.orcamentos)) return 'Esperado um backup do Orçamentos (clientes e orçamentos).';
+    return null;
+  }
+  if (appId === 'farmapedidos') {
+    if (!dados || typeof dados !== 'object') return 'Arquivo inválido.';
+    if (!Array.isArray(dados.clients) && !Array.isArray(dados.dailyOrders)) return 'Esperado um backup do Pedidos.';
+    return null;
+  }
+  return 'App desconhecido.';
+}
+
+function resumo(appId, dados){
+  if (appId === 'fiados') return `${dados.length} ficha(s) de cliente`;
+  if (appId === 'orcafarma') return `${dados.clientes.length} cliente(s) e ${dados.orcamentos.length} orçamento(s)`;
+  if (appId === 'farmapedidos') return `${(dados.clients||[]).length} cliente(s) e ${(dados.dailyOrders||[]).length} pedido(s)`;
+  return '';
+}
+
+function importarArquivo(file){
+  if (!file || !impAlvo) return;
+  const appId = impAlvo;
+  const r = new FileReader();
+  r.onload = e => {
+    let dados;
+    try { dados = JSON.parse(e.target.result); }
+    catch { toast('⚠️ Arquivo não é um JSON válido.'); return; }
+
+    const erro = validar(appId, dados);
+    if (erro) { toast('⚠️ ' + erro); return; }
+
+    const app = APPS.find(a => a.id === appId);
+    const jaTem = statusApp(appId);
+    const msg = `Importar ${resumo(appId, dados)} para "${app.nome}"?`
+      + (jaTem ? '\n\nIsso substitui os dados que já estão no hub. Uma cópia do estado atual fica guardada no histórico.' : '');
+    if (!confirm(msg)) return;
+
+    // grava no formato que o próprio app espera ler
+    window.api.appSet(appId, CHAVE_PRINCIPAL[appId], JSON.stringify(dados));
+
+    // recarrega o app se ele já estava aberto, para refletir o dado novo
+    if (frames[appId]) { frames[appId].remove(); delete frames[appId]; }
+
+    toast('✓ Importado para ' + app.nome);
+    renderDados();
+  };
+  r.readAsText(file);
+}
+
+// Um app avisa o hub quando mexe no dado de outro (ex.: Orçamentos manda um
+// pedido para Pedidos). O frame do app afetado é descartado para
+// recarregar do banco — senão o que está aberto sobrescreveria a novidade.
+window.addEventListener('message', ev => {
+  const m = ev.data;
+  if (!m || m.tipo !== 'recarregar-app' || !m.app) return;
+  if (frames[m.app]) { frames[m.app].remove(); delete frames[m.app]; }
+  atualizarAvisos();
+  if (atual === m.app) abrir(m.app);
+  if (m.aviso) toast(m.aviso);
+});
+
+montarMenu();
+atualizarAvisos();
+// o app roda dentro do iframe e grava direto no banco; o hub confere de tempos
+// em tempos para o contador não ficar velho enquanto você trabalha
+setInterval(atualizarAvisos, 15000);
+restaurarSidebar();
+document.getElementById('btn-recolher').addEventListener('click', alternarSidebar);
+document.getElementById('fab-pedido').addEventListener('click', novoPedidoRapido);
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N')) { e.preventDefault(); novoPedidoRapido(); }
+});
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && (e.key === 'b' || e.key === 'B')) { e.preventDefault(); alternarSidebar(); }
+});
+abrir('inicio');
+</script>
+</body>
+</html>

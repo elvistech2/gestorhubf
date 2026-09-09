@@ -1,0 +1,99 @@
+{
+  "name": "super-gestor",
+  "productName": "Super Gestor",
+  "version": "1.0.0",
+  "description": "Hub de gestao para pequenos negocios: financeiro, fiado, pedidos, orcamentos, entregas, validades e mais. Tudo local, em um banco SQLite no seu computador.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "portatil:win": "electron-packager . \"Super Gestor\" --platform=win32 --arch=x64 --icon=renderer/icon.ico --out=dist --overwrite --ignore=\"^/dist$\"",
+    "configurar-repo": "node scripts/configurar-repo.js",
+    "dist:win-local": "node scripts/build-win.js"
+  },
+  "keywords": [
+    "gestao",
+    "financeiro",
+    "pequenos-negocios",
+    "electron",
+    "sqlite",
+    "offline"
+  ],
+  "author": "Elvis Ricardo de Souza",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SEU-USUARIO/super-gestor.git"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3",
+    "electron-packager": "^17.1.2"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "electron-updater": "^6.3.9"
+  },
+  "build": {
+    "appId": "com.supergestor.app",
+    "productName": "Super Gestor",
+    "copyright": "Copyright (c) 2026 Elvis Ricardo de Souza",
+    "directories": {
+      "output": "dist",
+      "buildResources": "renderer"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "!dist/**"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "SEU-USUARIO",
+        "repo": "super-gestor"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "renderer/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Super Gestor"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "renderer/icon.png",
+      "category": "Office",
+      "maintainer": "Elvis Ricardo de Souza",
+      "synopsis": "Hub de gestao para pequenos negocios"
+    },
+    "deb": {
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libsecret-1-0"
+      ]
+    }
+  }
+}

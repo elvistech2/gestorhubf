@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="../shared/marca.js"></script>
+<script src="../shared/db-storage.js" data-app="validades"></script>
+<title>Validades · {marca}</title>
+<link rel="stylesheet" href="../shared/ui.css">
+<style>
+:root{ --acc:#ff9a44; --acc-tx:#1c0d00; }
+
+.linha-cad{display:grid;grid-template-columns:2.2fr .65fr 1fr .95fr auto;gap:11px;align-items:end}
+@media(max-width:900px){.linha-cad{grid-template-columns:1fr 1fr}}
+
+/* painel de risco + linha do tempo */
+.duo{display:grid;grid-template-columns:250px 1fr;gap:13px;margin-bottom:15px}
+@media(max-width:920px){.duo{grid-template-columns:1fr}}
+
+.risco{
+  position:relative;overflow:hidden;padding:17px 19px;display:flex;flex-direction:column;justify-content:center;
+  background:linear-gradient(150deg,rgba(255,79,106,.15),rgba(20,12,20,.6) 62%);
+  border:1px solid rgba(255,79,106,.26);border-radius:var(--r-m)
+}
+.risco::after{content:'⚠';position:absolute;right:-8px;bottom:-24px;font-size:96px;opacity:.06;line-height:1}
+.risco .r{font-family:var(--disp);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--tx-3);margin-bottom:6px}
+.risco .n{font-family:var(--mono);font-size:30px;font-weight:600;letter-spacing:-1.3px;line-height:1;color:var(--perigo)}
+.risco .n.zerado{color:var(--ok)}
+.risco .s{font-size:11px;color:var(--tx-2);margin-top:8px;line-height:1.55}
+.risco .vazio-custo{font-size:11.5px;color:var(--tx-3);line-height:1.6}
+
+/* linha do tempo */
+.tl-barras{display:flex;align-items:flex-end;gap:7px;height:96px;margin-top:4px}
+.tl-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;min-width:0;transition:.15s}
+.tl-col:hover{transform:translateY(-3px)}
+.tl-bar{
+  width:100%;border-radius:6px 6px 3px 3px;min-height:4px;position:relative;
+  background:var(--c,#233149);transition:.22s cubic-bezier(.2,.9,.3,1);
+  box-shadow:0 0 0 1px rgba(255,255,255,.06) inset
+}
+.tl-col:hover .tl-bar{filter:brightness(1.2)}
+.tl-col.on .tl-bar{box-shadow:0 0 0 2px rgba(255,255,255,.34) inset, 0 0 18px var(--c)}
+.tl-n{font-family:var(--mono);font-size:11.5px;font-weight:600;font-variant-numeric:tabular-nums}
+.tl-m{font-family:var(--disp);font-size:9.5px;color:var(--tx-3);letter-spacing:.7px;text-transform:uppercase;white-space:nowrap}
+.tl-col.zero .tl-n{color:var(--tx-3);opacity:.5}
+
+.barra-lista{display:flex;align-items:center;gap:12px;margin-bottom:11px;flex-wrap:wrap}
+.conta{font-family:var(--mono);font-size:11.5px;color:var(--tx-3);font-variant-numeric:tabular-nums}
+
+.selbar{
+  display:none;align-items:center;gap:11px;margin-bottom:11px;padding:10px 15px;border-radius:var(--r-m);
+  background:color-mix(in srgb,var(--acc) 12%, transparent);
+  border:1px solid color-mix(in srgb,var(--acc) 32%, transparent)
+}
+.selbar.on{display:flex;animation:entra .18s ease-out}
+.selbar .qt{font-family:var(--mono);font-weight:600;color:var(--acc)}
+
+.chk{width:15px;height:15px;accent-color:var(--acc);cursor:pointer;vertical-align:middle}
+tr.vencida td{background:rgba(255,79,106,.05)}
+.sug{font-size:11.5px;color:var(--tx-2);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.prod{font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="hero" data-glifo="⏳">
+  <div class="hero-topo">
+    <div>
+      <span class="selo">Controle de estoque</span>
+      <h1><span class="em">⏳</span> Validades</h1>
+      <div class="lead">O que está perto de vencer, quanto isso vale e o que dá pra fazer enquanto há tempo.</div>
+    </div>
+    <div class="hero-acoes">
+      <button class="btn btn-linha btn-p" id="btn-imprimir">🖨 Imprimir lista</button>
+      <div class="abas" id="abas-vista">
+        <button class="on" data-vista="ativos">Em estoque</button>
+        <button data-vista="baixados">Histórico</button>
+      </div>
+    </div>
+  </div>
+  <div class="hero-nums" id="hero-nums"></div>
+  <div class="imp-cab" id="imp-cab"></div>
+</div>
+
+<div class="wrap">
+  <div id="aviso-topo"></div>
+
+  <div class="compor sobe-1" id="card-form">
+    <div class="compor-ttl">Cadastro rápido <span class="dica">Enter salva e continua · Esc limpa</span></div>
+    <div class="linha-cad">
+      <div class="campo">
+        <label>Produto</label>
+        <input id="f-nome" type="text" placeholder="Nome do produto" list="lista-nomes" autocomplete="off">
+        <datalist id="lista-nomes"></datalist>
+      </div>
+      <div class="campo"><label>Qtd</label><input id="f-qtd" type="number" min="1" step="1" value="1"></div>
+      <div class="campo"><label>Custo un. <span class="opc">(opcional)</span></label><input id="f-custo" type="number" min="0" step="0.01" placeholder="0,00"></div>
+      <div class="campo"><label>Vencimento</label><input id="f-val" type="date"></div>
+      <button class="btn btn-acc" id="btn-add">＋ Adicionar</button>
+    </div>
+  </div>
+
+  <div class="duo sobe-2" id="duo"></div>
+  <div class="chips sobe-3" id="chips"></div>
+
+  <div class="barra-lista">
+    <div class="busca"><input id="f-busca" type="text" placeholder="Buscar produto..." autocomplete="off"></div>
+    <span style="flex:1"></span>
+    <span class="conta" id="conta"></span>
+  </div>
+
+  <div class="selbar" id="selbar">
+    <span><span class="qt" id="sel-n">0</span> selecionado(s)</span>
+    <span style="flex:1"></span>
+    <button class="btn btn-acc btn-p" id="sel-baixa">Dar baixa em lote</button>
+    <button class="btn btn-perigo btn-p" id="sel-excluir">Excluir</button>
+    <button class="btn btn-linha btn-p" id="sel-limpar">Limpar</button>
+  </div>
+
+  <div id="tabela"></div>
+</div>
+
+<div class="modal-bg" id="modal"><div class="modal">
+  <h3 id="modal-ttl"></h3><div id="modal-corpo"></div><div class="modal-acts" id="modal-acts"></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+const CHAVE = 'validades_v1';
+
+function carregar(){
+  try {
+    const bruto = localStorage.getItem(CHAVE);
+    if (!bruto) return { itens: [] };
+    const d = JSON.parse(bruto);
+    d.itens = Array.isArray(d.itens) ? d.itens : [];
+    return d;
+  } catch (e) { return { itens: [] }; }
+}
+function salvar(){ try { localStorage.setItem(CHAVE, JSON.stringify(S)); } catch (e) { toast('⚠️ ' + e.message); } }
+let S = carregar();
+
+let vista = 'ativos', faixaSel = 'tudo', mesSel = null, busca = '';
+let selecionados = new Set(), idNovo = null;
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function hoje(){ return new Date().toISOString().split('T')[0]; }
+function fmtData(d){ if(!d) return ''; const [a,m,x] = d.split('-'); return `${x}/${m}/${a}`; }
+function brl(v){ return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0); }
+function diasAte(d){
+  const alvo = new Date(d + 'T12:00:00'), ag = new Date(hoje() + 'T12:00:00');
+  return Math.round((alvo - ag) / 86400000);
+}
+function faixaDe(dias){
+  if (dias < 0) return 'venc';
+  if (dias <= 30) return '30';
+  if (dias <= 60) return '60';
+  if (dias <= 90) return '90';
+  return 'ok';
+}
+const ROTULO = { venc:'Vencido', '30':'≤ 30 dias', '60':'≤ 60 dias', '90':'≤ 90 dias', ok:'Tranquilo' };
+const COR = { venc:'#ff4f6a', '30':'#ff9a44', '60':'#f5c842', '90':'#4db8ff', ok:'#3d4d69' };
+const CLASSE_ETQ = { venc:'etq-perigo', '30':'etq-alerta', '60':'etq-atencao', '90':'etq-info', ok:'etq-neutro' };
+const SUGESTAO = {
+  venc:{ ic:'🚫', txt:'separar e descartar' },
+  '30':{ ic:'🔥', txt:'queima / promoção' },
+  '60':{ ic:'📦', txt:'dá tempo de devolver' },
+  '90':{ ic:'👀', txt:'só monitorar' },
+  ok:{ ic:'', txt:'' }
+};
+const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function escapar(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(window._tt); window._tt = setTimeout(() => t.classList.remove('on'), 2600);
+}
+function textoDias(dias){
+  if (dias < 0) return `venceu há ${Math.abs(dias)} dia${Math.abs(dias) > 1 ? 's' : ''}`;
+  if (dias === 0) return 'vence hoje';
+  if (dias === 1) return 'vence amanhã';
+  return `faltam ${dias} dias`;
+}
+
+function ativos(){ return S.itens.filter(i => i.status === 'ativo'); }
+function valorDe(i){ return (i.custo || 0) * i.qtd; }
+function contagens(){
+  const c = { venc:{n:0,v:0}, '30':{n:0,v:0}, '60':{n:0,v:0}, '90':{n:0,v:0}, ok:{n:0,v:0}, tudo:{n:0,v:0} };
+  ativos().forEach(i => {
+    const f = faixaDe(diasAte(i.validade));
+    c[f].n++; c[f].v += valorDe(i);
+    c.tudo.n++; c.tudo.v += valorDe(i);
+  });
+  return c;
+}
+function temCusto(){ return ativos().some(i => i.custo > 0); }
+
+// ── Cadastro ─────────────────────────────────────────────────────────
+function adicionar(){
+  const nome = document.getElementById('f-nome').value.trim();
+  const qtd = parseInt(document.getElementById('f-qtd').value, 10);
+  const custo = parseFloat(document.getElementById('f-custo').value) || 0;
+  const val = document.getElementById('f-val').value;
+  if (!nome) { toast('⚠️ Informe o produto.'); document.getElementById('f-nome').focus(); return; }
+  if (!qtd || qtd <= 0) { toast('⚠️ Quantidade inválida.'); return; }
+  if (!val) { toast('⚠️ Informe o vencimento.'); document.getElementById('f-val').focus(); return; }
+
+  const id = uid();
+  S.itens.push({ id, nome, qtd, custo, validade: val, status:'ativo', criadoEm: hoje() });
+  salvar();
+  idNovo = id;
+  document.getElementById('f-nome').value = '';
+  document.getElementById('f-qtd').value = '1';
+  document.getElementById('f-custo').value = '';
+  document.getElementById('f-nome').focus();
+  const d = diasAte(val);
+  toast(d < 0 ? '✓ Cadastrado — atenção, já vencido' : `✓ Cadastrado — ${textoDias(d)}`);
+  render();
+  setTimeout(() => { idNovo = null; }, 1900);
+}
+
+function limparForm(){
+  ['f-nome','f-custo','f-val'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-qtd').value = '1';
+  document.getElementById('f-nome').focus();
+}
+
+function duplicar(id){
+  const it = S.itens.find(x => x.id === id); if (!it) return;
+  document.getElementById('f-nome').value = it.nome;
+  document.getElementById('f-qtd').value = it.qtd;
+  document.getElementById('f-custo').value = it.custo || '';
+  document.getElementById('f-val').value = '';
+  document.getElementById('f-val').focus();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  toast('Informe a validade do outro lote');
+}
+
+// ── Baixa ────────────────────────────────────────────────────────────
+function pedirBaixa(id){
+  const it = S.itens.find(x => x.id === id); if (!it) return;
+  abrirModal(`Dar baixa em ${escapar(it.nome)}`,
+    `<p>${it.qtd} unidade(s) · vence ${fmtData(it.validade)}${it.custo ? ' · ' + brl(valorDe(it)) : ''}<br>
+     O item sai da lista mas continua no histórico.</p>`,
+    [
+      { txt:'Vendido', cls:'btn-ok', fn:() => baixar([id],'vendido') },
+      { txt:'Devolvido', cls:'btn-linha', fn:() => baixar([id],'devolvido') },
+      { txt:'Descartado', cls:'btn-perigo', fn:() => baixar([id],'descartado') },
+      { txt:'Cancelar', cls:'btn-linha', fn: fecharModal }
+    ]);
+}
+function baixarLote(){
+  const ids = [...selecionados]; if (!ids.length) return;
+  const total = ids.reduce((a,id) => { const i = S.itens.find(x => x.id === id); return a + (i ? valorDe(i) : 0); }, 0);
+  abrirModal(`Dar baixa em ${ids.length} item(ns)`,
+    `<p>Todos recebem o mesmo motivo.${total ? ' Valor somado: <strong>' + brl(total) + '</strong>.' : ''}</p>`,
+    [
+      { txt:'Vendidos', cls:'btn-ok', fn:() => baixar(ids,'vendido') },
+      { txt:'Devolvidos', cls:'btn-linha', fn:() => baixar(ids,'devolvido') },
+      { txt:'Descartados', cls:'btn-perigo', fn:() => baixar(ids,'descartado') },
+      { txt:'Cancelar', cls:'btn-linha', fn: fecharModal }
+    ]);
+}
+function baixar(ids, motivo){
+  ids.forEach(id => {
+    const it = S.itens.find(x => x.id === id); if (!it) return;
+    it.status = 'baixado'; it.motivo = motivo; it.baixadoEm = hoje();
+    selecionados.delete(id);
+  });
+  salvar(); fecharModal(); render();
+  toast(`✓ ${ids.length} baixa(s): ${motivo}`);
+}
+function reativar(id){
+  const it = S.itens.find(x => x.id === id); if (!it) return;
+  it.status = 'ativo'; delete it.motivo; delete it.baixadoEm;
+  salvar(); render(); toast('✓ Voltou para o estoque');
+}
+
+function editar(id){
+  const it = S.itens.find(x => x.id === id); if (!it) return;
+  abrirModal('Editar item', `
+    <div class="campo" style="margin-bottom:11px"><label>Produto</label><input id="e-nome" type="text" value="${escapar(it.nome)}"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px">
+      <div class="campo"><label>Qtd</label><input id="e-qtd" type="number" min="1" value="${it.qtd}"></div>
+      <div class="campo"><label>Custo un.</label><input id="e-custo" type="number" min="0" step="0.01" value="${it.custo || ''}"></div>
+      <div class="campo"><label>Vencimento</label><input id="e-val" type="date" value="${it.validade}"></div>
+    </div>`,
+    [
+      { txt:'Cancelar', cls:'btn-linha', fn: fecharModal },
+      { txt:'Salvar', cls:'btn-acc', fn:() => {
+          const n = document.getElementById('e-nome').value.trim();
+          const q = parseInt(document.getElementById('e-qtd').value, 10);
+          const cu = parseFloat(document.getElementById('e-custo').value) || 0;
+          const v = document.getElementById('e-val').value;
+          if (!n || !q || q <= 0 || !v) { toast('⚠️ Dados inválidos.'); return; }
+          it.nome = n; it.qtd = q; it.custo = cu; it.validade = v;
+          salvar(); fecharModal(); render(); toast('✓ Item atualizado');
+        } }
+    ]);
+}
+
+function excluir(id){
+  const it = S.itens.find(x => x.id === id); if (!it) return;
+  abrirModal('Excluir item', `<p>Excluir <strong>${escapar(it.nome)}</strong> de vez? Some também do histórico.</p>`,
+    [
+      { txt:'Cancelar', cls:'btn-linha', fn: fecharModal },
+      { txt:'Excluir', cls:'btn-perigo', fn:() => {
+          S.itens = S.itens.filter(x => x.id !== id);
+          selecionados.delete(id);
+          salvar(); fecharModal(); render(); toast('Item excluído');
+        } }
+    ]);
+}
+function excluirLote(){
+  const ids = [...selecionados]; if (!ids.length) return;
+  abrirModal('Excluir selecionados', `<p>Excluir <strong>${ids.length} item(ns)</strong> de vez? Não dá para desfazer.</p>`,
+    [
+      { txt:'Cancelar', cls:'btn-linha', fn: fecharModal },
+      { txt:'Excluir', cls:'btn-perigo', fn:() => {
+          S.itens = S.itens.filter(x => !selecionados.has(x.id));
+          selecionados.clear();
+          salvar(); fecharModal(); render(); toast(`${ids.length} item(ns) excluído(s)`);
+        } }
+    ]);
+}
+
+// ── Modal ────────────────────────────────────────────────────────────
+function abrirModal(titulo, corpo, acoes){
+  document.getElementById('modal-ttl').textContent = titulo;
+  document.getElementById('modal-corpo').innerHTML = corpo;
+  const box = document.getElementById('modal-acts');
+  box.innerHTML = '';
+  acoes.forEach(a => {
+    const b = document.createElement('button');
+    b.className = 'btn ' + a.cls; b.textContent = a.txt;
+    b.addEventListener('click', a.fn);
+    box.appendChild(b);
+  });
+  document.getElementById('modal').classList.add('on');
+}
+function fecharModal(){ document.getElementById('modal').classList.remove('on'); }
+
+// ── Render ───────────────────────────────────────────────────────────
+function renderHero(){
+  const c = contagens();
+  const risco = c.venc.v + c['30'].v;
+  const nums = [
+    { r:'Em acompanhamento', n:c.tudo.n, s:'produtos ativos', cls:'acc' },
+    { r:'Vencidos', n:c.venc.n, s:c.venc.n ? 'fora da prateleira' : 'nenhum', cls:'perigo' },
+    { r:'Vencendo em 30d', n:c['30'].n, s:'ainda dá pra girar', cls:'alerta' }
+  ];
+  if (temCusto()) nums.push({ r:'Valor em risco', n:brl(risco), s:'vencido + 30 dias', cls:'perigo' });
+  document.getElementById('hero-nums').innerHTML = nums.map(x =>
+    `<div class="hnum ${x.cls}"><div class="r">${x.r}</div><div class="n">${x.n}</div><div class="s">${x.s}</div></div>`).join('');
+}
+
+function renderAviso(){
+  const c = contagens();
+  const el = document.getElementById('aviso-topo');
+  if (c.tudo.n === 0) { el.innerHTML = ''; return; }
+  if (c.venc.n > 0) {
+    el.innerHTML = `<div class="aviso perigo"><span class="ico">⚠️</span><div><b>${c.venc.n} produto(s) vencido(s)</b>${c['30'].n ? ` e <b>${c['30'].n} vencendo em 30 dias</b>` : ''}.
+      <span class="sub">Vencido não pode ficar na prateleira — separe hoje. O que vence em 30 dias ainda dá para queimar em promoção.</span></div></div>`;
+  } else if (c['30'].n > 0) {
+    el.innerHTML = `<div class="aviso alerta"><span class="ico">⏰</span><div><b>${c['30'].n} produto(s) vencendo em até 30 dias</b>.
+      <span class="sub">Prazo curto para devolver ao fornecedor — em geral compensa mais vender com desconto.</span></div></div>`;
+  } else {
+    el.innerHTML = `<div class="aviso calmo"><span class="ico">✓</span><div>Nada vencido nem vencendo no próximo mês. <b>${c.tudo.n} item(ns)</b> em acompanhamento.</div></div>`;
+  }
+}
+
+function renderDuo(){
+  const duo = document.getElementById('duo');
+  if (vista !== 'ativos') { duo.style.display = 'none'; return; }
+  duo.style.display = '';
+  const c = contagens();
+  const risco = c.venc.v + c['30'].v;
+  const blocoRisco = temCusto()
+    ? `<div class="r">Valor em risco</div><div class="n ${risco > 0 ? '' : 'zerado'}">${brl(risco)}</div>
+       <div class="s">${c.venc.n} vencido(s) + ${c['30'].n} vencendo em 30 dias.<br>Estoque acompanhado: ${brl(c.tudo.v)}</div>`
+    : `<div class="r">Valor em risco</div><div class="n zerado" style="font-size:20px">sem custo</div>
+       <div class="vazio-custo" style="margin-top:8px">Preencha o <strong>custo unitário</strong> no cadastro para ver quanto dinheiro está parado perto de vencer.</div>`;
+
+  const meses = [];
+  const ag = new Date(hoje() + 'T12:00:00');
+  for (let k = 0; k < 8; k++) {
+    const d = new Date(ag.getFullYear(), ag.getMonth() + k, 1);
+    meses.push({ chave:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,
+                 rot: MESES[d.getMonth()] + (k === 0 || d.getMonth() === 0 ? "/" + String(d.getFullYear()).slice(2) : ''),
+                 n:0, pior:'ok' });
+  }
+  const ordem = { ok:0, '90':1, '60':2, '30':3, venc:4 };
+  let vencidos = 0;
+  ativos().forEach(i => {
+    const f = faixaDe(diasAte(i.validade));
+    if (f === 'venc') { vencidos++; return; }
+    const m = meses.find(x => x.chave === i.validade.slice(0,7));
+    if (m) { m.n++; if (ordem[f] > ordem[m.pior]) m.pior = f; }
+  });
+  const colunas = [{ chave:'venc', rot:'vencidos', n:vencidos, pior:'venc' }, ...meses];
+  const maxN = Math.max(1, ...colunas.map(x => x.n));
+
+  duo.innerHTML = `
+    <div class="risco">${blocoRisco}</div>
+    <div class="painel painel-p">
+      <div class="painel-ttl">Quando vence <span class="nota">clique num mês para filtrar</span></div>
+      <div class="tl-barras">
+        ${colunas.map(co => `
+          <div class="tl-col ${co.n ? '' : 'zero'} ${mesSel === co.chave ? 'on' : ''}" data-mes="${co.chave}"
+               style="--c:${co.n ? COR[co.pior] : '#1b2439'}" title="${co.n} item(ns)">
+            <div class="tl-n" style="color:${co.n ? COR[co.pior] : ''}">${co.n || '·'}</div>
+            <div class="tl-bar" style="height:${co.n ? Math.max(10, (co.n / maxN) * 62) : 4}px"></div>
+            <div class="tl-m">${co.rot}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+
+  duo.querySelectorAll('.tl-col').forEach(el => el.addEventListener('click', () => {
+    mesSel = mesSel === el.dataset.mes ? null : el.dataset.mes;
+    if (mesSel) faixaSel = 'tudo';
+    render();
+  }));
+}
+
+function renderChips(){
+  const el = document.getElementById('chips');
+  if (vista !== 'ativos') { el.style.display = 'none'; return; }
+  el.style.display = '';
+  const c = contagens();
+  const mostrarValor = temCusto();
+  const faixas = [['tudo','Todos','#00d4a0'],['venc','Vencidos',COR.venc],['30','≤ 30 dias',COR['30']],
+                  ['60','≤ 60 dias',COR['60']],['90','≤ 90 dias',COR['90']],['ok','Tranquilos','#4a5a78']];
+  el.innerHTML = faixas.map(([k, rot, cor]) => `
+    <div class="chip ${faixaSel === k && !mesSel ? 'on' : ''}" data-faixa="${k}" style="--cor:${cor}">
+      <span class="pt"></span><span class="rot">${rot}</span><span class="qt">${c[k].n}</span>
+      ${mostrarValor && c[k].v > 0 ? `<span class="vl">${brl(c[k].v)}</span>` : ''}
+    </div>`).join('');
+  el.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => {
+    faixaSel = ch.dataset.faixa; mesSel = null; render();
+  }));
+}
+
+function listaFiltrada(){
+  let l = vista === 'ativos' ? ativos() : S.itens.filter(i => i.status === 'baixado');
+  if (vista === 'ativos') {
+    if (mesSel === 'venc') l = l.filter(i => faixaDe(diasAte(i.validade)) === 'venc');
+    else if (mesSel) l = l.filter(i => i.validade.slice(0,7) === mesSel && faixaDe(diasAte(i.validade)) !== 'venc');
+    else if (faixaSel !== 'tudo') l = l.filter(i => faixaDe(diasAte(i.validade)) === faixaSel);
+  }
+  if (busca) { const b = busca.toLowerCase(); l = l.filter(i => i.nome.toLowerCase().includes(b)); }
+  return l.sort((a,b) => a.validade.localeCompare(b.validade));
+}
+
+function renderTabela(){
+  const l = listaFiltrada();
+  const alvo = document.getElementById('tabela');
+  const mostrarValor = temCusto();
+  document.getElementById('conta').textContent = l.length ? `${l.length} item(ns)` : '';
+
+  if (!l.length) {
+    alvo.innerHTML = `<div class="painel"><div class="vazio">
+      <div class="glifo">${vista === 'ativos' ? '📦' : '🗂'}</div>
+      ${vista === 'ativos'
+        ? (S.itens.length
+            ? '<div class="tt">Nada nesse filtro</div><div class="ds">Tente outro prazo, outro mês ou limpe a busca.</div>'
+            : '<div class="tt">Nenhum produto cadastrado</div><div class="ds">Comece pelo que está mais perto de vencer — o resto entra com o tempo.</div>')
+        : '<div class="tt">Histórico vazio</div><div class="ds">Itens com baixa aparecem aqui, com o motivo e a data.</div>'}
+    </div></div>`;
+    return;
+  }
+
+  const linhas = l.map(i => {
+    if (vista === 'baixados') {
+      return `<tr>
+        <td class="prod">${escapar(i.nome)}</td>
+        <td class="num">${i.qtd}</td>
+        <td>${fmtData(i.validade)}</td>
+        <td><span class="etq etq-neutro">${escapar(i.motivo || '—')}</span></td>
+        <td>${fmtData(i.baixadoEm)}</td>
+        <td><div class="acoes">
+          <button class="btn btn-linha btn-p" data-acao="reativar" data-id="${i.id}">Voltar ao estoque</button>
+          <button class="btn-icone" data-acao="excluir" data-id="${i.id}" style="color:var(--perigo)">✕</button>
+        </div></td></tr>`;
+    }
+    const d = diasAte(i.validade), f = faixaDe(d), sug = SUGESTAO[f];
+    return `<tr class="${f === 'venc' ? 'vencida' : ''} ${i.id === idNovo ? 'novo' : ''}">
+      <td style="width:30px"><input type="checkbox" class="chk" data-sel="${i.id}" ${selecionados.has(i.id) ? 'checked' : ''}></td>
+      <td class="prod">${escapar(i.nome)}</td>
+      <td class="num">${i.qtd}</td>
+      ${mostrarValor ? `<td class="num" style="color:${i.custo ? 'var(--tx)' : 'var(--tx-3)'}">${i.custo ? brl(valorDe(i)) : '—'}</td>` : ''}
+      <td class="num" style="text-align:left">${fmtData(i.validade)}</td>
+      <td><span class="etq ${CLASSE_ETQ[f]}">${ROTULO[f]}</span></td>
+      <td style="color:var(--tx-2);font-size:12px">${textoDias(d)}</td>
+      <td>${sug.txt ? `<span class="sug">${sug.ic} ${sug.txt}</span>` : ''}</td>
+      <td><div class="acoes">
+        <button class="btn btn-acc btn-p" data-acao="baixa" data-id="${i.id}">Dar baixa</button>
+        <button class="btn-icone" data-acao="duplicar" data-id="${i.id}" title="Outro lote deste produto">⧉</button>
+        <button class="btn-icone" data-acao="editar" data-id="${i.id}">✎</button>
+        <button class="btn-icone" data-acao="excluir" data-id="${i.id}" style="color:var(--perigo)">✕</button>
+      </div></td></tr>`;
+  }).join('');
+
+  const cab = vista === 'ativos'
+    ? `<th style="width:30px"><input type="checkbox" class="chk" id="chk-todos"></th><th>Produto</th><th style="text-align:right">Qtd</th>
+       ${mostrarValor ? '<th style="text-align:right">Valor</th>' : ''}
+       <th>Vencimento</th><th>Situação</th><th>Prazo</th><th>Sugestão</th><th></th>`
+    : `<th>Produto</th><th style="text-align:right">Qtd</th><th>Vencimento</th><th>Motivo</th><th>Baixa em</th><th></th>`;
+
+  alvo.innerHTML = `<div class="tabela"><table><thead><tr>${cab}</tr></thead><tbody>${linhas}</tbody></table></div>`;
+
+  alvo.querySelectorAll('[data-acao]').forEach(b => b.addEventListener('click', () => {
+    ({ baixa: pedirBaixa, editar, excluir, reativar, duplicar })[b.dataset.acao](b.dataset.id);
+  }));
+  alvo.querySelectorAll('[data-sel]').forEach(cb => cb.addEventListener('change', () => {
+    if (cb.checked) selecionados.add(cb.dataset.sel); else selecionados.delete(cb.dataset.sel);
+    renderSelBar();
+  }));
+  const todos = document.getElementById('chk-todos');
+  if (todos) todos.addEventListener('change', () => {
+    l.forEach(i => { if (todos.checked) selecionados.add(i.id); else selecionados.delete(i.id); });
+    renderTabela(); renderSelBar();
+  });
+}
+
+function renderSelBar(){
+  document.getElementById('selbar').classList.toggle('on', selecionados.size > 0 && vista === 'ativos');
+  document.getElementById('sel-n').textContent = selecionados.size;
+}
+
+function renderNomes(){
+  const nomes = [...new Set(S.itens.map(i => i.nome))].sort();
+  document.getElementById('lista-nomes').innerHTML = nomes.map(n => `<option value="${escapar(n)}">`).join('');
+}
+
+function render(){
+  document.getElementById('card-form').style.display = vista === 'ativos' ? '' : 'none';
+  renderHero(); renderAviso(); renderDuo(); renderChips(); renderTabela(); renderSelBar(); renderNomes();
+}
+
+// ── Eventos ──────────────────────────────────────────────────────────
+document.getElementById('btn-add').addEventListener('click', adicionar);
+['f-nome','f-qtd','f-custo','f-val'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter') adicionar();
+    if (e.key === 'Escape') { e.preventDefault(); limparForm(); }
+  });
+});
+document.getElementById('f-busca').addEventListener('input', e => { busca = e.target.value; renderTabela(); });
+document.querySelectorAll('#abas-vista button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#abas-vista button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); vista = b.dataset.vista; selecionados.clear(); mesSel = null; render();
+}));
+document.getElementById('sel-baixa').addEventListener('click', baixarLote);
+document.getElementById('sel-excluir').addEventListener('click', excluirLote);
+document.getElementById('sel-limpar').addEventListener('click', () => { selecionados.clear(); render(); });
+document.getElementById('btn-imprimir').addEventListener('click', () => {
+  const l = listaFiltrada();
+  document.getElementById('imp-cab').textContent =
+    `Lista de conferência · ${fmtData(hoje())} · ${l.length} item(ns)` +
+    (mesSel ? ' · filtro por mês' : faixaSel !== 'tudo' ? ` · ${ROTULO[faixaSel] || ''}` : '');
+  window.print();
+});
+document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') fecharModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharModal(); });
+
+document.getElementById('f-val').value = '';
+render();
+document.getElementById('f-nome').focus();
+</script>
+</body>
+</html>

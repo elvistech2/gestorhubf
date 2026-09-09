@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="../shared/marca.js"></script>
+<script src="../shared/db-storage.js" data-app="emprestimos"></script>
+<title>Empréstimos · {marca}</title>
+<link rel="stylesheet" href="../shared/ui.css">
+<style>
+:root{ --acc:#a3e635; --acc-tx:#111c02; --devo:#ff9a44; --devem:#a3e635; }
+
+.linha-cad{display:grid;grid-template-columns:1fr 1.35fr 1.65fr .55fr 1fr auto;gap:11px;align-items:end}
+@media(max-width:1000px){.linha-cad{grid-template-columns:1fr 1fr}}
+
+/* cartões de parceiro */
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(335px,1fr));gap:13px;align-items:start}
+.parc{
+  position:relative;overflow:hidden;border-radius:var(--r-m);padding:16px 18px;
+  background:linear-gradient(180deg,var(--painel-2),var(--painel));
+  border:1px solid var(--linha);
+  box-shadow:0 1px 0 rgba(255,255,255,.045) inset, 0 10px 26px rgba(0,0,0,.22);
+  transition:.17s;display:flex;flex-direction:column
+}
+.parc:hover{transform:translateY(-2px);border-color:var(--linha-2);box-shadow:0 16px 34px rgba(0,0,0,.32)}
+.parc.quitada{opacity:.6}
+.parc-topo{display:flex;align-items:center;gap:12px;margin-bottom:13px;cursor:pointer}
+.avatar{
+  width:42px;height:42px;border-radius:13px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--disp);font-size:15px;font-weight:600;letter-spacing:.5px;
+  background:linear-gradient(140deg,color-mix(in srgb,var(--acc) 32%, transparent),rgba(255,255,255,.05));
+  border:1px solid color-mix(in srgb,var(--acc) 30%, transparent);color:var(--acc)
+}
+.parc.temAtraso .avatar{background:linear-gradient(140deg,rgba(255,154,68,.3),rgba(255,255,255,.05));border-color:rgba(255,154,68,.35);color:var(--alerta)}
+.parc-nome{font-family:var(--disp);font-size:15px;font-weight:600;letter-spacing:.2px;line-height:1.25}
+.parc-tel{font-size:11px;color:var(--tx-3);margin-top:2px}
+
+/* balança visual do saldo */
+.balanca{margin-bottom:12px;cursor:pointer}
+.bal-linha{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:5px}
+.bal-linha .rot{color:var(--tx-2)}
+.bal-linha .vl{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;font-size:13px}
+.vl.devo{color:var(--devo)} .vl.devem{color:var(--devem)}
+.trilho{height:7px;border-radius:5px;background:rgba(255,255,255,.06);overflow:hidden;display:flex;margin-bottom:8px}
+.trilho i{display:block;height:100%;transition:width .4s cubic-bezier(.2,.9,.3,1)}
+.trilho i.d{background:linear-gradient(90deg,var(--devo),#ffb877)}
+.trilho i.r{background:linear-gradient(90deg,#c7f45f,var(--devem))}
+
+.compensa{
+  background:linear-gradient(100deg,rgba(139,114,240,.14),rgba(139,114,240,.04));
+  border:1px solid rgba(139,114,240,.3);border-radius:10px;padding:9px 12px;
+  font-size:11.5px;line-height:1.55;margin-bottom:11px
+}
+.compensa b{color:#a78bfa}
+.atraso-nota{font-size:11px;color:var(--alerta);margin-bottom:11px;display:flex;align-items:center;gap:6px}
+.parc-acoes{display:flex;gap:7px;margin-top:auto;padding-top:12px;border-top:1px solid var(--linha);flex-wrap:wrap}
+.parc-acoes .btn{flex:1}
+.quitada-nota{font-size:12.5px;color:var(--ok);display:flex;align-items:center;gap:7px;margin-bottom:11px}
+
+.voltar{background:none;border:none;color:var(--tx-2);cursor:pointer;font-family:var(--disp);font-size:12px;letter-spacing:.5px;padding:6px 0;margin-bottom:12px}
+.voltar:hover{color:var(--tx)}
+.det-topo{display:flex;align-items:center;justify-content:space-between;gap:13px;margin-bottom:14px;flex-wrap:wrap}
+.det-nome{font-family:var(--disp);font-size:19px;font-weight:600;letter-spacing:.3px}
+.mini-barra{height:5px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:5px;min-width:58px}
+.mini-barra i{display:block;height:100%;background:linear-gradient(90deg,var(--ok),#5eead4);border-radius:4px}
+.seta{font-family:var(--mono);font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="hero" data-glifo="🤝">
+  <div class="hero-topo">
+    <div>
+      <span class="selo">Rede de parceiras</span>
+      <h1><span class="em">🤝</span> Empréstimos</h1>
+      <div class="lead">O que saiu daqui, o que entrou, e com quem está pendente — sem depender de memória nem de papelzinho.</div>
+    </div>
+    <div class="hero-acoes">
+      <button class="btn btn-linha btn-p" id="btn-imprimir">🖨 Imprimir</button>
+      <div class="abas" id="abas-vista">
+        <button class="on" data-vista="parceiros">Por parceiro</button>
+        <button data-vista="abertos">Em aberto</button>
+        <button data-vista="historico">Histórico</button>
+      </div>
+    </div>
+  </div>
+  <div class="hero-nums" id="hero-nums"></div>
+  <div class="imp-cab" id="imp-cab"></div>
+</div>
+
+<div class="wrap">
+  <div id="aviso-topo"></div>
+
+  <div class="compor sobe-1">
+    <div class="compor-ttl">Registrar movimento <span class="dica">Enter salva e continua</span></div>
+    <div class="linha-cad">
+      <div class="campo"><label>Direção</label>
+        <select id="f-dir"><option value="emprestei">↗ Emprestei</option><option value="peguei">↙ Peguei emprestado</option></select>
+      </div>
+      <div class="campo"><label>Parceiro</label>
+        <input id="f-parc" type="text" placeholder="Nome do parceiro" list="lista-parc" autocomplete="off">
+        <datalist id="lista-parc"></datalist>
+      </div>
+      <div class="campo"><label>Produto</label><input id="f-prod" type="text" placeholder="O que foi emprestado" autocomplete="off"></div>
+      <div class="campo"><label>Qtd</label><input id="f-qtd" type="number" min="1" step="1" value="1"></div>
+      <div class="campo"><label>Data</label><input id="f-data" type="date"></div>
+      <button class="btn btn-acc" id="btn-add">＋ Registrar</button>
+    </div>
+  </div>
+
+  <div id="conteudo" class="sobe-2"></div>
+</div>
+
+<div class="modal-bg" id="modal"><div class="modal">
+  <h3 id="modal-ttl"></h3><div id="modal-corpo"></div><div class="modal-acts" id="modal-acts"></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+const CHAVE = 'emprestimos_v1';
+const DIAS_ATRASO = 15;
+
+function carregar(){
+  try {
+    const bruto = localStorage.getItem(CHAVE);
+    if (!bruto) return { movimentos: [], parceiros: [] };
+    const d = JSON.parse(bruto);
+    d.movimentos = Array.isArray(d.movimentos) ? d.movimentos : [];
+    d.parceiros = Array.isArray(d.parceiros) ? d.parceiros : [];
+    return d;
+  } catch (e) { return { movimentos: [], parceiros: [] }; }
+}
+function salvar(){ try { localStorage.setItem(CHAVE, JSON.stringify(S)); } catch (e) { toast('⚠️ ' + e.message); } }
+let S = carregar();
+
+let vista = 'parceiros', parceiroAberto = null, idNovo = null;
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function hoje(){ return new Date().toISOString().split('T')[0]; }
+function fmtData(d){ if(!d) return ''; const [a,m,x] = d.split('-'); return `${x}/${m}/${a}`; }
+function diasDesde(d){
+  const ini = new Date(d + 'T12:00:00'), ag = new Date(hoje() + 'T12:00:00');
+  return Math.round((ag - ini) / 86400000);
+}
+function escapar(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(window._tt); window._tt = setTimeout(() => t.classList.remove('on'), 2600);
+}
+function iniciais(nome){
+  const p = String(nome).trim().split(/\s+/).filter(w => w.length > 2);
+  return ((p[0] || nome)[0] + (p[1] ? p[1][0] : '')).toUpperCase();
+}
+
+function pendente(m){ return Math.max(0, m.qtd - (m.qtdDevolvida || 0)); }
+function emAberto(){ return S.movimentos.filter(m => pendente(m) > 0); }
+function atrasados(){ return emAberto().filter(m => diasDesde(m.data) > DIAS_ATRASO); }
+
+function porParceiro(){
+  const mapa = {};
+  S.movimentos.forEach(m => {
+    if (!mapa[m.parceiro]) mapa[m.parceiro] = { nome:m.parceiro, devo:0, devem:0, abertos:0, atraso:0, total:0 };
+    const g = mapa[m.parceiro];
+    g.total++;
+    const p = pendente(m);
+    if (p > 0) {
+      g.abertos++;
+      if (m.direcao === 'emprestei') g.devem += p; else g.devo += p;
+      if (diasDesde(m.data) > DIAS_ATRASO) g.atraso++;
+    }
+  });
+  return Object.values(mapa).sort((a,b) => (b.devo + b.devem) - (a.devo + a.devem) || a.nome.localeCompare(b.nome));
+}
+
+function telefoneDe(nome){
+  const p = S.parceiros.find(x => x.nome.toLowerCase() === String(nome).toLowerCase());
+  return p ? (p.telefone || '') : '';
+}
+
+// ── Registrar ────────────────────────────────────────────────────────
+function adicionar(){
+  const direcao = document.getElementById('f-dir').value;
+  const parceiro = document.getElementById('f-parc').value.trim();
+  const produto = document.getElementById('f-prod').value.trim();
+  const qtd = parseInt(document.getElementById('f-qtd').value, 10);
+  const data = document.getElementById('f-data').value || hoje();
+
+  if (!parceiro) { toast('⚠️ Informe o parceiro.'); document.getElementById('f-parc').focus(); return; }
+  if (!produto) { toast('⚠️ Informe o produto.'); document.getElementById('f-prod').focus(); return; }
+  if (!qtd || qtd <= 0) { toast('⚠️ Quantidade inválida.'); return; }
+
+  if (!S.parceiros.some(p => p.nome.toLowerCase() === parceiro.toLowerCase())) {
+    S.parceiros.push({ id: uid(), nome: parceiro, telefone: '' });
+  }
+  const id = uid();
+  S.movimentos.push({ id, direcao, parceiro, produto, qtd, qtdDevolvida:0, data, obs:'', criadoEm: hoje() });
+  salvar();
+  idNovo = id;
+  document.getElementById('f-prod').value = '';
+  document.getElementById('f-qtd').value = '1';
+  document.getElementById('f-prod').focus();
+  toast(direcao === 'emprestei' ? `✓ Emprestado para ${parceiro}` : `✓ Pego de ${parceiro}`);
+  render();
+  setTimeout(() => { idNovo = null; }, 1900);
+}
+
+// ── Devolução ────────────────────────────────────────────────────────
+function pedirDevolucao(id){
+  const m = S.movimentos.find(x => x.id === id); if (!m) return;
+  const falta = pendente(m);
+  const quem = m.direcao === 'emprestei' ? `${escapar(m.parceiro)} devolveu` : 'Você devolveu';
+  abrirModal('Registrar devolução', `
+    <p>${escapar(m.produto)} · ${escapar(m.parceiro)}<br>Faltam <strong>${falta}</strong> de ${m.qtd} unidade(s).</p>
+    <div class="campo"><label>${quem} quantas unidades?</label>
+      <input id="d-qtd" type="number" min="1" max="${falta}" value="${falta}"></div>`,
+    [
+      { txt:'Cancelar', cls:'btn-linha', fn: fecharModal },
+      { txt:'Confirmar', cls:'btn-acc', fn:() => {
+          const q = parseInt(document.getElementById('d-qtd').value, 10);
+          if (!q || q <= 0 || q > falta) { toast('⚠️ Quantidade inválida.'); return; }
+          m.qtdDevolvida = (m.qtdDevolvida || 0) + q;
+          if (pendente(m) === 0) m.dataQuitacao = hoje();
+          salvar(); fecharModal(); render();
+          toast(pendente(m) === 0 ? '✓ Movimento quitado' : `✓ ${q} devolvida(s), faltam ${pendente(m)}`);
+        } }
+    ]);
+  setTimeout(() => document.getElementById('d-qtd')?.select(), 60);
+}
+
+function desfazerDevolucao(id){
+  const m = S.movimentos.find(x => x.id === id); if (!m) return;
+  m.qtdDevolvida = 0; delete m.dataQuitacao;
+  salvar(); render(); toast('Devoluções desfeitas');
+}
+
+function excluir(id){
+  const m = S.movimentos.find(x => x.id === id); if (!m) return;
+  abrirModal('Excluir movimento', `<p>Excluir <strong>${escapar(m.produto)}</strong> de ${escapar(m.parceiro)}? Não dá para desfazer.</p>`,
+    [
+      { txt:'Cancelar', cls:'btn-linha', fn: fecharModal },
+      { txt:'Excluir', cls:'btn-perigo', fn:() => {
+          S.movimentos = S.movimentos.filter(x => x.id !== id);
+          salvar(); fecharModal(); render(); toast('Movimento excluído');
+        } }
+    ]);
+}
+
+function editarParceiro(nome){
+  const p = S.parceiros.find(x => x.nome === nome) || { nome, telefone:'' };
+  abrirModal('Dados do parceiro', `
+    <div class="campo" style="margin-bottom:11px"><label>Nome</label><input id="p-nome" type="text" value="${escapar(p.nome)}"></div>
+    <div class="campo"><label>WhatsApp / telefone</label><input id="p-tel" type="text" value="${escapar(p.telefone || '')}" placeholder="(00) 00000-0000"></div>
+    <p style="margin-top:11px;margin-bottom:0;font-size:11.5px">Com o telefone preenchido, a cobrança abre direto no WhatsApp.</p>`,
+    [
+      { txt:'Cancelar', cls:'btn-linha', fn: fecharModal },
+      { txt:'Salvar', cls:'btn-acc', fn:() => {
+          const novoNome = document.getElementById('p-nome').value.trim();
+          const tel = document.getElementById('p-tel').value.trim();
+          if (!novoNome) { toast('⚠️ Informe o nome.'); return; }
+          const alvo = S.parceiros.find(x => x.nome === nome);
+          if (alvo) { alvo.nome = novoNome; alvo.telefone = tel; }
+          else S.parceiros.push({ id: uid(), nome: novoNome, telefone: tel });
+          if (novoNome !== nome) {
+            S.movimentos.forEach(m => { if (m.parceiro === nome) m.parceiro = novoNome; });
+            if (parceiroAberto === nome) parceiroAberto = novoNome;
+          }
+          salvar(); fecharModal(); render(); toast('✓ Parceiro atualizado');
+        } }
+    ]);
+}
+
+// ── Cobrança ─────────────────────────────────────────────────────────
+function montarMensagem(nome){
+  const meus = S.movimentos.filter(m => m.parceiro === nome && pendente(m) > 0 && m.direcao === 'emprestei');
+  const deles = S.movimentos.filter(m => m.parceiro === nome && pendente(m) > 0 && m.direcao === 'peguei');
+  const item = m => `• ${pendente(m)}x ${m.produto} (desde ${fmtData(m.data)})`;
+  let t = 'Oi! Tudo bem?\n';
+  if (meus.length) t += '\nPassando pra lembrar do que emprestamos e ainda está com vocês:\n' + meus.map(item).join('\n') + '\n';
+  if (deles.length) t += '\nE do que pegamos com vocês, para acertarmos também:\n' + deles.map(item).join('\n') + '\n';
+  if (meus.length && deles.length) t += '\nSe preferirem, dá pra abater um no outro e acertar só a diferença.\n';
+  t += '\nQualquer coisa é só chamar. Obrigado!';
+  return t;
+}
+function soDigitos(t){ return String(t || '').replace(/\D/g, ''); }
+function linkZap(tel, texto){
+  let n = soDigitos(tel);
+  if (!n) return null;
+  if (n.length <= 11) n = '55' + n;
+  return `https://wa.me/${n}?text=${encodeURIComponent(texto)}`;
+}
+function copiarTexto(txt){
+  const ta = document.createElement('textarea');
+  ta.value = txt; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  let ok = false; try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  document.body.removeChild(ta); return ok;
+}
+function abrirCobranca(nome){
+  if (!S.movimentos.some(m => m.parceiro === nome && pendente(m) > 0)) { toast('Nada pendente com esse parceiro.'); return; }
+  const tel = telefoneDe(nome);
+  const msg = montarMensagem(nome);
+  abrirModal(`Mensagem para ${nome}`, `
+    <p>Texto montado a partir do que está pendente. Edite à vontade antes de enviar.</p>
+    <textarea id="c-txt">${escapar(msg)}</textarea>
+    ${tel ? '' : '<p style="margin-top:11px;margin-bottom:0;font-size:11.5px;color:var(--tx-3)">Sem telefone cadastrado — dá para copiar o texto. Para abrir o WhatsApp direto, informe o número em “Editar contato”.</p>'}`,
+    [
+      { txt:'Fechar', cls:'btn-linha', fn: fecharModal },
+      { txt:'📋 Copiar', cls:'btn-linha', fn:() => {
+          toast(copiarTexto(document.getElementById('c-txt').value) ? '✓ Mensagem copiada' : '⚠️ Não consegui copiar');
+        } },
+      ...(tel ? [{ txt:'Abrir WhatsApp', cls:'btn-zap', fn:() => {
+          const url = linkZap(tel, document.getElementById('c-txt').value);
+          if (!url) { toast('⚠️ Telefone inválido.'); return; }
+          const ok = window.api?.abrirWhatsApp ? window.api.abrirWhatsApp(url) : false;
+          toast(ok ? '✓ Abrindo WhatsApp' : '⚠️ Não consegui abrir');
+        } }] : [])
+    ]);
+}
+
+// ── Modal ────────────────────────────────────────────────────────────
+function abrirModal(titulo, corpo, acoes){
+  document.getElementById('modal-ttl').textContent = titulo;
+  document.getElementById('modal-corpo').innerHTML = corpo;
+  const box = document.getElementById('modal-acts');
+  box.innerHTML = '';
+  acoes.forEach(a => {
+    const b = document.createElement('button');
+    b.className = 'btn ' + a.cls; b.textContent = a.txt;
+    b.addEventListener('click', a.fn);
+    box.appendChild(b);
+  });
+  document.getElementById('modal').classList.add('on');
+}
+function fecharModal(){ document.getElementById('modal').classList.remove('on'); }
+
+// ── Render ───────────────────────────────────────────────────────────
+function renderHero(){
+  const ab = emAberto();
+  const devo = ab.filter(m => m.direcao === 'peguei').reduce((a,m) => a + pendente(m), 0);
+  const devem = ab.filter(m => m.direcao === 'emprestei').reduce((a,m) => a + pendente(m), 0);
+  const lista = porParceiro();
+  document.getElementById('hero-nums').innerHTML = `
+    <div class="hnum alerta"><div class="r">Você deve</div><div class="n">${devo}</div><div class="s">unidades a devolver</div></div>
+    <div class="hnum acc"><div class="r">Devem a você</div><div class="n">${devem}</div><div class="s">unidades a receber</div></div>
+    <div class="hnum info"><div class="r">Com pendência</div><div class="n">${lista.filter(p => p.abertos > 0).length}</div><div class="s">de ${lista.length} parceira(s)</div></div>
+    <div class="hnum perigo"><div class="r">Atrasadas</div><div class="n">${atrasados().length}</div><div class="s">mais de ${DIAS_ATRASO} dias</div></div>`;
+}
+
+function renderAviso(){
+  const el = document.getElementById('aviso-topo');
+  const atr = atrasados();
+  if (atr.length) {
+    const velho = atr.reduce((a,m) => diasDesde(m.data) > diasDesde(a.data) ? m : a);
+    el.innerHTML = `<div class="aviso alerta"><span class="ico">⏰</span><div><b>${atr.length} pendência(s) com mais de ${DIAS_ATRASO} dias</b> sem acerto.
+      <span class="sub">A mais antiga é ${escapar(velho.produto)} com ${escapar(velho.parceiro)}, há ${diasDesde(velho.data)} dias. A mensagem de cobrança já vem pronta.</span></div></div>`;
+  } else if (!emAberto().length && S.movimentos.length) {
+    el.innerHTML = `<div class="aviso calmo"><span class="ico">✓</span><div>Nenhuma pendência aberta. <b>Tudo acertado</b> com as parceiras.</div></div>`;
+  } else el.innerHTML = '';
+}
+
+function renderParceiros(){
+  const lista = porParceiro();
+  if (!lista.length) {
+    return `<div class="painel"><div class="vazio"><div class="glifo">🤝</div>
+      <div class="tt">Nenhum movimento ainda</div>
+      <div class="ds">Registre acima o primeiro empréstimo. O parceiro entra sozinho na lista e o saldo se monta a partir daí.</div></div></div>`;
+  }
+  return '<div class="grade">' + lista.map(p => {
+    const compensa = p.devo > 0 && p.devem > 0;
+    const sobra = Math.abs(p.devem - p.devo);
+    const tot = p.devo + p.devem;
+    const pctD = tot ? (p.devo / tot) * 100 : 0;
+    const pctR = tot ? (p.devem / tot) * 100 : 0;
+    return `<div class="parc ${p.abertos ? '' : 'quitada'} ${p.atraso ? 'temAtraso' : ''}">
+      <div class="parc-topo" data-parc="${escapar(p.nome)}">
+        <div class="avatar">${escapar(iniciais(p.nome))}</div>
+        <div style="min-width:0;flex:1">
+          <div class="parc-nome">${escapar(p.nome)}</div>
+          ${telefoneDe(p.nome) ? `<div class="parc-tel">${escapar(telefoneDe(p.nome))}</div>` : ''}
+        </div>
+        <span class="etq ${p.abertos ? 'etq-info' : 'etq-ok'}">${p.abertos ? p.abertos + ' aberto(s)' : 'quitado'}</span>
+      </div>
+      ${p.abertos ? `<div class="balanca" data-parc="${escapar(p.nome)}">
+          ${p.devo ? `<div class="bal-linha"><span class="rot">Você deve</span><span class="vl devo">${p.devo} un.</span></div>` : ''}
+          ${p.devem ? `<div class="bal-linha"><span class="rot">Ela deve a você</span><span class="vl devem">${p.devem} un.</span></div>` : ''}
+          <div class="trilho"><i class="d" style="width:${pctD}%"></i><i class="r" style="width:${pctR}%"></i></div>
+        </div>`
+        : `<div class="quitada-nota">✓ Nada pendente · ${p.total} movimento(s) no histórico</div>`}
+      ${compensa ? `<div class="compensa">🔄 Dá pra <b>compensar</b>: abatendo um no outro, ${sobra === 0
+          ? 'fica <b>tudo quitado</b>.' : `sobra ${sobra} un. ${p.devem > p.devo ? 'a receber' : 'a devolver'}.`}</div>` : ''}
+      ${p.atraso ? `<div class="atraso-nota">⏰ ${p.atraso} pendência(s) há mais de ${DIAS_ATRASO} dias</div>` : ''}
+      <div class="parc-acoes">
+        ${p.abertos ? `<button class="btn btn-zap btn-p" data-cobrar="${escapar(p.nome)}">💬 Cobrar</button>` : ''}
+        <button class="btn btn-linha btn-p" data-abrir="${escapar(p.nome)}">${p.abertos ? 'Ver movimentos' : 'Ver histórico'}</button>
+      </div>
+    </div>`; }).join('') + '</div>';
+}
+
+function linhasMovimentos(lista, mostrarParceiro){
+  if (!lista.length) {
+    return `<div class="painel"><div class="vazio"><div class="glifo">📋</div>
+      <div class="tt">Nada por aqui</div><div class="ds">Quando houver movimento nesta situação, ele aparece nesta lista.</div></div></div>`;
+  }
+  const linhas = lista.slice().sort((a,b) => b.data.localeCompare(a.data)).map(m => {
+    const p = pendente(m);
+    const atrasado = p > 0 && diasDesde(m.data) > DIAS_ATRASO;
+    const pct = Math.round(((m.qtdDevolvida || 0) / m.qtd) * 100);
+    const etq = p === 0 ? '<span class="etq etq-ok">quitado</span>'
+      : (m.qtdDevolvida > 0 ? `<span class="etq etq-info">faltam ${p}</span>`
+        : `<span class="etq ${m.direcao === 'emprestei' ? 'etq-acc' : 'etq-alerta'}">${m.direcao === 'emprestei' ? 'a receber' : 'a devolver'}</span>`);
+    return `<tr class="${m.id === idNovo ? 'novo' : ''}">
+      <td><span class="seta" style="color:${m.direcao === 'emprestei' ? 'var(--devem)' : 'var(--devo)'}">${m.direcao === 'emprestei' ? '↗' : '↙'}</span>
+        <span style="font-size:12px;color:var(--tx-2)">${m.direcao === 'emprestei' ? 'emprestei' : 'peguei'}</span></td>
+      ${mostrarParceiro ? `<td>${escapar(m.parceiro)}</td>` : ''}
+      <td style="font-weight:600">${escapar(m.produto)}</td>
+      <td class="num">${m.qtdDevolvida ? `${m.qtdDevolvida}/${m.qtd}` : m.qtd}
+        ${m.qtdDevolvida ? `<div class="mini-barra"><i style="width:${pct}%"></i></div>` : ''}</td>
+      <td class="num" style="text-align:left">${fmtData(m.data)}${atrasado ? ` <span class="etq etq-perigo">${diasDesde(m.data)}d</span>` : ''}</td>
+      <td>${etq}</td>
+      <td><div class="acoes">
+        ${p > 0 ? `<button class="btn btn-acc btn-p" data-acao="devolver" data-id="${m.id}">Devolução</button>` : ''}
+        ${m.qtdDevolvida > 0 ? `<button class="btn-icone" data-acao="desfazer" data-id="${m.id}" title="Desfazer devoluções">↺</button>` : ''}
+        <button class="btn-icone" data-acao="excluir" data-id="${m.id}" style="color:var(--perigo)">✕</button>
+      </div></td></tr>`;
+  }).join('');
+  return `<div class="tabela"><table><thead><tr>
+      <th>Direção</th>${mostrarParceiro ? '<th>Parceiro</th>' : ''}<th>Produto</th>
+      <th style="text-align:right">Qtd</th><th>Data</th><th>Situação</th><th></th>
+    </tr></thead><tbody>${linhas}</tbody></table></div>`;
+}
+
+function render(){
+  renderHero(); renderAviso();
+  const alvo = document.getElementById('conteudo');
+
+  if (parceiroAberto) {
+    const movs = S.movimentos.filter(m => m.parceiro === parceiroAberto);
+    const tel = telefoneDe(parceiroAberto);
+    const temPend = movs.some(m => pendente(m) > 0);
+    alvo.innerHTML = `<button class="voltar" id="btn-voltar">‹ Todos os parceiros</button>
+      <div class="det-topo">
+        <div style="display:flex;align-items:center;gap:13px">
+          <div class="avatar">${escapar(iniciais(parceiroAberto))}</div>
+          <div><div class="det-nome">${escapar(parceiroAberto)}</div>
+          ${tel ? `<div class="parc-tel">${escapar(tel)}</div>` : ''}</div>
+        </div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap">
+          ${temPend ? `<button class="btn btn-zap btn-p" data-cobrar="${escapar(parceiroAberto)}">💬 Cobrar</button>` : ''}
+          <button class="btn btn-linha btn-p" id="btn-edit-parc">✎ Editar contato</button>
+        </div>
+      </div>` + linhasMovimentos(movs, false);
+    document.getElementById('btn-voltar').addEventListener('click', () => { parceiroAberto = null; render(); });
+    document.getElementById('btn-edit-parc').addEventListener('click', () => editarParceiro(parceiroAberto));
+  } else if (vista === 'parceiros') {
+    alvo.innerHTML = renderParceiros();
+    alvo.querySelectorAll('[data-parc]').forEach(el => el.addEventListener('click', () => { parceiroAberto = el.dataset.parc; render(); }));
+    alvo.querySelectorAll('[data-abrir]').forEach(el => el.addEventListener('click', e => {
+      e.stopPropagation(); parceiroAberto = el.dataset.abrir; render();
+    }));
+  } else if (vista === 'abertos') {
+    alvo.innerHTML = linhasMovimentos(emAberto(), true);
+  } else {
+    alvo.innerHTML = linhasMovimentos(S.movimentos.filter(m => pendente(m) === 0), true);
+  }
+
+  alvo.querySelectorAll('[data-cobrar]').forEach(el => el.addEventListener('click', e => {
+    e.stopPropagation(); abrirCobranca(el.dataset.cobrar);
+  }));
+  alvo.querySelectorAll('[data-acao]').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation();
+    ({ devolver: pedirDevolucao, desfazer: desfazerDevolucao, excluir })[b.dataset.acao](b.dataset.id);
+  }));
+
+  document.getElementById('lista-parc').innerHTML = S.parceiros.map(p => `<option value="${escapar(p.nome)}">`).join('');
+}
+
+// ── Eventos ──────────────────────────────────────────────────────────
+document.getElementById('btn-add').addEventListener('click', adicionar);
+['f-parc','f-prod','f-qtd','f-data'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') adicionar(); });
+});
+document.querySelectorAll('#abas-vista button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#abas-vista button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); vista = b.dataset.vista; parceiroAberto = null; render();
+}));
+document.getElementById('btn-imprimir').addEventListener('click', () => {
+  document.getElementById('imp-cab').textContent =
+    (parceiroAberto ? `Extrato de ${parceiroAberto}` : vista === 'abertos' ? 'Pendências em aberto'
+     : vista === 'historico' ? 'Histórico quitado' : 'Resumo por parceiro') + ` · ${fmtData(hoje())}`;
+  window.print();
+});
+document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') fecharModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharModal(); });
+
+document.getElementById('f-data').value = hoje();
+render();
+</script>
+</body>
+</html>

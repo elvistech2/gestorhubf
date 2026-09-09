@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="../shared/marca.js"></script>
+<script src="../shared/db-storage.js" data-app="caixa"></script>
+<title>Caixa · {marca}</title>
+<link rel="stylesheet" href="../shared/ui.css">
+<style>
+:root{ --acc:#e0b13a; --acc-tx:#1c1200; }
+
+.duas{display:grid;grid-template-columns:1.05fr 1fr;gap:14px;align-items:start}
+@media(max-width:860px){.duas{grid-template-columns:1fr}}
+
+/* ── contagem de cédulas e moedas ── */
+.ced{
+  display:grid;grid-template-columns:96px 1fr 104px;gap:10px;align-items:center;
+  padding:7px 10px;border-radius:10px;margin-bottom:5px;
+  background:rgba(255,255,255,.025);border:1px solid var(--linha);
+  border-left:3px solid var(--nota,#555);transition:.14s
+}
+.ced:hover{background:rgba(255,255,255,.055)}
+.ced.tem{background:color-mix(in srgb, var(--nota) 9%, transparent);border-color:color-mix(in srgb, var(--nota) 30%, transparent)}
+.ced-val{font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--nota,#aaa)}
+.ced input{
+  text-align:center;font-family:var(--mono);font-size:14px;font-weight:600;
+  padding:7px 8px;background:rgba(2,5,12,.55)
+}
+.ced-sub{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;text-align:right;color:var(--tx-2)}
+.ced.tem .ced-sub{color:var(--tx)}
+.grupo-tit{
+  font-family:var(--disp);font-size:10px;letter-spacing:1.1px;text-transform:uppercase;
+  color:var(--tx-3);margin:14px 0 8px;display:flex;align-items:center;gap:9px
+}
+.grupo-tit::after{content:'';flex:1;height:1px;background:var(--linha)}
+.total-cont{
+  display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:14px;
+  padding-top:13px;border-top:1px solid var(--linha-2)
+}
+.total-cont .r{font-family:var(--disp);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--tx-2)}
+.total-cont .v{font-family:var(--mono);font-size:24px;font-weight:600;letter-spacing:-.6px;color:var(--acc)}
+
+/* ── conferência ── */
+.confere{display:flex;flex-direction:column;gap:9px}
+.cf{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--linha);font-size:13px}
+.cf:last-of-type{border-bottom:none}
+.cf .r{color:var(--tx-2);display:flex;align-items:center;gap:8px}
+.cf .v{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums}
+.cf .v.mais{color:var(--ok)} .cf .v.menos{color:var(--perigo)}
+
+.dif{
+  margin-top:12px;border-radius:var(--r-m);padding:15px 17px;text-align:center;
+  border:1px solid var(--linha-2);background:rgba(255,255,255,.03)
+}
+.dif .r{font-family:var(--disp);font-size:10.5px;letter-spacing:1.1px;text-transform:uppercase;color:var(--tx-3);margin-bottom:5px}
+.dif .v{font-family:var(--mono);font-size:29px;font-weight:600;letter-spacing:-1px;line-height:1}
+.dif .c{font-size:11.5px;color:var(--tx-2);margin-top:7px;line-height:1.5}
+.dif.certo{border-color:rgba(0,212,160,.4);background:rgba(0,212,160,.08)} .dif.certo .v{color:var(--ok)}
+.dif.sobra{border-color:rgba(77,184,255,.4);background:rgba(77,184,255,.08)} .dif.sobra .v{color:var(--info)}
+.dif.falta{border-color:rgba(255,79,106,.42);background:rgba(255,79,106,.09)} .dif.falta .v{color:var(--perigo)}
+
+/* ── movimentos ── */
+.mov-bts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:13px}
+.mv{
+  display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;
+  background:rgba(255,255,255,.03);border:1px solid var(--linha);
+  border-left:3px solid var(--c,#666);margin-bottom:6px;font-size:12.5px
+}
+.mv:last-child{margin-bottom:0}
+.mv .h{font-family:var(--mono);font-size:10.5px;color:var(--tx-3);min-width:38px}
+.mv .d{flex:1;min-width:0}
+.mv .d .o{font-size:11px;color:var(--tx-3);display:block;margin-top:1px}
+.mv .val{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums}
+.mv-lista{max-height:280px;overflow-y:auto;padding-right:3px}
+
+.aberto-linha{display:grid;grid-template-columns:1fr auto;gap:11px;align-items:end;margin-bottom:13px}
+.fechado-selo{
+  display:flex;align-items:center;gap:11px;background:rgba(0,212,160,.08);
+  border:1px solid rgba(0,212,160,.28);border-radius:var(--r-m);padding:13px 16px;
+  font-size:13px;margin-bottom:14px;line-height:1.5
+}
+.fechado-selo b{color:var(--ok)}
+</style>
+</head>
+<body>
+
+<div class="hero" data-glifo="💵">
+  <div class="hero-topo">
+    <div>
+      <span class="selo">Conferência</span>
+      <h1><span class="em">💵</span> Caixa</h1>
+      <div class="lead">Conte as notas, registre sangrias e reforços, e veja na hora se bate.</div>
+    </div>
+    <div class="hero-acoes">
+      <button class="btn btn-linha btn-p" id="btn-imprimir">🖨 Imprimir</button>
+      <div class="abas" id="abas-vista">
+        <button class="on" data-vista="hoje">Caixa de hoje</button>
+        <button data-vista="grafico">Gráfico</button>
+        <button data-vista="historico">Histórico</button>
+      </div>
+    </div>
+  </div>
+  <div class="hero-nums" id="hero-nums"></div>
+  <div class="imp-cab" id="imp-cab"></div>
+</div>
+
+<div class="wrap">
+  <div id="conteudo" class="sobe-1"></div>
+</div>
+
+<div class="modal-bg" id="modal"><div class="modal">
+  <h3 id="modal-ttl"></h3><div id="modal-corpo"></div><div class="modal-acts" id="modal-acts"></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+const CHAVE = 'caixa_v1';
+
+// cores aproximadas das cédulas reais — ajuda a bater o olho e achar a linha
+const CEDULAS = [
+  { v:200, cor:'#9ca3af', rot:'R$ 200' },
+  { v:100, cor:'#60a5fa', rot:'R$ 100' },
+  { v:50,  cor:'#d9a066', rot:'R$ 50'  },
+  { v:20,  cor:'#fbbf24', rot:'R$ 20'  },
+  { v:10,  cor:'#f87171', rot:'R$ 10'  },
+  { v:5,   cor:'#c084fc', rot:'R$ 5'   },
+  { v:2,   cor:'#67e8f9', rot:'R$ 2'   }
+];
+const MOEDAS = [
+  { v:1,    cor:'#e0b13a', rot:'R$ 1,00'  },
+  { v:0.50, cor:'#cbd5e1', rot:'R$ 0,50'  },
+  { v:0.25, cor:'#e0b13a', rot:'R$ 0,25'  },
+  { v:0.10, cor:'#e0b13a', rot:'R$ 0,10'  },
+  { v:0.05, cor:'#cbd5e1', rot:'R$ 0,05'  }
+];
+
+function carregar(){
+  try {
+    const b = localStorage.getItem(CHAVE);
+    if (!b) return { dias: [] };
+    const d = JSON.parse(b);
+    d.dias = Array.isArray(d.dias) ? d.dias : [];
+    return d;
+  } catch (e) { return { dias: [] }; }
+}
+function salvar(){ try { localStorage.setItem(CHAVE, JSON.stringify(S)); } catch (e) { toast('⚠️ ' + e.message); } }
+let S = carregar();
+
+let vista = 'hoje';
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function hoje(){ return new Date().toISOString().split('T')[0]; }
+function agoraHora(){ return new Date().toTimeString().slice(0,5); }
+function fmtData(d){ if(!d) return ''; const [a,m,x] = d.split('-'); return `${x}/${m}/${a}`; }
+function brl(v){ return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0); }
+function escapar(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(window._tt); window._tt = setTimeout(() => t.classList.remove('on'), 2600);
+}
+
+function diaDe(data){ return S.dias.find(d => d.data === data); }
+function ultimoFechado(){
+  return [...S.dias].filter(d => d.fechadoEm).sort((a,b) => b.data.localeCompare(a.data))[0] || null;
+}
+function diaHoje(cria){
+  let d = diaDe(hoje());
+  if (!d && cria) {
+    // o que sobrou contado no último fechamento vira o fundo de troco de hoje
+    const ult = ultimoFechado();
+    const abertura = ult ? (ult.saldoFinal !== undefined ? ult.saldoFinal : contado(ult)) : 0;
+    d = { data: hoje(), abertura, movimentos: [], contagem: {}, fechadoEm: null,
+          ...(ult ? { herdadoDe: ult.data } : {}) };
+    S.dias.push(d); salvar();
+  }
+  return d;
+}
+
+const somaMov = (d, tipo) => (d.movimentos||[]).filter(m => m.tipo === tipo).reduce((a,m) => a + (m.valor||0), 0);
+function esperado(d){
+  return (d.abertura||0) + somaMov(d,'entrada') + somaMov(d,'aditivo') - somaMov(d,'sangria');
+}
+function contado(d){
+  let t = 0;
+  [...CEDULAS, ...MOEDAS].forEach(c => { t += (Number(d.contagem?.[c.v]) || 0) * c.v; });
+  return Math.round(t * 100) / 100;
+}
+function diferenca(d){ return Math.round((contado(d) - esperado(d)) * 100) / 100; }
+function temContagem(d){ return Object.values(d.contagem||{}).some(q => Number(q) > 0); }
+
+// ── Movimentos ───────────────────────────────────────────────────────
+const ROT_MOV = {
+  entrada:{ nome:'Entrada', cor:'var(--ok)',      ic:'↓', ajuda:'Dinheiro que entrou no caixa (venda em espécie).' },
+  sangria:{ nome:'Sangria', cor:'var(--perigo)',  ic:'↑', ajuda:'Dinheiro retirado do caixa (leva pro cofre, banco, pagamento).' },
+  aditivo:{ nome:'Reforço', cor:'var(--info)',    ic:'+', ajuda:'Dinheiro colocado no caixa (troco, suprimento).' }
+};
+
+function novoMov(tipo){
+  const d = diaHoje(true);
+  if (d.fechadoEm) { toast('⚠️ Caixa fechado. Reabra para lançar.'); return; }
+  const r = ROT_MOV[tipo];
+  abrirModal(`${r.nome}`, `
+    <p>${r.ajuda}</p>
+    <div class="campo" style="margin-bottom:11px"><label>Valor</label>
+      <input id="m-val" type="number" min="0" step="0.01" placeholder="0,00"></div>
+    <div class="campo"><label>Observação <span class="opc">(opcional)</span></label>
+      <input id="m-obs" type="text" placeholder="Ex: retirada para o banco"></div>`,
+    [
+      { txt:'Cancelar', cls:'btn-linha', fn: fecharModal },
+      { txt:`Lançar ${r.nome.toLowerCase()}`, cls:'btn-acc', fn:() => {
+          const v = parseFloat(document.getElementById('m-val').value);
+          if (!v || v <= 0) { toast('⚠️ Valor inválido.'); return; }
+          d.movimentos.push({ id: uid(), tipo, valor: Math.round(v*100)/100,
+            obs: document.getElementById('m-obs').value.trim(), hora: agoraHora() });
+          salvar(); fecharModal(); render(); toast(`✓ ${r.nome} de ${brl(v)}`);
+        } }
+    ]);
+  setTimeout(() => document.getElementById('m-val')?.focus(), 60);
+}
+
+function apagarMov(id){
+  const d = diaHoje(false); if (!d || d.fechadoEm) return;
+  d.movimentos = d.movimentos.filter(m => m.id !== id);
+  salvar(); render(); toast('Lançamento apagado');
+}
+
+// Gravar a cada tecla travava a digitação (cada tecla ia ao banco e disparava
+// backup). Agora o número na tela atualiza na hora e a gravação sai depois
+// que você para de digitar.
+let timerGravar = null;
+function gravarDepois(){
+  clearTimeout(timerGravar);
+  timerGravar = setTimeout(() => { salvar(); }, 450);
+}
+function gravarJa(){
+  clearTimeout(timerGravar);
+  salvar();
+}
+
+function mudarAbertura(v){
+  const d = diaHoje(true);
+  if (d.fechadoEm) return;
+  d.abertura = Math.round((parseFloat(v)||0)*100)/100;
+  atualizarNumeros(); gravarDepois();
+}
+
+function mudarContagem(valor, qtd){
+  const d = diaHoje(true);
+  if (d.fechadoEm) return;
+  d.contagem = d.contagem || {};
+  const q = Math.max(0, parseInt(qtd,10) || 0);
+  if (q) d.contagem[valor] = q; else delete d.contagem[valor];
+  atualizarNumeros(); gravarDepois();
+}
+
+function zerarContagem(){
+  const d = diaHoje(true); if (d.fechadoEm) return;
+  abrirModal('Zerar contagem', '<p>Limpar todas as quantidades de notas e moedas? Os movimentos do dia continuam.</p>',
+    [
+      { txt:'Voltar', cls:'btn-linha', fn: fecharModal },
+      { txt:'Zerar', cls:'btn-perigo', fn:() => { d.contagem = {}; salvar(); fecharModal(); render(); toast('Contagem zerada'); } }
+    ]);
+}
+
+function fecharCaixa(){
+  gravarJa();   // garante que a última digitação entrou antes de travar o dia
+  const d = diaHoje(true);
+  if (!temContagem(d)) { toast('⚠️ Conte o dinheiro antes de fechar.'); return; }
+  const dif = diferenca(d);
+  const txt = dif === 0 ? 'A contagem bateu certinho com o esperado.'
+    : dif > 0 ? `Sobrou ${brl(dif)} em relação ao esperado.`
+    : `Faltou ${brl(Math.abs(dif))} em relação ao esperado.`;
+  abrirModal('Fechar caixa do dia',
+    `<p>Contado: <strong>${brl(contado(d))}</strong> · Esperado: <strong>${brl(esperado(d))}</strong><br>${txt}</p>
+     <p style="margin-bottom:0">Depois de fechado, o dia fica travado — mas dá para reabrir se precisar corrigir.</p>`,
+    [
+      { txt:'Voltar', cls:'btn-linha', fn: fecharModal },
+      { txt:'Fechar caixa', cls:'btn-acc', fn:() => {
+          d.fechadoEm = new Date().toISOString();
+          d.difFechamento = dif;
+          d.saldoFinal = contado(d);   // vira o fundo de troco do próximo dia
+          salvar(); fecharModal(); render();
+          toast(`✓ Caixa fechado${dif === 0 ? ', bateu certinho' : ''} · ${brl(d.saldoFinal)} passa para o próximo dia`);
+        } }
+    ]);
+}
+function reabrirCaixa(){
+  const d = diaHoje(false); if (!d) return;
+  d.fechadoEm = null; delete d.difFechamento;
+  salvar(); render(); toast('Caixa reaberto');
+}
+
+// ── Modal ────────────────────────────────────────────────────────────
+function abrirModal(titulo, corpo, acoes){
+  document.getElementById('modal-ttl').textContent = titulo;
+  document.getElementById('modal-corpo').innerHTML = corpo;
+  const box = document.getElementById('modal-acts');
+  box.innerHTML = '';
+  acoes.forEach(a => {
+    const b = document.createElement('button');
+    b.className = 'btn ' + a.cls; b.textContent = a.txt;
+    b.addEventListener('click', a.fn);
+    box.appendChild(b);
+  });
+  document.getElementById('modal').classList.add('on');
+}
+function fecharModal(){ document.getElementById('modal').classList.remove('on'); }
+
+// ── Render ───────────────────────────────────────────────────────────
+function renderHero(){
+  const d = diaHoje(false);
+  if (!d) {
+    document.getElementById('hero-nums').innerHTML =
+      `<div class="hnum acc"><div class="r">Caixa de hoje</div><div class="n">—</div><div class="s">ainda não aberto</div></div>`;
+    return;
+  }
+  const dif = diferenca(d), cont = contado(d);
+  const cls = !temContagem(d) ? 'acc' : dif === 0 ? 'ok' : dif > 0 ? 'info' : 'perigo';
+  document.getElementById('hero-nums').innerHTML = `
+    <div class="hnum atencao"><div class="r">Esperado</div><div class="n">${brl(esperado(d))}</div><div class="s">abertura + entradas − sangrias</div></div>
+    <div class="hnum acc"><div class="r">Contado</div><div class="n">${brl(cont)}</div><div class="s">${temContagem(d) ? 'soma das notas' : 'não contado ainda'}</div></div>
+    <div class="hnum ${cls}"><div class="r">Diferença</div><div class="n">${temContagem(d) ? (dif > 0 ? '+' : '') + brl(dif) : '—'}</div>
+      <div class="s">${!temContagem(d) ? 'conte para saber' : dif === 0 ? 'bateu certinho' : dif > 0 ? 'sobrando' : 'faltando'}</div></div>
+    <div class="hnum ok"><div class="r">Entrou hoje</div><div class="n">${brl(somaMov(d,'entrada'))}</div><div class="s">${(d.movimentos||[]).filter(m=>m.tipo==='entrada').length} lançamento(s)</div></div>`;
+}
+
+function linhaCedula(c, d, moeda){
+  const q = Number(d.contagem?.[c.v]) || 0;
+  return `<div class="ced ${q ? 'tem' : ''}" style="--nota:${c.cor}">
+    <span class="ced-val">${c.rot}</span>
+    <input type="number" min="0" step="1" value="${q || ''}" placeholder="0"
+      data-ced="${c.v}" ${d.fechadoEm ? 'disabled' : ''}>
+    <span class="ced-sub">${q ? brl(q * c.v) : '—'}</span>
+  </div>`;
+}
+
+/* ══════════ GRÁFICO ══════════
+   SVG na mão: nada de biblioteca, o programa roda offline. */
+let periodoGrafico = 30;
+
+function serieDias(n){
+  const corte = new Date(); corte.setDate(corte.getDate() - (n - 1));
+  const de = corte.toISOString().split('T')[0];
+  return S.dias
+    .filter(d => d.data >= de && (d.fechadoEm || (d.movimentos || []).length || temContagem(d)))
+    .sort((a,b) => a.data.localeCompare(b.data));
+}
+function brlCurto(v){
+  const a = Math.abs(v);
+  if (a >= 1000) return (v < 0 ? '-' : '') + (a/1000).toFixed(1).replace('.', ',') + 'k';
+  return (v < 0 ? '-' : '') + Math.round(a);
+}
+function diaCurto(iso){ const [,m,d] = iso.split('-'); return `${d}/${m}`; }
+
+function barras(dias, valorDe, cor, altura){
+  const L = 46, T = 8, B = 22, W = 100;           // usa viewBox proporcional
+  const larg = Math.max(dias.length * 34 + L + 12, 320);
+  const alt = altura + T + B;
+  const vals = dias.map(valorDe);
+  const max = Math.max(...vals, 1);
+  const passo = (larg - L - 12) / dias.length;
+  const bw = Math.min(22, passo * 0.62);
+
+  const linhas = [0, 0.5, 1].map(p => {
+    const y = T + altura - altura * p;
+    return `<line x1="${L}" y1="${y}" x2="${larg-6}" y2="${y}" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
+            <text x="${L-7}" y="${y+3.5}" text-anchor="end" font-size="9" fill="#5d6d90" font-family="Cascadia Mono,Consolas,monospace">${brlCurto(max*p)}</text>`;
+  }).join('');
+
+  const bs = dias.map((d, i) => {
+    const v = vals[i];
+    const h = Math.max(v > 0 ? 2 : 0, (v / max) * altura);
+    const x = L + i * passo + (passo - bw) / 2;
+    const y = T + altura - h;
+    return `<g>
+      <rect x="${x}" y="${y}" width="${bw}" height="${h}" rx="3" fill="${cor}" opacity=".85">
+        <title>${diaCurto(d.data)} — ${brl(v)}</title></rect>
+      ${dias.length <= 16 ? `<text x="${x+bw/2}" y="${T+altura+13}" text-anchor="middle" font-size="8.5" fill="#5d6d90" font-family="Cascadia Mono,Consolas,monospace">${diaCurto(d.data)}</text>` : ''}
+    </g>`;
+  }).join('');
+
+  return `<svg viewBox="0 0 ${larg} ${alt}" style="width:100%;height:${alt}px" preserveAspectRatio="xMinYMid meet">${linhas}${bs}</svg>`;
+}
+
+function barrasDiferenca(dias, altura){
+  const L = 46, T = 8, B = 22;
+  const larg = Math.max(dias.length * 34 + L + 12, 320);
+  const alt = altura + T + B;
+  const vals = dias.map(d => d.difFechamento !== undefined ? d.difFechamento : diferenca(d));
+  const max = Math.max(...vals.map(Math.abs), 1);
+  const meio = T + altura / 2;
+  const passo = (larg - L - 12) / dias.length;
+  const bw = Math.min(22, passo * 0.62);
+
+  const bs = dias.map((d, i) => {
+    const v = vals[i];
+    const h = Math.max(Math.abs(v) > 0 ? 2 : 1, (Math.abs(v) / max) * (altura/2));
+    const x = L + i * passo + (passo - bw) / 2;
+    const y = v >= 0 ? meio - h : meio;
+    const cor = v === 0 ? '#3d4d69' : v > 0 ? '#4db8ff' : '#ff4f6a';
+    return `<rect x="${x}" y="${y}" width="${bw}" height="${h}" rx="2" fill="${cor}" opacity=".9">
+      <title>${diaCurto(d.data)} — ${v === 0 ? 'bateu' : (v > 0 ? 'sobrou ' : 'faltou ') + brl(Math.abs(v))}</title></rect>`;
+  }).join('');
+
+  return `<svg viewBox="0 0 ${larg} ${alt}" style="width:100%;height:${alt}px" preserveAspectRatio="xMinYMid meet">
+    <line x1="${L}" y1="${meio}" x2="${larg-6}" y2="${meio}" stroke="rgba(255,255,255,.18)" stroke-width="1"/>
+    <text x="${L-7}" y="${meio+3.5}" text-anchor="end" font-size="9" fill="#5d6d90" font-family="Cascadia Mono,Consolas,monospace">0</text>
+    ${bs}</svg>`;
+}
+
+function renderGrafico(){
+  const dias = serieDias(periodoGrafico);
+  if (!dias.length) {
+    return `<div class="painel"><div class="vazio"><div class="glifo">📈</div>
+      <div class="tt">Sem movimento para mostrar</div>
+      <div class="ds">Depois de alguns dias de caixa fechado, aqui aparece como a loja vem indo.</div></div></div>`;
+  }
+  const totalEnt = dias.reduce((a,d) => a + somaMov(d,'entrada'), 0);
+  const totalSan = dias.reduce((a,d) => a + somaMov(d,'sangria'), 0);
+  const fechados = dias.filter(d => d.fechadoEm);
+  const media = totalEnt / dias.length;
+  const melhor = dias.reduce((a,d) => somaMov(d,'entrada') > somaMov(a,'entrada') ? d : a);
+  const comDif = fechados.filter(d => (d.difFechamento !== undefined ? d.difFechamento : diferenca(d)) !== 0);
+  const somaDif = fechados.reduce((a,d) => a + (d.difFechamento !== undefined ? d.difFechamento : diferenca(d)), 0);
+
+  const bts = [7,30,90].map(n =>
+    `<button class="btn ${periodoGrafico===n?'btn-acc':'btn-linha'} btn-p" data-periodo="${n}">${n} dias</button>`).join('');
+
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+      <div style="display:flex;gap:7px">${bts}</div>
+      <span style="font-size:11.5px;color:var(--tx-3)">${dias.length} dia(s) com movimento · ${fechados.length} fechado(s)</span>
+    </div>
+
+    <div class="hero-nums" style="margin:0 0 14px;padding:14px 16px;background:rgba(255,255,255,.03);border:1px solid var(--linha);border-radius:var(--r-m)">
+      <div class="hnum ok"><div class="r">Entrou no período</div><div class="n">${brl(totalEnt)}</div><div class="s">só dinheiro no caixa</div></div>
+      <div class="hnum acc"><div class="r">Média por dia</div><div class="n">${brl(media)}</div><div class="s">nos dias com movimento</div></div>
+      <div class="hnum info"><div class="r">Melhor dia</div><div class="n">${brl(somaMov(melhor,'entrada'))}</div><div class="s">${diaCurto(melhor.data)}</div></div>
+      <div class="hnum perigo"><div class="r">Saiu em sangrias</div><div class="n">${brl(totalSan)}</div><div class="s">retiradas do caixa</div></div>
+    </div>
+
+    <div class="painel painel-p" style="margin-bottom:14px">
+      <div class="painel-ttl">Entrada de dinheiro por dia <span class="nota">passe o mouse na barra para o valor</span></div>
+      ${barras(dias, d => somaMov(d,'entrada'), 'var(--ok)', 150)}
+    </div>
+
+    <div class="painel painel-p">
+      <div class="painel-ttl">Diferença no fechamento
+        <span class="nota">${comDif.length} dia(s) com diferença · saldo ${somaDif >= 0 ? '+' : ''}${brl(somaDif)}</span></div>
+      ${barrasDiferenca(fechados.length ? fechados : dias, 110)}
+      <div style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:var(--tx-3);flex-wrap:wrap">
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#4db8ff;margin-right:5px"></span>sobrou</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#ff4f6a;margin-right:5px"></span>faltou</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#3d4d69;margin-right:5px"></span>bateu certinho</span>
+      </div>
+    </div>`;
+}
+
+function render(){
+  renderHero();
+  const alvo = document.getElementById('conteudo');
+
+  if (vista === 'grafico') {
+    alvo.innerHTML = renderGrafico();
+    alvo.querySelectorAll('[data-periodo]').forEach(b => b.addEventListener('click', () => {
+      periodoGrafico = parseInt(b.dataset.periodo, 10); render();
+    }));
+    return;
+  }
+
+  if (vista === 'historico') {
+    const antigos = S.dias.filter(d => d.data !== hoje() && d.fechadoEm)
+      .sort((a,b) => b.data.localeCompare(a.data));
+    alvo.innerHTML = antigos.length ? `<div class="tabela"><table><thead><tr>
+        <th>Data</th><th style="text-align:right">Abertura</th><th style="text-align:right">Entradas</th>
+        <th style="text-align:right">Sangrias</th><th style="text-align:right">Reforços</th>
+        <th style="text-align:right">Esperado</th><th style="text-align:right">Contado</th><th>Diferença</th>
+      </tr></thead><tbody>${antigos.map(d => {
+        const dif = d.difFechamento !== undefined ? d.difFechamento : diferenca(d);
+        const etq = dif === 0 ? '<span class="etq etq-ok">bateu</span>'
+          : dif > 0 ? `<span class="etq etq-info">+${brl(dif).replace('R$','').trim()}</span>`
+          : `<span class="etq etq-perigo">${brl(dif).replace('R$','').trim()}</span>`;
+        return `<tr>
+          <td class="num" style="text-align:left">${fmtData(d.data)}</td>
+          <td class="num">${brl(d.abertura)}</td>
+          <td class="num" style="color:var(--ok)">${brl(somaMov(d,'entrada'))}</td>
+          <td class="num" style="color:var(--perigo)">${brl(somaMov(d,'sangria'))}</td>
+          <td class="num" style="color:var(--info)">${brl(somaMov(d,'aditivo'))}</td>
+          <td class="num">${brl(esperado(d))}</td>
+          <td class="num">${brl(contado(d))}</td>
+          <td>${etq}</td></tr>`;
+      }).join('')}</tbody></table></div>`
+      : `<div class="painel"><div class="vazio"><div class="glifo">🗂</div>
+         <div class="tt">Nenhum caixa fechado ainda</div>
+         <div class="ds">Quando você fechar o caixa de um dia, ele aparece aqui com a diferença registrada.</div></div></div>`;
+    return;
+  }
+
+  const d = diaHoje(true);
+  const dif = diferenca(d), tem = temContagem(d);
+  const clsDif = !tem ? '' : dif === 0 ? 'certo' : dif > 0 ? 'sobra' : 'falta';
+  const txtDif = !tem ? 'Preencha as quantidades ao lado para conferir.'
+    : dif === 0 ? 'Contagem igual ao esperado. Pode fechar tranquilo.'
+    : dif > 0 ? 'Tem mais dinheiro no caixa do que o registrado. Confira se faltou lançar alguma entrada.'
+    : 'Tem menos dinheiro do que o registrado. Confira se faltou lançar uma sangria ou se houve erro de troco.';
+
+  alvo.innerHTML = `
+    ${d.fechadoEm ? `<div class="fechado-selo">🔒 <div><b>Caixa de hoje fechado</b> às ${new Date(d.fechadoEm).toTimeString().slice(0,5)}.
+      Os campos estão travados. <button class="btn btn-linha btn-p" id="btn-reabrir" style="margin-left:8px">Reabrir</button></div></div>` : ''}
+
+    <div class="duas">
+      <div class="painel painel-p">
+        <div class="painel-ttl">Contagem do dinheiro <span class="nota">digite quantas de cada</span></div>
+        <div class="grupo-tit">Cédulas</div>
+        ${CEDULAS.map(c => linhaCedula(c, d)).join('')}
+        <div class="grupo-tit">Moedas</div>
+        ${MOEDAS.map(c => linhaCedula(c, d, true)).join('')}
+        <div class="total-cont">
+          <span class="r">Total contado</span>
+          <span class="v" id="tot-contado">${brl(contado(d))}</span>
+        </div>
+        ${d.fechadoEm ? '' : '<div style="margin-top:12px"><button class="btn btn-linha btn-p" id="btn-zerar">Zerar contagem</button></div>'}
+      </div>
+
+      <div>
+        <div class="painel painel-p" style="margin-bottom:14px">
+          <div class="painel-ttl">Conferência</div>
+          <div class="aberto-linha">
+            <div class="campo"><label>Abertura (fundo de caixa)</label>
+              <input id="f-abertura" type="number" min="0" step="0.01" value="${d.abertura || ''}" placeholder="0,00" ${d.fechadoEm ? 'disabled' : ''}>
+              ${d.herdadoDe ? `<span style="font-size:10.5px;color:var(--tx-3);margin-top:3px">↩ veio do fechamento de ${fmtData(d.herdadoDe)} · dá para corrigir</span>` : ''}
+            </div>
+          </div>
+          <div class="confere" id="confere">
+            <div class="cf"><span class="r">💼 Abertura</span><span class="v">${brl(d.abertura)}</span></div>
+            <div class="cf"><span class="r">↓ Entradas</span><span class="v mais">+ ${brl(somaMov(d,'entrada'))}</span></div>
+            <div class="cf"><span class="r">+ Reforços</span><span class="v mais">+ ${brl(somaMov(d,'aditivo'))}</span></div>
+            <div class="cf"><span class="r">↑ Sangrias</span><span class="v menos">− ${brl(somaMov(d,'sangria'))}</span></div>
+            <div class="cf" style="border-top:1px solid var(--linha-2);padding-top:11px">
+              <span class="r"><strong>Esperado no caixa</strong></span><span class="v" style="font-size:15px">${brl(esperado(d))}</span></div>
+          </div>
+          <div class="dif ${clsDif}" id="bloco-dif">
+            <div class="r">Diferença</div>
+            <div class="v">${tem ? (dif > 0 ? '+' : '') + brl(dif) : '—'}</div>
+            <div class="c">${txtDif}</div>
+          </div>
+          ${d.fechadoEm ? '' : `<div style="margin-top:13px"><button class="btn btn-acc" id="btn-fechar" style="width:100%">🔒 Fechar caixa do dia</button></div>`}
+        </div>
+
+        <div class="painel painel-p">
+          <div class="painel-ttl">Movimento do caixa</div>
+          ${d.fechadoEm ? '' : `<div class="mov-bts">
+            <button class="btn btn-ok btn-p" data-mov="entrada">↓ Entrada</button>
+            <button class="btn btn-perigo btn-p" data-mov="sangria">↑ Sangria</button>
+            <button class="btn btn-info btn-p" data-mov="aditivo">+ Reforço</button>
+          </div>`}
+          <div class="mov-lista">
+            ${(d.movimentos||[]).length
+              ? [...d.movimentos].reverse().map(m => {
+                  const r = ROT_MOV[m.tipo];
+                  return `<div class="mv" style="--c:${r.cor}">
+                    <span class="h">${m.hora || ''}</span>
+                    <span class="d">${r.nome}${m.obs ? `<span class="o">${escapar(m.obs)}</span>` : ''}</span>
+                    <span class="val" style="color:${r.cor}">${m.tipo === 'sangria' ? '−' : '+'} ${brl(m.valor)}</span>
+                    ${d.fechadoEm ? '' : `<button class="btn-icone" data-apagar="${m.id}" style="color:var(--perigo)">✕</button>`}
+                  </div>`;
+                }).join('')
+              : '<div style="font-size:12.5px;color:var(--tx-3);padding:8px 0">Nenhum lançamento hoje. Use os botões acima conforme o dinheiro entra e sai.</div>'}
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  // eventos
+  alvo.querySelectorAll('[data-ced]').forEach(inp => {
+    inp.addEventListener('input', () => mudarContagem(inp.dataset.ced, inp.value));
+    inp.addEventListener('blur', gravarJa);   // sai do campo, grava na hora
+  });
+  const ab = document.getElementById('f-abertura');
+  if (ab) {
+    ab.addEventListener('input', () => mudarAbertura(ab.value));
+    ab.addEventListener('blur', gravarJa);
+  }
+  alvo.querySelectorAll('[data-mov]').forEach(b => b.addEventListener('click', () => novoMov(b.dataset.mov)));
+  alvo.querySelectorAll('[data-apagar]').forEach(b => b.addEventListener('click', () => apagarMov(b.dataset.apagar)));
+  const bz = document.getElementById('btn-zerar'); if (bz) bz.addEventListener('click', zerarContagem);
+  const bf = document.getElementById('btn-fechar'); if (bf) bf.addEventListener('click', fecharCaixa);
+  const br = document.getElementById('btn-reabrir'); if (br) br.addEventListener('click', reabrirCaixa);
+}
+
+// atualiza só os números, sem redesenhar a tela — não perde o foco do campo
+function atualizarNumeros(){
+  const d = diaHoje(false); if (!d) return;
+  const cont = contado(d), esp = esperado(d), dif = diferenca(d), tem = temContagem(d);
+  const el = id => document.getElementById(id);
+  if (el('tot-contado')) el('tot-contado').textContent = brl(cont);
+  const conf = el('confere');
+  if (conf) {
+    const vs = conf.querySelectorAll('.cf .v');
+    if (vs[0]) vs[0].textContent = brl(d.abertura);
+    if (vs[4]) vs[4].textContent = brl(esp);
+  }
+  const bd = el('bloco-dif');
+  if (bd) {
+    bd.className = 'dif ' + (!tem ? '' : dif === 0 ? 'certo' : dif > 0 ? 'sobra' : 'falta');
+    bd.querySelector('.v').textContent = tem ? (dif > 0 ? '+' : '') + brl(dif) : '—';
+    bd.querySelector('.c').textContent = !tem ? 'Preencha as quantidades ao lado para conferir.'
+      : dif === 0 ? 'Contagem igual ao esperado. Pode fechar tranquilo.'
+      : dif > 0 ? 'Tem mais dinheiro no caixa do que o registrado. Confira se faltou lançar alguma entrada.'
+      : 'Tem menos dinheiro do que o registrado. Confira se faltou lançar uma sangria ou se houve erro de troco.';
+  }
+  // subtotal da linha editada
+  document.querySelectorAll('[data-ced]').forEach(inp => {
+    const v = Number(inp.dataset.ced), q = Number(inp.value) || 0;
+    const linha = inp.closest('.ced');
+    linha.classList.toggle('tem', q > 0);
+    linha.querySelector('.ced-sub').textContent = q ? brl(q * v) : '—';
+  });
+  renderHero();
+}
+
+// ── Eventos ──────────────────────────────────────────────────────────
+document.querySelectorAll('#abas-vista button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#abas-vista button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); vista = b.dataset.vista; render();
+}));
+document.getElementById('btn-imprimir').addEventListener('click', () => {
+  const d = diaHoje(false);
+  document.getElementById('imp-cab').textContent = d
+    ? `Caixa de ${fmtData(d.data)} · esperado ${brl(esperado(d))} · contado ${brl(contado(d))} · diferença ${brl(diferenca(d))}`
+    : `Caixa · ${fmtData(hoje())}`;
+  window.print();
+});
+document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') fecharModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharModal(); });
+
+render();
+</script>
+</body>
+</html>

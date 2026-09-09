@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="../shared/marca.js"></script>
+<script src="../shared/db-storage.js" data-app="entregas"></script>
+<title>Entregas · {marca}</title>
+<link rel="stylesheet" href="../shared/ui.css">
+<style>
+:root{ --acc:#e879f9; --acc-tx:#20051f; --aguard:#ff9a44; --rua:#4db8ff; --feito:#00d4a0; }
+
+.g-cad-1{display:grid;grid-template-columns:1.2fr 1.9fr 1fr;gap:11px;margin-bottom:11px}
+.g-cad-2{display:grid;grid-template-columns:2.1fr .8fr 1.05fr 1fr auto;gap:11px;align-items:end}
+@media(max-width:960px){.g-cad-1,.g-cad-2{grid-template-columns:1fr 1fr}}
+
+.troco-dica{
+  font-size:12px;color:var(--atencao);background:rgba(245,200,66,.09);
+  border:1px solid rgba(245,200,66,.28);border-radius:10px;padding:9px 13px;margin-top:11px;display:none;
+  align-items:center;gap:8px
+}
+.troco-dica.on{display:flex;animation:entra .18s ease-out}
+
+/* quadro */
+.quadro{display:grid;grid-template-columns:repeat(auto-fit,minmax(272px,1fr));gap:14px;align-items:start}
+.coluna{
+  border-radius:var(--r-m);padding:14px;min-height:140px;
+  background:linear-gradient(180deg,var(--painel-2),var(--painel));
+  border:1px solid var(--linha);
+  box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 10px 26px rgba(0,0,0,.2)
+}
+.col-topo{
+  display:flex;align-items:center;gap:9px;margin-bottom:13px;padding-bottom:11px;
+  border-bottom:1px solid var(--linha);position:relative
+}
+.col-topo::after{content:'';position:absolute;bottom:-1px;left:0;width:52px;height:2px;border-radius:2px;background:var(--c)}
+.col-pt{width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c);flex-shrink:0}
+.col-nome{font-family:var(--disp);font-size:11.5px;font-weight:600;letter-spacing:1.1px;text-transform:uppercase;color:var(--c)}
+.col-n{
+  margin-left:auto;font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--tx-2);
+  background:rgba(255,255,255,.06);border-radius:20px;padding:2px 10px;font-variant-numeric:tabular-nums
+}
+.cards{display:flex;flex-direction:column;gap:10px}
+
+.card{
+  position:relative;border-radius:12px;padding:13px 14px 13px 16px;
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.018));
+  border:1px solid var(--linha);transition:.16s
+}
+.card::before{content:'';position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--c)}
+.card:hover{transform:translateY(-2px);border-color:var(--linha-2);box-shadow:0 12px 26px rgba(0,0,0,.3)}
+.card.nova{animation:brilha 1.7s ease-out}
+.card.atrasada::before{background:var(--perigo);box-shadow:0 0 12px var(--perigo)}
+
+.c-nome{font-family:var(--disp);font-size:14px;font-weight:600;letter-spacing:.2px;line-height:1.25}
+.c-meta{font-size:11.5px;color:var(--tx-2);line-height:1.5;display:flex;gap:6px;align-items:flex-start;margin-top:4px}
+.c-meta .i{opacity:.75;flex-shrink:0}
+.c-itens{
+  font-size:12px;color:var(--tx);margin-top:9px;line-height:1.5;
+  background:rgba(2,5,12,.42);border:1px solid rgba(255,255,255,.05);
+  border-radius:8px;padding:8px 10px;white-space:pre-wrap;word-break:break-word
+}
+.c-rodape{display:flex;align-items:center;gap:9px;margin-top:10px;flex-wrap:wrap}
+.c-valor{font-family:var(--mono);font-size:15px;font-weight:600;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
+.c-tempo{font-family:var(--mono);font-size:10.5px;color:var(--tx-3);margin-left:auto}
+.c-tempo.atraso{color:var(--perigo);font-weight:600}
+.c-troco{
+  font-size:11.5px;color:var(--atencao);margin-top:8px;display:flex;align-items:center;gap:7px;
+  background:rgba(245,200,66,.08);border-radius:7px;padding:6px 9px
+}
+.c-acoes{display:flex;gap:5px;margin-top:11px;padding-top:10px;border-top:1px solid var(--linha);align-items:center}
+.c-acoes .btn{flex:1}
+.col-vazia{text-align:center;padding:26px 12px;color:var(--tx-3);font-size:12px;line-height:1.6}
+.col-vazia .ic{font-size:24px;display:block;margin-bottom:8px;opacity:.35}
+
+.pg{font-family:var(--disp);font-size:10px;font-weight:600;letter-spacing:.5px;padding:3px 9px;border-radius:20px;border:1px solid transparent}
+.pg-dinheiro{background:rgba(245,200,66,.14);color:var(--atencao);border-color:rgba(245,200,66,.26)}
+.pg-pix{background:rgba(0,212,160,.13);color:var(--ok);border-color:rgba(0,212,160,.24)}
+.pg-cartao{background:rgba(77,184,255,.13);color:var(--info);border-color:rgba(77,184,255,.24)}
+.pg-fiado{background:rgba(255,79,106,.13);color:var(--perigo);border-color:rgba(255,79,106,.24)}
+.pg-pago{background:rgba(163,230,53,.13);color:#a3e635;border-color:rgba(163,230,53,.24)}
+</style>
+</head>
+<body>
+
+<div class="hero" data-glifo="🛵">
+  <div class="hero-topo">
+    <div>
+      <span class="selo">Delivery</span>
+      <h1><span class="em">🛵</span> Entregas</h1>
+      <div class="lead">O que precisa sair, o que está na rua e o que já chegou na casa do cliente.</div>
+    </div>
+    <div class="hero-acoes">
+      <button class="btn btn-linha btn-p" id="btn-imprimir">🖨 Imprimir rota</button>
+      <div class="abas" id="abas-vista">
+        <button class="on" data-vista="hoje">Hoje</button>
+        <button data-vista="historico">Histórico</button>
+      </div>
+    </div>
+  </div>
+  <div class="hero-nums" id="hero-nums"></div>
+  <div class="imp-cab" id="imp-cab"></div>
+</div>
+
+<div class="wrap">
+  <div class="compor sobe-1" id="card-form">
+    <div class="compor-ttl">Nova entrega <span class="dica">Enter salva · Esc limpa</span></div>
+    <div class="g-cad-1">
+      <div class="campo"><label>Cliente</label>
+        <input id="f-cliente" type="text" placeholder="Nome do cliente" list="lista-clientes" autocomplete="off">
+        <datalist id="lista-clientes"></datalist>
+      </div>
+      <div class="campo"><label>Endereço</label><input id="f-end" type="text" placeholder="Rua, número, bairro, referência" autocomplete="off"></div>
+      <div class="campo"><label>Telefone <span class="opc">(opcional)</span></label><input id="f-tel" type="text" placeholder="(00) 00000-0000" autocomplete="off"></div>
+    </div>
+    <div class="campo" style="margin-bottom:11px">
+      <label>Itens da entrega</label>
+      <input id="f-itens" type="text" placeholder="Ex: Losartana 50mg 1cx, Dipirona 1g 2cx" autocomplete="off">
+    </div>
+    <div class="g-cad-2">
+      <div class="campo"><label>Observação <span class="opc">(opcional)</span></label><input id="f-obs" type="text" placeholder="Portão azul, ligar ao chegar..." autocomplete="off"></div>
+      <div class="campo"><label>Valor</label><input id="f-valor" type="number" min="0" step="0.01" placeholder="0,00"></div>
+      <div class="campo"><label>Pagamento</label>
+        <select id="f-pgto">
+          <option value="dinheiro">Dinheiro</option><option value="pix">Pix</option>
+          <option value="cartao">Cartão na entrega</option><option value="pago">Já pago</option><option value="fiado">Fiado</option>
+        </select>
+      </div>
+      <div class="campo" id="campo-troco"><label>Troco para</label><input id="f-troco" type="number" min="0" step="0.01" placeholder="0,00"></div>
+      <button class="btn btn-acc" id="btn-add">＋ Adicionar</button>
+    </div>
+    <div class="troco-dica" id="troco-dica"></div>
+  </div>
+
+  <div id="conteudo" class="sobe-2"></div>
+</div>
+
+<div class="modal-bg" id="modal"><div class="modal">
+  <h3 id="modal-ttl"></h3><div id="modal-corpo"></div><div class="modal-acts" id="modal-acts"></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+const CHAVE = 'entregas_v1';
+const MIN_ATRASO = 60;
+
+function carregar(){
+  try {
+    const bruto = localStorage.getItem(CHAVE);
+    if (!bruto) return { entregas: [] };
+    const d = JSON.parse(bruto);
+    d.entregas = Array.isArray(d.entregas) ? d.entregas : [];
+    return d;
+  } catch (e) { return { entregas: [] }; }
+}
+function salvar(){ try { localStorage.setItem(CHAVE, JSON.stringify(S)); } catch (e) { toast('⚠️ ' + e.message); } }
+let S = carregar();
+
+let vista = 'hoje', idNovo = null;
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function hoje(){ return new Date().toISOString().split('T')[0]; }
+function agora(){ return new Date().toISOString(); }
+function fmtData(d){ if(!d) return ''; const [a,m,x] = d.split('-'); return `${x}/${m}/${a}`; }
+function brl(v){ return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0); }
+function escapar(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(window._tt); window._tt = setTimeout(() => t.classList.remove('on'), 2600);
+}
+function minutosDesde(iso){ return iso ? Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000)) : 0; }
+function textoTempo(min){
+  if (min < 1) return 'agora';
+  if (min < 60) return `há ${min} min`;
+  const h = Math.floor(min / 60), m = min % 60;
+  return `há ${h}h${m ? ' ' + m + 'min' : ''}`;
+}
+const PGTO = {
+  dinheiro:{ rot:'Dinheiro', cls:'pg-dinheiro' }, pix:{ rot:'Pix', cls:'pg-pix' },
+  cartao:{ rot:'Cartão', cls:'pg-cartao' }, pago:{ rot:'Já pago', cls:'pg-pago' }, fiado:{ rot:'Fiado', cls:'pg-fiado' }
+};
+const COR_ST = { aguardando:'var(--aguard)', rota:'var(--rua)', entregue:'var(--feito)' };
+
+function doDia(d){ return S.entregas.filter(e => e.data === d); }
+// pendente = aguardando ou na rua, de QUALQUER dia — nunca some do quadro até ser entregue ou cancelada
+function pendentes(st){ return S.entregas.filter(e => e.status === st); }
+function entreguesHoje(){ return doDia(hoje()).filter(e => e.status === 'entregue'); }
+function aReceber(){
+  return [...pendentes('aguardando'), ...pendentes('rota')]
+    .filter(e => ['dinheiro','pix','cartao'].includes(e.pgto))
+    .reduce((a,e) => a + (e.valor || 0), 0);
+}
+
+// ── Cadastro ─────────────────────────────────────────────────────────
+function atualizarTroco(){
+  const ehDinheiro = document.getElementById('f-pgto').value === 'dinheiro';
+  document.getElementById('campo-troco').style.display = ehDinheiro ? '' : 'none';
+  const dica = document.getElementById('troco-dica');
+  if (!ehDinheiro) { dica.classList.remove('on'); return; }
+  const valor = parseFloat(document.getElementById('f-valor').value) || 0;
+  const troco = parseFloat(document.getElementById('f-troco').value) || 0;
+  if (troco > 0 && valor > 0 && troco >= valor) {
+    dica.innerHTML = `<span>💵</span><span>Levar <strong>${brl(troco - valor)}</strong> de troco</span>`;
+    dica.classList.add('on');
+  } else if (troco > 0 && valor > 0 && troco < valor) {
+    dica.innerHTML = `<span>⚠️</span><span>O valor pago (${brl(troco)}) é menor que a entrega (${brl(valor)})</span>`;
+    dica.classList.add('on');
+  } else dica.classList.remove('on');
+}
+
+function adicionar(){
+  const cliente = document.getElementById('f-cliente').value.trim();
+  const endereco = document.getElementById('f-end').value.trim();
+  const telefone = document.getElementById('f-tel').value.trim();
+  const itens = document.getElementById('f-itens').value.trim();
+  const obs = document.getElementById('f-obs').value.trim();
+  const valor = parseFloat(document.getElementById('f-valor').value) || 0;
+  const pgto = document.getElementById('f-pgto').value;
+  const trocoPara = pgto === 'dinheiro' ? (parseFloat(document.getElementById('f-troco').value) || 0) : 0;
+
+  if (!cliente) { toast('⚠️ Informe o cliente.'); document.getElementById('f-cliente').focus(); return; }
+  if (!endereco) { toast('⚠️ Informe o endereço.'); document.getElementById('f-end').focus(); return; }
+  if (!itens) { toast('⚠️ Informe o que vai ser entregue.'); document.getElementById('f-itens').focus(); return; }
+
+  const id = uid();
+  S.entregas.push({ id, cliente, endereco, telefone, itens, obs, valor, pgto, trocoPara,
+    status:'aguardando', data: hoje(), criadoEm: agora() });
+  salvar();
+  idNovo = id;
+  limparForm();
+  toast('✓ Entrega na fila: ' + cliente);
+  render();
+  setTimeout(() => { idNovo = null; }, 1900);
+}
+
+function limparForm(){
+  ['f-cliente','f-end','f-tel','f-itens','f-obs','f-valor','f-troco'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-pgto').value = 'dinheiro';
+  atualizarTroco();
+  document.getElementById('f-cliente').focus();
+}
+
+function autoPreencher(){
+  const nome = document.getElementById('f-cliente').value.trim().toLowerCase();
+  if (!nome) return;
+  const ant = [...S.entregas].reverse().find(e => e.cliente.toLowerCase() === nome);
+  if (!ant) return;
+  const end = document.getElementById('f-end'), tel = document.getElementById('f-tel');
+  if (!end.value) end.value = ant.endereco;
+  if (!tel.value && ant.telefone) tel.value = ant.telefone;
+}
+
+// ── Fluxo ────────────────────────────────────────────────────────────
+function mudarStatus(id, status){
+  const e = S.entregas.find(x => x.id === id); if (!e) return;
+  e.status = status;
+  if (status === 'rota') e.saiuEm = agora();
+  if (status === 'entregue') e.entregueEm = agora();
+  salvar(); render();
+  toast(status === 'rota' ? '🛵 Saiu para entrega' : status === 'entregue' ? '✓ Entregue' : 'Voltou para a fila');
+}
+
+function cancelar(id){
+  const e = S.entregas.find(x => x.id === id); if (!e) return;
+  abrirModal('Cancelar entrega', `<p>Cancelar a entrega de <strong>${escapar(e.cliente)}</strong>? Sai do quadro mas fica no histórico.</p>`,
+    [
+      { txt:'Voltar', cls:'btn-linha', fn: fecharModal },
+      { txt:'Cancelar entrega', cls:'btn-perigo', fn:() => {
+          e.status = 'cancelada'; e.canceladaEm = agora();
+          salvar(); fecharModal(); render(); toast('Entrega cancelada');
+        } }
+    ]);
+}
+
+function excluir(id){
+  const e = S.entregas.find(x => x.id === id); if (!e) return;
+  abrirModal('Excluir', `<p>Excluir de vez a entrega de <strong>${escapar(e.cliente)}</strong>?</p>`,
+    [
+      { txt:'Voltar', cls:'btn-linha', fn: fecharModal },
+      { txt:'Excluir', cls:'btn-perigo', fn:() => {
+          S.entregas = S.entregas.filter(x => x.id !== id);
+          salvar(); fecharModal(); render(); toast('Entrega excluída');
+        } }
+    ]);
+}
+
+function editar(id){
+  const e = S.entregas.find(x => x.id === id); if (!e) return;
+  abrirModal('Editar entrega', `
+    <div class="campo" style="margin-bottom:11px"><label>Cliente</label><input id="d-cliente" type="text" value="${escapar(e.cliente)}"></div>
+    <div class="campo" style="margin-bottom:11px"><label>Endereço</label><input id="d-end" type="text" value="${escapar(e.endereco)}"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:11px">
+      <div class="campo"><label>Telefone</label><input id="d-tel" type="text" value="${escapar(e.telefone || '')}"></div>
+      <div class="campo"><label>Valor</label><input id="d-valor" type="number" min="0" step="0.01" value="${e.valor || ''}"></div>
+    </div>
+    <div class="campo" style="margin-bottom:11px"><label>Itens</label><textarea id="d-itens">${escapar(e.itens)}</textarea></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px">
+      <div class="campo"><label>Pagamento</label>
+        <select id="d-pgto">${Object.entries(PGTO).map(([k,v]) => `<option value="${k}" ${e.pgto===k?'selected':''}>${v.rot}</option>`).join('')}</select></div>
+      <div class="campo"><label>Troco para</label><input id="d-troco" type="number" min="0" step="0.01" value="${e.trocoPara || ''}"></div>
+    </div>
+    <div class="campo" style="margin-top:11px"><label>Observação</label><input id="d-obs" type="text" value="${escapar(e.obs || '')}"></div>`,
+    [
+      { txt:'Cancelar', cls:'btn-linha', fn: fecharModal },
+      { txt:'Salvar', cls:'btn-acc', fn:() => {
+          const c = document.getElementById('d-cliente').value.trim();
+          const en = document.getElementById('d-end').value.trim();
+          const it = document.getElementById('d-itens').value.trim();
+          if (!c || !en || !it) { toast('⚠️ Cliente, endereço e itens são obrigatórios.'); return; }
+          e.cliente = c; e.endereco = en; e.itens = it;
+          e.telefone = document.getElementById('d-tel').value.trim();
+          e.valor = parseFloat(document.getElementById('d-valor').value) || 0;
+          e.pgto = document.getElementById('d-pgto').value;
+          e.trocoPara = parseFloat(document.getElementById('d-troco').value) || 0;
+          e.obs = document.getElementById('d-obs').value.trim();
+          salvar(); fecharModal(); render(); toast('✓ Entrega atualizada');
+        } }
+    ]);
+}
+
+// ── Aviso ao cliente ─────────────────────────────────────────────────
+function soDigitos(t){ return String(t || '').replace(/\D/g, ''); }
+function avisarCliente(id){
+  const e = S.entregas.find(x => x.id === id); if (!e) return;
+  let msg = `Oi ${e.cliente}! Sua entrega acabou de sair`;
+  msg += e.endereco ? ` e está a caminho de ${e.endereco}.` : '.';
+  if (e.valor > 0 && e.pgto === 'dinheiro') {
+    msg += `\n\nValor: ${brl(e.valor)} (dinheiro)`;
+    if (e.trocoPara > e.valor) msg += ` — levamos ${brl(e.trocoPara - e.valor)} de troco.`;
+  } else if (e.valor > 0 && e.pgto !== 'pago' && e.pgto !== 'fiado') {
+    msg += `\n\nValor: ${brl(e.valor)} (${PGTO[e.pgto].rot.toLowerCase()})`;
+  }
+  msg += '\n\nQualquer coisa é só chamar!';
+
+  let n = soDigitos(e.telefone);
+  if (n && n.length <= 11) n = '55' + n;
+
+  abrirModal(`Avisar ${e.cliente}`, `
+    <p>Mensagem pronta. Edite se quiser antes de enviar.</p>
+    <textarea id="a-txt">${escapar(msg)}</textarea>
+    ${n ? '' : '<p style="margin-top:11px;margin-bottom:0;font-size:11.5px;color:var(--tx-3)">Sem telefone nesta entrega — dá para copiar o texto. Para abrir o WhatsApp direto, edite e informe o número.</p>'}`,
+    [
+      { txt:'Fechar', cls:'btn-linha', fn: fecharModal },
+      { txt:'📋 Copiar', cls:'btn-linha', fn:() => {
+          const ta = document.createElement('textarea');
+          ta.value = document.getElementById('a-txt').value;
+          ta.style.position='fixed'; ta.style.opacity='0';
+          document.body.appendChild(ta); ta.select();
+          let ok = false; try { ok = document.execCommand('copy'); } catch (er) { ok = false; }
+          document.body.removeChild(ta);
+          toast(ok ? '✓ Mensagem copiada' : '⚠️ Não consegui copiar');
+        } },
+      ...(n ? [{ txt:'Abrir WhatsApp', cls:'btn-zap', fn:() => {
+          const u = `https://wa.me/${n}?text=${encodeURIComponent(document.getElementById('a-txt').value)}`;
+          const ok = window.api?.abrirWhatsApp ? window.api.abrirWhatsApp(u) : false;
+          toast(ok ? '✓ Abrindo WhatsApp' : '⚠️ Não consegui abrir');
+        } }] : [])
+    ]);
+}
+
+// ── Modal ────────────────────────────────────────────────────────────
+function abrirModal(titulo, corpo, acoes){
+  document.getElementById('modal-ttl').textContent = titulo;
+  document.getElementById('modal-corpo').innerHTML = corpo;
+  const box = document.getElementById('modal-acts');
+  box.innerHTML = '';
+  acoes.forEach(a => {
+    const b = document.createElement('button');
+    b.className = 'btn ' + a.cls; b.textContent = a.txt;
+    b.addEventListener('click', a.fn);
+    box.appendChild(b);
+  });
+  document.getElementById('modal').classList.add('on');
+}
+function fecharModal(){ document.getElementById('modal').classList.remove('on'); }
+
+// ── Render ───────────────────────────────────────────────────────────
+function renderHero(){
+  document.getElementById('hero-nums').innerHTML = `
+    <div class="hnum alerta"><div class="r">Aguardando</div><div class="n">${pendentes('aguardando').length}</div><div class="s">esperando sair</div></div>
+    <div class="hnum info"><div class="r">Na rua</div><div class="n">${pendentes('rota').length}</div><div class="s">a caminho</div></div>
+    <div class="hnum ok"><div class="r">Entregues hoje</div><div class="n">${entreguesHoje().length}</div><div class="s">concluídas</div></div>
+    <div class="hnum atencao"><div class="r">A receber na rua</div><div class="n">${brl(aReceber())}</div><div class="s">dinheiro, pix e cartão</div></div>`;
+}
+
+function cardHtml(e){
+  const min = minutosDesde(e.status === 'rota' ? e.saiuEm : e.criadoEm);
+  const atrasada = e.status !== 'entregue' && min > MIN_ATRASO;
+  const pg = PGTO[e.pgto] || PGTO.dinheiro;
+  const troco = e.pgto === 'dinheiro' && e.trocoPara > e.valor ? e.trocoPara - e.valor : 0;
+  return `<div class="card ${e.id === idNovo ? 'nova' : ''} ${atrasada ? 'atrasada' : ''}" style="--c:${COR_ST[e.status]}">
+    <div class="c-nome">${escapar(e.cliente)} ${e.data !== hoje() ? `<span class="etq etq-neutro" style="font-size:9.5px;vertical-align:1px">${fmtData(e.data)}</span>` : ''}</div>
+    <div class="c-meta"><span class="i">📍</span><span>${escapar(e.endereco)}</span></div>
+    ${e.obs ? `<div class="c-meta"><span class="i">📝</span><span>${escapar(e.obs)}</span></div>` : ''}
+    <div class="c-itens">${escapar(e.itens)}</div>
+    <div class="c-rodape">
+      <span class="c-valor">${e.valor > 0 ? brl(e.valor) : '—'}</span>
+      <span class="pg ${pg.cls}">${pg.rot}</span>
+      <span class="c-tempo ${atrasada ? 'atraso' : ''}">${e.status === 'entregue' ? 'entregue ' + textoTempo(minutosDesde(e.entregueEm)) : textoTempo(min)}</span>
+    </div>
+    ${troco > 0 ? `<div class="c-troco"><span>💵</span><span>Levar <strong>${brl(troco)}</strong> de troco</span></div>` : ''}
+    <div class="c-acoes">
+      ${e.status === 'aguardando' ? `<button class="btn btn-info btn-p" data-acao="rota" data-id="${e.id}">🛵 Sair para entrega</button>` : ''}
+      ${e.status === 'rota' ? `<button class="btn btn-ok btn-p" data-acao="entregue" data-id="${e.id}">✓ Entregue</button>` : ''}
+      ${e.status === 'entregue' ? `<button class="btn btn-linha btn-p" data-acao="rota" data-id="${e.id}">↩ Voltar para rota</button>` : ''}
+      ${e.status === 'rota' ? `<button class="btn-icone" data-acao="avisar" data-id="${e.id}" title="Avisar cliente">💬</button>` : ''}
+      <button class="btn-icone" data-acao="editar" data-id="${e.id}" title="Editar">✎</button>
+      ${e.status !== 'entregue' ? `<button class="btn-icone" data-acao="cancelar" data-id="${e.id}" title="Cancelar" style="color:var(--perigo)">✕</button>` : ''}
+    </div>
+  </div>`;
+}
+
+function colunaHtml(cor, nome, lista, vazioTxt, vazioIc){
+  return `<div class="coluna" style="--c:${cor}">
+    <div class="col-topo"><span class="col-pt"></span><span class="col-nome">${nome}</span><span class="col-n">${lista.length}</span></div>
+    ${lista.length ? `<div class="cards">${lista.map(cardHtml).join('')}</div>`
+      : `<div class="col-vazia"><span class="ic">${vazioIc}</span>${vazioTxt}</div>`}
+  </div>`;
+}
+
+function render(){
+  document.getElementById('card-form').style.display = vista === 'hoje' ? '' : 'none';
+  const alvo = document.getElementById('conteudo');
+  renderHero();
+
+  if (vista === 'hoje') {
+    const ag = pendentes('aguardando').sort((a,b) => a.criadoEm.localeCompare(b.criadoEm));
+    const ro = pendentes('rota').sort((a,b) => (a.saiuEm||'').localeCompare(b.saiuEm||''));
+    const fe = entreguesHoje().sort((a,b) => (b.entregueEm||'').localeCompare(a.entregueEm||''));
+    if (!ag.length && !ro.length && !fe.length) {
+      alvo.innerHTML = `<div class="painel"><div class="vazio"><div class="glifo">🛵</div>
+        <div class="tt">Nenhuma entrega pendente</div>
+        <div class="ds">Cadastre acima — ela entra em “Aguardando” e fica visível até ser entregue, não importa o dia.</div></div></div>`;
+    } else {
+      alvo.innerHTML = `<div class="quadro">
+        ${colunaHtml('var(--aguard)','Aguardando', ag, 'Nada esperando para sair.', '📦')}
+        ${colunaHtml('var(--rua)','Na rua', ro, 'Nenhuma entrega a caminho.', '🛵')}
+        ${colunaHtml('var(--feito)','Entregues hoje', fe, 'Nenhuma concluída ainda.', '✓')}
+      </div>`;
+    }
+  } else {
+    // só o que já fechou o ciclo: entregue em dia anterior, ou cancelada (qualquer dia).
+    // pendente (aguardando/rota) nunca aparece aqui — fica sempre no quadro até ser resolvido.
+    const antigas = S.entregas.filter(e => e.status === 'cancelada' || (e.status === 'entregue' && e.data !== hoje()))
+      .sort((a,b) => (b.data + b.criadoEm).localeCompare(a.data + a.criadoEm));
+    alvo.innerHTML = antigas.length ? `<div class="tabela"><table><thead><tr>
+        <th>Data</th><th>Cliente</th><th>Itens</th><th style="text-align:right">Valor</th>
+        <th>Pagamento</th><th>Situação</th><th></th></tr></thead><tbody>
+        ${antigas.map(e => {
+          const pg = PGTO[e.pgto] || PGTO.dinheiro;
+          return `<tr>
+            <td class="num" style="text-align:left">${fmtData(e.data)}</td>
+            <td style="font-weight:600">${escapar(e.cliente)}<div style="font-size:11px;color:var(--tx-3);font-weight:400">${escapar(e.endereco)}</div></td>
+            <td style="font-size:12px;color:var(--tx-2)">${escapar(e.itens)}</td>
+            <td class="num">${e.valor > 0 ? brl(e.valor) : '—'}</td>
+            <td><span class="pg ${pg.cls}">${pg.rot}</span></td>
+            <td><span class="etq ${e.status === 'entregue' ? 'etq-ok' : 'etq-perigo'}">${e.status === 'entregue' ? 'entregue' : 'cancelada'}</span></td>
+            <td><div class="acoes">
+              ${e.status === 'cancelada' ? `<button class="btn btn-linha btn-p" data-acao="reabrir" data-id="${e.id}">Reabrir</button>` : ''}
+              <button class="btn-icone" data-acao="editar" data-id="${e.id}" title="Editar">✎</button>
+              <button class="btn-icone" data-acao="excluir" data-id="${e.id}" style="color:var(--perigo)">✕</button>
+            </div></td>
+          </tr>`; }).join('')}
+      </tbody></table></div>`
+      : `<div class="painel"><div class="vazio"><div class="glifo">🗂</div>
+         <div class="tt">Histórico vazio</div><div class="ds">Entregas concluídas em dias anteriores e canceladas aparecem aqui.</div></div></div>`;
+  }
+
+  alvo.querySelectorAll('[data-acao]').forEach(b => b.addEventListener('click', () => {
+    const id = b.dataset.id, a = b.dataset.acao;
+    if (a === 'rota' || a === 'entregue') mudarStatus(id, a);
+    else if (a === 'reabrir') mudarStatus(id, 'aguardando');
+    else ({ editar, cancelar, excluir, avisar: avisarCliente })[a](id);
+  }));
+
+  const nomes = [...new Set(S.entregas.map(e => e.cliente))].sort();
+  document.getElementById('lista-clientes').innerHTML = nomes.map(n => `<option value="${escapar(n)}">`).join('');
+}
+
+// ── Eventos ──────────────────────────────────────────────────────────
+document.getElementById('btn-add').addEventListener('click', adicionar);
+['f-cliente','f-end','f-tel','f-itens','f-obs','f-valor','f-troco'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter') adicionar();
+    if (e.key === 'Escape') { e.preventDefault(); limparForm(); }
+  });
+});
+document.getElementById('f-cliente').addEventListener('blur', autoPreencher);
+document.getElementById('f-pgto').addEventListener('change', atualizarTroco);
+['f-valor','f-troco'].forEach(id => document.getElementById(id).addEventListener('input', atualizarTroco));
+document.querySelectorAll('#abas-vista button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#abas-vista button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); vista = b.dataset.vista; render();
+}));
+document.getElementById('btn-imprimir').addEventListener('click', () => {
+  document.getElementById('imp-cab').textContent =
+    `Rota de ${fmtData(hoje())} · ${pendentes('aguardando').length} aguardando · ${pendentes('rota').length} na rua · a receber ${brl(aReceber())}`;
+  window.print();
+});
+document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') fecharModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharModal(); });
+
+setInterval(() => { if (vista === 'hoje' && (pendentes('aguardando').length || pendentes('rota').length)) render(); }, 60000);
+
+atualizarTroco();
+render();
+document.getElementById('f-cliente').focus();
+</script>
+</body>
+</html>
