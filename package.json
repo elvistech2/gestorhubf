@@ -26,7 +26,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/SEU-USUARIO/super-gestor.git"
+    "url": "https://github.com/elvistech2/gestorhubf.git"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.2.0",
@@ -55,8 +55,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "SEU-USUARIO",
-        "repo": "super-gestor"
+        "owner": "elvistech2",
+        "repo": "gestorhubf"
       }
     ],
     "win": {

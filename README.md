@@ -94,7 +94,7 @@ instalador NSIS. O resultado é o mesmo `.exe`.
 1. Aponte o projeto para o seu repositório (é daqui que sai a atualização automática):
 
    ```bash
-   npm run configurar-repo -- seu-usuario/super-gestor
+   npm run configurar-repo -- elvistech2/gestorhubf
    ```
 
 2. Suba a versão em `package.json` e crie a tag:
